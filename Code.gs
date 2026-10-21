@@ -20,41 +20,41 @@ const COURSE_ID = 'course_GPU';
 
 // The 35 units, copied from config/course.config.js (unitId, module, module title, unit title)
 const UNITS = [
-  ["Unit1_1","M1","What Is AI, Really?","Rules vs Learning"],
-  ["Unit1_2","M1","What Is AI, Really?","Everything Is Numbers"],
-  ["Unit1_3","M1","What Is AI, Really?","The Neuron"],
-  ["Unit1_4","M1","What Is AI, Really?","Learning = Reducing Error"],
-  ["Unit1_5","M1","What Is AI, Really?","Layers = Matrix Multiplication"],
-  ["Unit1_C","M1","What Is AI, Really?","Capstone: Train a Tiny Network"],
-  ["Unit2_1","M2","Why Is AI So Hungry?","Counting the Multiply-Adds"],
-  ["Unit2_2","M2","Why Is AI So Hungry?","Training vs Inference, Epochs & Batches"],
-  ["Unit2_3","M2","Why Is AI So Hungry?","Every Output Is Independent"],
-  ["Unit2_C","M2","Why Is AI So Hungry?","Capstone: The Compute Bill"],
-  ["Unit3_1","M3","CPU vs GPU","Latency vs Throughput"],
-  ["Unit3_2","M3","CPU vs GPU","Why Clocks Stopped Getting Faster"],
-  ["Unit3_3","M3","CPU vs GPU","SIMD → SIMT"],
-  ["Unit3_4","M3","CPU vs GPU","Amdahl's Law"],
-  ["Unit3_C","M3","CPU vs GPU","Capstone: CPU or GPU?"],
-  ["Unit4_1","M4","Inside a GPU","SMs, Cores & Tensor Cores"],
-  ["Unit4_2","M4","Inside a GPU","Warps & Branch Divergence"],
-  ["Unit4_3","M4","Inside a GPU","Hiding Latency"],
-  ["Unit4_4","M4","Inside a GPU","GPU Memory & Bandwidth"],
-  ["Unit4_C","M4","Inside a GPU","Capstone: Map a Job onto a GPU"],
-  ["Unit5_1","M5","CPU–GPU Teamwork","Host & Device on PCIe"],
-  ["Unit5_2","M5","CPU–GPU Teamwork","The Five Steps of Offloading"],
-  ["Unit5_3","M5","CPU–GPU Teamwork","Kernels, Grids, Blocks, Threads"],
-  ["Unit5_4","M5","CPU–GPU Teamwork","Async Launch & Synchronization"],
-  ["Unit5_C","M5","CPU–GPU Teamwork","Capstone: Where Did the Time Go?"],
-  ["Unit6_1","M6","Why GPUs Make AI Fast","Parallel Matrix Multiply & Tiling"],
-  ["Unit6_2","M6","Why GPUs Make AI Fast","Precision: FP32 → FP16/BF16 → INT8"],
-  ["Unit6_3","M6","Why GPUs Make AI Fast","Compute-bound vs Memory-bound"],
-  ["Unit6_4","M6","Why GPUs Make AI Fast","Batch Size & Training on GPU"],
-  ["Unit6_C","M6","Why GPUs Make AI Fast","Capstone: Speed Up a Training Run"],
-  ["Unit7_1","M7","GPUs in Real AI Projects","The Software Stack"],
-  ["Unit7_2","M7","GPUs in Real AI Projects","Will It Fit? Sizing GPU Memory"],
-  ["Unit7_3","M7","GPUs in Real AI Projects","nvidia-smi & Out-of-Memory"],
-  ["Unit7_4","M7","GPUs in Real AI Projects","Many GPUs & Other Accelerators"],
-  ["Unit7_C","M7","GPUs in Real AI Projects","Grand Capstone: Plan an AI Project"]
+  ["Unit0_1","M0","What Is AI, Really?","Rules vs Learning"],
+  ["Unit0_2","M0","What Is AI, Really?","Everything Is Numbers"],
+  ["Unit0_3","M0","What Is AI, Really?","The Neuron"],
+  ["Unit0_4","M0","What Is AI, Really?","Learning = Reducing Error"],
+  ["Unit0_5","M0","What Is AI, Really?","Layers = Matrix Multiplication"],
+  ["Unit0_C","M0","What Is AI, Really?","Capstone: Train a Tiny Network"],
+  ["Unit1_1","M1","Why Is AI So Hungry?","Counting the Multiply-Adds"],
+  ["Unit1_2","M1","Why Is AI So Hungry?","Training vs Inference, Epochs & Batches"],
+  ["Unit1_3","M1","Why Is AI So Hungry?","Every Output Is Independent"],
+  ["Unit1_C","M1","Why Is AI So Hungry?","Capstone: The Compute Bill"],
+  ["Unit2_1","M2","CPU vs GPU","Latency vs Throughput"],
+  ["Unit2_2","M2","CPU vs GPU","Why Clocks Stopped Getting Faster"],
+  ["Unit2_3","M2","CPU vs GPU","SIMD → SIMT"],
+  ["Unit2_4","M2","CPU vs GPU","Amdahl's Law"],
+  ["Unit2_C","M2","CPU vs GPU","Capstone: CPU or GPU?"],
+  ["Unit3_1","M3","Inside a GPU","SMs, Cores & Tensor Cores"],
+  ["Unit3_2","M3","Inside a GPU","Warps & Branch Divergence"],
+  ["Unit3_3","M3","Inside a GPU","Hiding Latency"],
+  ["Unit3_4","M3","Inside a GPU","GPU Memory & Bandwidth"],
+  ["Unit3_C","M3","Inside a GPU","Capstone: Map a Job onto a GPU"],
+  ["Unit4_1","M4","CPU–GPU Teamwork","Host & Device on PCIe"],
+  ["Unit4_2","M4","CPU–GPU Teamwork","The Five Steps of Offloading"],
+  ["Unit4_3","M4","CPU–GPU Teamwork","Kernels, Grids, Blocks, Threads"],
+  ["Unit4_4","M4","CPU–GPU Teamwork","Async Launch & Synchronization"],
+  ["Unit4_C","M4","CPU–GPU Teamwork","Capstone: Where Did the Time Go?"],
+  ["Unit5_1","M5","Making AI Fast & Real Projects","Parallel Matrix Multiply & Tiling"],
+  ["Unit5_2","M5","Making AI Fast & Real Projects","Precision: FP32 → FP16/BF16 → INT8"],
+  ["Unit5_3","M5","Making AI Fast & Real Projects","Compute-bound vs Memory-bound"],
+  ["Unit5_4","M5","Making AI Fast & Real Projects","Batch Size & Training on GPU"],
+  ["Unit5_5","M5","Making AI Fast & Real Projects","Capstone: Speed Up a Training Run"],
+  ["Unit5_6","M5","Making AI Fast & Real Projects","The Software Stack"],
+  ["Unit5_7","M5","Making AI Fast & Real Projects","Will It Fit? Sizing GPU Memory"],
+  ["Unit5_8","M5","Making AI Fast & Real Projects","nvidia-smi & Out-of-Memory"],
+  ["Unit5_9","M5","Making AI Fast & Real Projects","Many GPUs & Other Accelerators"],
+  ["Unit5_C","M5","Making AI Fast & Real Projects","Grand Capstone: Plan an AI Project"]
 ];
 
 function doGet(e) {
@@ -234,9 +234,9 @@ function setupSheets() {
   ensureSheet_(ss, 'Progress', ['RollNo', 'CourseId', 'UnitId', 'CompletedAt']);
   ensureSheet_(ss, 'Events', ['Timestamp', 'AnonId', 'UserId', 'EventType', 'CourseId', 'UnitId']);
   const units = ensureSheet_(ss, 'Units', ['UnitId', 'Module', 'Module title', 'Unit title', 'Students completed']);
-  if (units.getLastRow() === 1) {
-    units.getRange(2, 1, UNITS.length, 4).setValues(UNITS);
-  }
+  // Always rewrite the unit list so a renumbered course replaces the old rows
+  if (units.getLastRow() > 1) units.getRange(2, 1, units.getLastRow() - 1, 5).clearContent();
+  units.getRange(2, 1, UNITS.length, 4).setValues(UNITS);
   ensureSheet_(ss, 'Summary', ['RollNo', 'Name', 'Batch', 'Units done', 'Out of', '% complete', 'Last completed']);
   const blank = ss.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(blank);
