@@ -15,16 +15,16 @@ def code(text):
 
 
 GPU_SETUP = code("""
-import time, subprocess
-import numpy as np
-import matplotlib.pyplot as plt
-import torch
+import time, subprocess            # time: stopwatch; subprocess: run system commands
+import numpy as np                  # arrays and maths on the CPU
+import matplotlib.pyplot as plt     # charts
+import torch                        # PyTorch: runs maths on the CPU or the GPU
 
-if torch.cuda.is_available():
-    device = "cuda"
-    print("✅ GPU found:", torch.cuda.get_device_name(0))
+if torch.cuda.is_available():       # is there an NVIDIA GPU we can use? ("cuda" = NVIDIA's GPU system)
+    device = "cuda"                 # yes: from now on, device = "cuda" means "put it on the GPU"
+    print("✅ GPU found:", torch.cuda.get_device_name(0))   # the name of GPU number 0 (the first one)
 else:
-    device = "cpu"
+    device = "cpu"                  # no: fall back to the CPU
     print("⚠️ NO GPU! Go to Runtime → Change runtime type → T4 GPU → Save, then run this cell again.")
     print("   (The rest of the notebook will still run on the CPU, but you won't see any GPU speed-up.)")
 
@@ -34,34 +34,35 @@ def sync():
         torch.cuda.synchronize()
 
 def timeit(fn, repeats=5):
+    # run the function fn several times and return the average time of one run, in seconds
     fn(); sync()                         # warm-up run (first GPU call has extra start-up cost)
-    t0 = time.perf_counter()
+    t0 = time.perf_counter()             # start the stopwatch
     for _ in range(repeats):
         fn()
-    sync()
-    return (time.perf_counter() - t0) / repeats
+    sync()                               # wait until the GPU has really finished all the runs
+    return (time.perf_counter() - t0) / repeats   # total time ÷ number of runs
 """)
 
 
 CUPY_SETUP = code("""
 # CuPy lets Python compile and run small CUDA C kernels. It comes pre-installed on Colab.
-try:
-    import cupy as cp
-    HAVE_CUPY = device == "cuda"
+try:                                # "try": attempt this; if it fails, jump to "except" instead of crashing
+    import cupy as cp               # CuPy: NumPy-like arrays on the GPU, plus our own CUDA kernels
+    HAVE_CUPY = device == "cuda"    # we can only use it if there is also a GPU
     print("CuPy", cp.__version__, "ready" if HAVE_CUPY else "(installed, but no GPU in this session)")
-except ImportError:
+except ImportError:                 # CuPy is not installed
     HAVE_CUPY = False
     print("CuPy not found. On Colab with a GPU, run:  !pip install cupy-cuda12x   then re-run this cell.")
 
 def cuda_time_ms(launch, repeats=5):
-    # time GPU work with CUDA events (they are recorded on the GPU itself)
-    launch(); cp.cuda.Device().synchronize()
-    start, end = cp.cuda.Event(), cp.cuda.Event()
-    start.record()
+    # time GPU work with CUDA events (they are recorded on the GPU itself); returns milliseconds per run
+    launch(); cp.cuda.Device().synchronize()        # warm-up run, then wait for it to finish
+    start, end = cp.cuda.Event(), cp.cuda.Event()   # two time-stamps on the GPU
+    start.record()                                  # stamp "start" in the GPU's queue
     for _ in range(repeats):
-        launch()
-    end.record(); end.synchronize()
-    return cp.cuda.get_elapsed_time(start, end) / repeats
+        launch()                                    # queue the kernel several times
+    end.record(); end.synchronize()                 # stamp "end", and wait until the GPU reaches it
+    return cp.cuda.get_elapsed_time(start, end) / repeats   # time between the stamps ÷ runs
 """)
 
 

@@ -33,8 +33,8 @@ Before writing any training code, estimate:
 | Compute-bound or memory-bound? | | roofline |
 """),
 code("""
-# ✏️ Your planning calculations here
-params = 0
+# ✏️ Your planning calculations here. Comment every line you write, like the labs do.
+params = 0                                  # number of parameters in your model
 print("parameters:", params)
 """),
 md("""
