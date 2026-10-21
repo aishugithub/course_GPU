@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab05_CPU_GPU_Teamwork.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5A_Why_GPUs_Make_AI_Fast.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5A · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5A in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,192 +68,215 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 2 (Device memory and data transfer) · Hamacher §12.2.1";
+const TEXTBOOK = "Hamacher Ch 9 (Floating-point numbers) · Stallings Ch 10 (Computer arithmetic) · Kirk & Hwu Ch 16";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-const STEPS = [
-  { k: "alloc", t: "1 · Allocate", c: C.purple, d: "The CPU asks the GPU driver to reserve space in GPU memory for the inputs and the output. Nothing is copied yet; it's like booking seats.", cuda: [2, 3], torch: [1] },
-  { k: "in", t: "2 · Copy in", c: C.yellow, d: "The input data travels from host RAM to device memory over PCIe, moved by the GPU's DMA engine (COA Unit 5).", cuda: [5, 6], torch: [2] },
-  { k: "launch", t: "3 · Launch the kernel", c: C.green, d: "The CPU tells the GPU: run THIS function on THIS many threads. The thousands of threads (Modules 3–4) do the work. The CPU doesn't wait; it carries on (Unit 5.4).", cuda: [8], torch: [3] },
-  { k: "out", t: "4 · Copy out", c: C.yellow, d: "The result travels back from device memory to host RAM over PCIe, so the CPU can print it, save it, or use it in decisions.", cuda: [10], torch: [4] },
-  { k: "free", t: "5 · Free", c: C.purple, d: "The GPU memory is released so other data can use it. Forget this in a loop and GPU memory slowly fills up (Unit 7.3).", cuda: [12, 13], torch: [5] },
-];
-const CUDA_LINES = [
-  "// host code (runs on the CPU), CUDA C",
-  "float *dA, *dB;                                   // device pointers",
-  "cudaMalloc(&dA, n * sizeof(float));               // 1 allocate",
-  "cudaMalloc(&dB, n * sizeof(float));",
-  "",
-  "cudaMemcpy(dA, hA, n * sizeof(float),",
-  "           cudaMemcpyHostToDevice);               // 2 copy in",
-  "",
-  "relu<<<(n + 255) / 256, 256>>>(dA, dB, n);        // 3 launch",
-  "",
-  "cudaMemcpy(hB, dB, n * sizeof(float), cudaMemcpyDeviceToHost);  // 4 copy out",
-  "",
-  "cudaFree(dA);                                     // 5 free",
-  "cudaFree(dB);",
-];
-const TORCH_LINES = [
-  "# the same five steps in PyTorch",
-  "b_gpu = torch.empty(n, device='cuda')    # 1 allocate",
-  "a_gpu = a_cpu.to('cuda')                 # 2 copy in (allocates too)",
-  "torch.clamp(a_gpu, min=0, out=b_gpu)     # 3 launch a kernel (ReLU)",
-  "b_cpu = b_gpu.cpu()                      # 4 copy out",
-  "del a_gpu, b_gpu                         # 5 free (PyTorch keeps it cached)",
-];
+// Round x to a binary float with `mbits` mantissa bits, minimum normal exponent `minExp`, and largest finite value `maxVal`
+function toFloat(x, mbits, minExp, maxVal) {
+  if (x === 0 || !isFinite(x)) return x;
+  const a = Math.abs(x);
+  let e = Math.floor(Math.log2(a));
+  if (e < minExp) e = minExp;                  // subnormal range: fixed spacing
+  const step = Math.pow(2, e - mbits);
+  let r = Math.round(a / step) * step;
+  if (r > maxVal) return x > 0 ? Infinity : -Infinity;
+  return x < 0 ? -r : r;
+}
+const FMT = {
+  fp32: { name: "FP32", bits: [1, 8, 23], f: (x) => Math.fround(x), bytes: 4, c: C.accent },
+  fp16: { name: "FP16", bits: [1, 5, 10], f: (x) => toFloat(x, 10, -14, 65504), bytes: 2, c: C.green },
+  bf16: { name: "BF16", bits: [1, 8, 7], f: (x) => toFloat(x, 7, -126, 3.39e38), bytes: 2, c: C.purple },
+};
 
-// ── Section 1: Need — what hides behind one line ──
+// ── Section 1: Need — will the model even fit? ──
 function NeedWidget() {
-  const [open, setOpen] = useState(false);
+  const [params, setParams] = useState(7);
+  const rows = [["FP32", 4, C.accent], ["FP16 / BF16", 2, C.green], ["INT8", 1, C.orange], ["INT4", 0.5, C.red]];
   return (
     <div>
       <Frame>
-        In PyTorch, running something on the GPU looks like one innocent line. Behind it, the CPU and GPU go through a fixed routine. Click to
-        unfold it.
+        Every parameter is stored as a number with some number of bits. Fewer bits per number = less memory. Will a model's weights fit in the
+        T4's <b style={{ color: C.text }}>16 GB</b>? (Weights only; training needs several times more, Unit 5.7.)
       </Frame>
-      <Code color={C.accent}>{`y = torch.relu(x.to("cuda")).cpu()`}</Code>
-      <div style={{ marginTop: 10 }}><Btn onClick={() => setOpen((v) => !v)} color={C.purple}>{open ? "▲ Fold it back" : "▼ What really happens?"}</Btn></div>
-      {open && (
-        <div style={{ marginTop: 12 }}>
-          {STEPS.map((s) => (
-            <div key={s.k} style={{ display: "flex", gap: 10, alignItems: "center", background: C.card, border: `1.5px solid ${s.c}`, borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
-              <b style={{ color: s.c, fontSize: 13, minWidth: 140 }}>{s.t}</b>
-              <span style={{ color: C.muted, fontSize: 12.5 }}>{s.d.split(".")[0]}.</span>
+      <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} billion</b> parameters</>} value={params} min={1} max={70} onChange={setParams} />
+      {rows.map(([n, b, c]) => {
+        const gb = params * b;
+        return (
+          <div key={n} style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+              <span style={{ color: C.text }}>{n} <span style={{ color: C.muted }}>({b * 8} bits = {b} byte{b === 1 ? "" : "s"} per number)</span></span>
+              <span style={{ fontFamily: "monospace", color: gb <= 16 ? C.green : C.red }}>{gb.toFixed(1)} GB {gb <= 16 ? "✓ fits" : "✗ too big"}</span>
             </div>
-          ))}
+            <div style={{ position: "relative", height: 12, background: C.card, borderRadius: 4 }}>
+              <div style={{ width: `${Math.min(100, (gb / 140) * 100)}%`, height: "100%", background: c, borderRadius: 4 }} />
+              <div style={{ position: "absolute", left: `${(16 / 140) * 100}%`, top: -3, bottom: -3, width: 2, background: C.yellow }} />
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ color: C.yellow, fontSize: 11.5 }}>│ yellow line = the T4's 16 GB</div>
+      <Insight color={C.green} title="Halving the bits halves the memory, and as you'll see, roughly doubles the speed.">
+        A 7-billion-parameter model doesn't fit on a T4 in FP32 (28 GB) but does in FP16 (14 GB) or INT8 (7 GB). The question is whether the
+        model still works with less exact numbers.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 2: The formats (from COA's IEEE 754) ──
+function FormatWidget() {
+  const [txt, setTxt] = useState("3.14159265");
+  const x = Number(txt);
+  const valid = txt.trim() !== "" && isFinite(x);
+  return (
+    <div>
+      <Frame>
+        You met IEEE 754 floating point in COA: <b style={{ color: C.text }}>sign · exponent · mantissa</b>. The exponent bits decide the <b style={{ color: C.text }}>range</b>
+        (how big or small), the mantissa bits the <b style={{ color: C.text }}>precision</b> (how many digits). Type a number and see how each format stores it.
+      </Frame>
+      {Object.values(FMT).map((f) => (
+        <div key={f.name} style={{ display: "flex", gap: 2, height: 20, marginBottom: 4, alignItems: "center" }}>
+          <div style={{ width: 52, color: f.c, fontSize: 12, fontWeight: 700 }}>{f.name}</div>
+          {f.bits.map((n, k) => <div key={k} style={{ flex: n, minWidth: 14, height: "100%", borderRadius: 3, background: [C.red, C.yellow, f.c][k] + "88", fontSize: 9.5, color: C.text, display: "flex", alignItems: "center", justifyContent: "center" }}>{n}</div>)}
         </div>
-      )}
-      <Insight color={C.purple} title="Every GPU job, in every framework, follows the same five steps.">
-        Allocate → copy in → launch → copy out → free. Knowing them explains GPU errors, slowness and memory problems.
+      ))}
+      <div style={{ color: C.muted, fontSize: 11.5, marginBottom: 10 }}>■ sign · ■ exponent (range) · ■ mantissa (precision). Bar lengths are to scale.</div>
+      <input value={txt} onChange={(e) => setTxt(e.target.value)} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.text, fontSize: 14, fontFamily: "monospace", boxSizing: "border-box" }} />
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+        {["3.14159265", "0.1", "70000", "1e-8", "123456.789", "0.0001234"].map((v) => <Btn key={v} ghost onClick={() => setTxt(v)}>{v}</Btn>)}
+      </div>
+      {valid && Object.values(FMT).map((f) => {
+        const r = f.f(x), err = x !== 0 ? Math.abs((r - x) / x) : 0;
+        const bad = !isFinite(r) || (r === 0 && x !== 0);
+        return (
+          <div key={f.name} style={{ display: "flex", gap: 10, alignItems: "center", background: C.card, borderRadius: 8, padding: "7px 10px", marginBottom: 5, border: `1.5px solid ${bad ? C.red : f.c + "66"}` }}>
+            <b style={{ color: f.c, width: 46, fontSize: 12.5 }}>{f.name}</b>
+            <span style={{ fontFamily: "monospace", fontSize: 13, color: bad ? C.red : C.text, flex: 1 }}>{isFinite(r) ? r.toPrecision(10) : "∞ (overflow!)"}{r === 0 && x !== 0 ? "  (underflow: became 0!)" : ""}</span>
+            <span style={{ fontFamily: "monospace", fontSize: 11.5, color: C.muted }}>{isFinite(r) && !bad ? `error ${(err * 100).toPrecision(2)}%` : ""}</span>
+          </div>
+        );
+      })}
+      <Insight color={C.purple} title="FP16: 3 digits and a small range (max 65,504). BF16: even fewer digits, but FP32's huge range.">
+        Try 70000 (FP16 overflows) and 1e-8 (FP16 underflows to 0). BF16 was invented for AI precisely to keep FP32's range. INT8 goes further:
+        whole numbers from −128 to 127, with a scale factor.
       </Insight>
     </div>
   );
 }
 
-// ── Section 2: Step through it ──
-function StepWidget() {
-  const [i, setI] = useState(-1);
-  const host = { a: true, b: i >= 3 };
-  const dev = { a: i >= 1 && i < 4, slots: i >= 0 && i < 4, b: i >= 2 && i < 4 };
-  const col = i >= 0 ? STEPS[i].c : C.border;
-  return (
-    <div>
-      <Frame>Watch the two memories as the steps happen. The job: ReLU on an array A, giving B.</Frame>
-      <svg viewBox="0 0 520 200" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-        <text x="20" y="20" fill={C.orange} fontSize="11" fontWeight="700">HOST RAM</text>
-        <text x="350" y="20" fill={C.green} fontSize="11" fontWeight="700">DEVICE MEMORY</text>
-        <rect x="20" y="30" width="150" height="150" rx="8" fill="none" stroke={C.orange} />
-        <rect x="350" y="30" width="150" height="150" rx="8" fill="none" stroke={C.green} />
-        <rect x="35" y="50" width="120" height="40" rx="6" fill={C.teal + "44"} stroke={C.teal} /><text x="95" y="75" fill={C.text} fontSize="12" textAnchor="middle">A (input)</text>
-        {host.b && <g><rect x="35" y="120" width="120" height="40" rx="6" fill={C.green + "44"} stroke={C.green} /><text x="95" y="145" fill={C.text} fontSize="12" textAnchor="middle">B (result)</text></g>}
-        {dev.slots && <g><rect x="365" y="50" width="120" height="40" rx="6" fill={dev.a ? C.teal + "44" : "none"} stroke={C.purple} strokeDasharray={dev.a ? "0" : "5 4"} /><text x="425" y="75" fill={C.text} fontSize="12" textAnchor="middle">{dev.a ? "A (copy)" : "space for A"}</text></g>}
-        {dev.slots && <g><rect x="365" y="120" width="120" height="40" rx="6" fill={dev.b ? C.green + "44" : "none"} stroke={C.purple} strokeDasharray={dev.b ? "0" : "5 4"} /><text x="425" y="145" fill={C.text} fontSize="12" textAnchor="middle">{dev.b ? "B = ReLU(A)" : "space for B"}</text></g>}
-        {i === 1 && <g><line x1="175" y1="70" x2="345" y2="70" stroke={C.yellow} strokeWidth="3" /><text x="260" y="62" fill={C.yellow} fontSize="11" textAnchor="middle">PCIe → (DMA)</text></g>}
-        {i === 2 && <text x="425" y="112" fill={C.green} fontSize="11" textAnchor="middle">⚡ thousands of threads</text>}
-        {i === 3 && <g><line x1="345" y1="140" x2="175" y2="140" stroke={C.yellow} strokeWidth="3" /><text x="260" y="132" fill={C.yellow} fontSize="11" textAnchor="middle">← PCIe (DMA)</text></g>}
-        {i === 4 && <text x="425" y="112" fill={C.purple} fontSize="11" textAnchor="middle">memory released ✓</text>}
-      </svg>
-      <div style={{ marginTop: 10, minHeight: 46, padding: "8px 12px", borderRadius: 8, background: col + "14", border: `1px solid ${col}55`, color: C.muted, fontSize: 13, lineHeight: 1.6 }}>
-        {i < 0 ? "Start: A exists only in host RAM. The GPU knows nothing about it yet." : <><b style={{ color: STEPS[i].c }}>{STEPS[i].t}.</b> {STEPS[i].d}</>}
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <Btn onClick={() => setI((v) => Math.min(4, v + 1))}>Step ▶ ({i + 1} / 5)</Btn>
-        <Btn ghost onClick={() => setI(-1)}>↺ Reset</Btn>
-      </div>
-      <Insight color={C.yellow} title="Two of the five steps cross PCIe, and only one is the actual computing.">
-        That's why Unit 5.1's rule matters: copy once, compute many times.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 3: The steps in code ──
-function CodeMapWidget() {
-  const [k, setK] = useState(0);
-  const s = STEPS[k];
+// ── Section 3: Does AI notice? ──
+const CLASS = [[0.5, 40, 0], [1.0, 65, 0], [1.5, 85, 0], [2.0, 95, 0], [2.5, 60, 0], [3.0, 45, 0], [3.0, 80, 1], [3.5, 70, 1], [4.0, 50, 1], [4.5, 35, 0], [5.0, 40, 1], [5.5, 75, 1], [6.0, 55, 1], [2.5, 92, 1], [1.0, 98, 0], [4.0, 90, 1], [2.0, 55, 0], [5.0, 25, 0], [3.5, 40, 0], [1.5, 50, 0]];
+const TRAINED = (() => { let w1 = 0, w2 = 0, b = 0; const sg = (z) => 1 / (1 + Math.exp(-z)); for (let e = 0; e < 500; e++) { let g1 = 0, g2 = 0, gb = 0; for (const [h, a, y] of CLASS) { const p = sg(w1 * h / 6 + w2 * a / 100 + b); g1 += (p - y) * h / 6; g2 += (p - y) * a / 100; gb += p - y; } w1 -= 2 * g1 / 20; w2 -= 2 * g2 / 20; b -= 2 * gb / 20; } return [w1, w2, b]; })();
+function NoticeWidget() {
+  const [bits, setBits] = useState(8);
+  const [scaled, setScaled] = useState(false);
+  const maxAbs = Math.max(...TRAINED.map(Math.abs));
+  const levels = Math.pow(2, bits - 1) - 1;
+  const q = TRAINED.map((w) => Math.round((w / maxAbs) * levels) * (maxAbs / levels));
+  const acc = CLASS.filter(([h, a, y]) => ((q[0] * h / 6 + q[1] * a / 100 + q[2]) >= 0 ? 1 : 0) === y).length;
+  const grad = 2e-8, scale = 65536;
+  const g16 = FMT.fp16.f(scaled ? grad * scale : grad);
   return (
     <div>
       <Frame>
-        Here are the five steps written in <b style={{ color: C.text }}>CUDA C</b> (the low level, what really happens) and in <b style={{ color: C.accent }}>PyTorch</b> (what
-        you'll actually write). Click a step to light up its lines in both.
+        Take the pass/fail neuron you trained in Unit 0.C and store its weights as <b style={{ color: C.orange }}>signed integers</b> with fewer and fewer bits
+        (each weight = integer × a shared scale). Does it still predict well?
       </Frame>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-        {STEPS.map((x, i) => <Btn key={x.k} ghost={i !== k} onClick={() => setK(i)} color={x.c}>{x.t}</Btn>)}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 12 }}>
-        <pre style={{ margin: 0, background: C.card, border: `1.5px solid ${C.orange}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.65, color: C.text, overflowX: "auto" }}>
-          <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, marginBottom: 4, fontFamily: "'Segoe UI', sans-serif" }}>⚙️ CUDA C (low level)</div>
-          {CUDA_LINES.map((l, n) => <div key={n} style={{ background: s.cuda.includes(n) || (s.k === "in" && n === 6) ? s.c + "33" : "transparent", borderLeft: `3px solid ${s.cuda.includes(n) ? s.c : "transparent"}`, paddingLeft: 4 }}>{l || " "}</div>)}
-        </pre>
-        <pre style={{ margin: 0, background: C.card, border: `1.5px solid ${C.accent}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.65, color: C.text, overflowX: "auto" }}>
-          <div style={{ color: C.accent, fontWeight: 700, fontSize: 12, marginBottom: 4, fontFamily: "'Segoe UI', sans-serif" }}>🔥 PyTorch</div>
-          {TORCH_LINES.map((l, n) => <div key={n} style={{ background: s.torch.includes(n) ? s.c + "33" : "transparent", borderLeft: `3px solid ${s.torch.includes(n) ? s.c : "transparent"}`, paddingLeft: 4 }}>{l}</div>)}
-        </pre>
-      </div>
-      <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>{s.d}</div>
-      <Insight title="PyTorch hides the five steps; it doesn't remove them.">
-        <code>.to("cuda")</code> = allocate + copy in. Every operation = a kernel launch. <code>.cpu()</code> = copy out. When a tensor is no longer used,
-        PyTorch frees it, but keeps the memory cached for reuse, which is why nvidia-smi can show memory 'in use' (Unit 7.3).
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 4: The timeline — where does the time go? ──
-function TimelineWidget() {
-  const [reps, setReps] = useState(1);
-  const alloc = 0.1, cin = 33, kern = 1.3, cout = 33, free = 0.05;
-  const total = alloc + cin + kern * reps + cout + free;
-  const parts = [["allocate", alloc, C.purple], ["copy in", cin, C.yellow], [`kernel × ${reps}`, kern * reps, C.green], ["copy out", cout, C.yellow], ["free", free, C.purple]];
-  return (
-    <div>
-      <Frame>
-        Typical T4 timings for ReLU on 400 MB (approximate). Change how many GPU operations run on the data before it comes back, and watch
-        where the time goes.
-      </Frame>
-      <Slider label={<>Operations on the GPU before copying back = <b style={{ color: C.green }}>{reps}</b></>} value={reps} min={1} max={300} onChange={setReps} color={C.green} />
-      <div style={{ display: "flex", height: 34, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        {parts.map(([t, v, c]) => <div key={t} title={t} style={{ width: `${(v / total) * 100}%`, minWidth: v > 0.5 ? 3 : 0, background: c, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 10.5, fontWeight: 700, overflow: "hidden", whiteSpace: "nowrap" }}>{v / total > 0.12 ? t : ""}</div>)}
+      <Slider label={<>Bits per weight = <b style={{ color: C.orange }}>{bits}</b> ({2 * levels + 1} possible values)</>} value={bits} min={2} max={16} onChange={setBits} color={C.orange} />
+      <div style={{ fontFamily: "monospace", fontSize: 12.5, color: C.text, background: C.card, borderRadius: 8, padding: 10, border: `1px solid ${C.border}`, lineHeight: 1.8 }}>
+        <div style={{ color: C.muted }}>trained (FP32): w₁ = {TRAINED[0].toFixed(4)}, w₂ = {TRAINED[1].toFixed(4)}, b = {TRAINED[2].toFixed(4)}</div>
+        <div style={{ color: C.orange }}>stored in {bits} bits: w₁ = {q[0].toFixed(4)}, w₂ = {q[1].toFixed(4)}, b = {q[2].toFixed(4)}</div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="TOTAL" value={`${total.toFixed(1)} ms`} color={C.text} />
-        <Stat label="SHARE THAT IS COMPUTING" value={`${((kern * reps / total) * 100).toFixed(0)}%`} color={kern * reps / total > 0.5 ? C.green : C.red} />
+        <Stat label="ACCURACY (FP32 GETS 19/20)" value={`${acc} / 20`} color={acc >= 19 ? C.green : acc >= 16 ? C.yellow : C.red} />
       </div>
-      <Insight color={C.green} title="With one operation, about 98% of the time is carrying data. With hundreds, the carrying almost disappears.">
-        This is exactly what training does: the model and each batch go to the GPU, then thousands of kernels run on them. Real AI code is built
-        around keeping data on the device.
+      <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>On a dataset this tiny, rounding can tip one borderline student either way (you may even see 20/20). That's noise, not magic. The real pattern: accuracy holds until only a handful of bits are left.</div>
+      <div style={{ marginTop: 16, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
+        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>The one danger: tiny gradients in FP16</div>
+        <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7 }}>During training some gradients are tiny, like 2 × 10⁻⁸. FP16 can't hold numbers that small: they become 0, and learning silently stops.
+          The fix is <b style={{ color: C.green }}>loss scaling</b>: multiply the loss (and so every gradient) by a big number before the backward pass, and divide it back out before the update.</div>
+        <label style={{ color: C.text, fontSize: 12.5, cursor: "pointer", display: "block", marginTop: 8 }}><input type="checkbox" checked={scaled} onChange={(e) => setScaled(e.target.checked)} /> Scale by 65,536 before storing in FP16</label>
+        <div style={{ fontFamily: "monospace", fontSize: 13, marginTop: 6, color: g16 === 0 ? C.red : C.green }}>gradient {scaled ? "× 65,536 " : ""}in FP16 = {g16 === 0 ? "0  ✗ lost!" : `${g16.toExponential(3)}  ✓ survives`}</div>
+      </div>
+      <Insight color={C.green} title="Neural networks are remarkably tolerant of rounding. Accuracy holds down to very few bits.">
+        The trick in practice, <b>mixed precision</b>: do the heavy multiplies in FP16 (fast), keep a master copy of the weights and the running sums in
+        FP32 (safe), and use loss scaling for the gradients. PyTorch's autocast and GradScaler do this for you.
       </Insight>
-      <LabCard part="B" title="Do the five steps yourself and time each one"
-        what="Using PyTorch, do allocate → copy in → ReLU → copy out → free as separate lines and time each step with synchronisation. Then do the same with CuPy, which looks almost exactly like the CUDA C version."
-        expect="the two copies taking far longer than the ReLU itself, and a timing bar much like the one in this section." />
+    </div>
+  );
+}
+
+// ── Section 4: The speed payoff ──
+function SpeedWidget() {
+  const [kind, setKind] = useState("compute");
+  const rows = [
+    { n: "FP32 (CUDA cores)", tf: 8.1, bytes: 4, c: C.accent },
+    { n: "FP16 (Tensor Cores)", tf: 65, bytes: 2, c: C.green },
+    { n: "INT8 (Tensor Cores)", tf: 130, bytes: 1, c: C.orange },
+  ];
+  const speed = (r) => (kind === "compute" ? r.tf / 8.1 : 4 / r.bytes);
+  return (
+    <div>
+      <Frame>
+        Lower precision helps twice. <b style={{ color: C.text }}>Compute-bound</b> work (big matrix multiplies) gets the Tensor Cores' huge throughput.
+        <b style={{ color: C.text }}> Memory-bound</b> work (ReLU, adding, LLM token generation) moves half or a quarter of the bytes. T4 published peaks:
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <Btn ghost={kind !== "compute"} onClick={() => setKind("compute")}>Compute-bound job</Btn>
+        <Btn ghost={kind !== "memory"} onClick={() => setKind("memory")} color={C.teal}>Memory-bound job</Btn>
+      </div>
+      {rows.map((r) => (
+        <div key={r.n} style={{ marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+            <span style={{ color: C.text }}>{r.n} <span style={{ color: C.muted }}>· {kind === "compute" ? `${r.tf} T${r.n.startsWith("INT") ? "OPS" : "FLOPS"} peak` : `${r.bytes} byte${r.bytes > 1 ? "s" : ""} per number`}</span></span>
+            <span style={{ fontFamily: "monospace", color: r.c }}>up to {speed(r).toFixed(speed(r) < 10 ? 1 : 0)}× FP32</span>
+          </div>
+          <div style={{ height: 12, background: C.card, borderRadius: 4 }}><div style={{ width: `${(speed(r) / (kind === "compute" ? 16 : 4)) * 100}%`, height: "100%", background: r.c, borderRadius: 4 }} /></div>
+        </div>
+      ))}
+      <Code color={C.green} title="🔥 MIXED PRECISION IN PYTORCH: a few extra lines">{`scaler = torch.amp.GradScaler("cuda")             # loss scaling
+for images, labels in loader:
+    with torch.autocast(device_type="cuda", dtype=torch.float16):
+        loss = loss_fn(model(images), labels)    # matmuls run in FP16 on Tensor Cores
+    opt.zero_grad()
+    scaler.scale(loss).backward()                # scaled gradients don't underflow
+    scaler.step(opt)                             # unscale, then update FP32 weights
+    scaler.update()`}</Code>
+      <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>Note: the T4 (Turing) has FP16 and INT8 Tensor Cores but no BF16 support; BF16 needs Ampere (A100) or newer. The newest GPUs add FP8 too.</div>
+      <Insight color={C.green} title="Fewer bits = more numbers per second, through both the arithmetic units and the memory.">
+        Real speed-ups are smaller than these peaks (Amdahl, launch overheads), but 2–3× for training and more for inference is common. That's why
+        nearly all modern AI runs in FP16, BF16 or lower.
+      </Insight>
+      <LabCard part="B" title="Precision in practice"
+        what="Time a big matrix multiply in FP32 and FP16 and measure the rounding error; see FP16 overflow and underflow; then train MNIST with and without torch.autocast and compare speed and accuracy."
+        expect="FP16 several times faster for the matmul, tiny errors, overflow at 70,000, and autocast training reaching the same accuracy faster." />
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "What is the correct order of the five steps?", options: ["Launch, allocate, copy in, copy out, free", "Allocate, copy in, launch, copy out, free", "Copy in, launch, allocate, free, copy out", "Allocate, launch, copy in, free, copy out"], answer: 1, explain: "Reserve the space, bring the data in, run the kernel, bring the result back, release the space." },
-  { q: "In PyTorch, which line performs the 'copy out' step?", options: ["x.to('cuda')", "torch.relu(x)", "y.cpu()", "torch.empty(n, device='cuda')"], answer: 2, explain: ".cpu() copies a tensor from device memory back to host RAM." },
-  { q: "cudaMemcpy(dA, hA, size, cudaMemcpyHostToDevice) does what?", options: ["Frees device memory", "Copies data from host RAM to device memory", "Launches a kernel", "Copies from device to host"], answer: 1, explain: "HostToDevice: from the CPU's memory (hA) into GPU memory (dA)." },
-  { q: "A program copies data to the GPU, runs ONE small kernel, and copies it back, inside a loop. What's the best fix?", options: ["Use a faster CPU", "Keep the data on the GPU and run all the operations there before copying back once", "Copy smaller pieces more often", "Free the memory twice"], answer: 1, explain: "Copies dominate. Moving data once and doing many operations on the device is the key optimisation." },
+  { q: "A 13-billion-parameter model in FP16 needs how much memory for its weights?", options: ["13 GB", "26 GB", "52 GB", "6.5 GB"], answer: 1, explain: "FP16 = 2 bytes per parameter: 13 × 10⁹ × 2 = 26 GB." },
+  { q: "Why does BF16 keep 8 exponent bits (like FP32) but only 7 mantissa bits?", options: ["To be more precise than FP32", "To keep FP32's huge range, so values rarely overflow or underflow, while giving up digits AI doesn't need", "Because 7 is lucky", "To run on CPUs only"], answer: 1, explain: "Range matters more than digits for neural networks. BF16 avoids FP16's overflow and underflow problems." },
+  { q: "What problem does loss scaling solve in FP16 training?", options: ["Weights becoming too large", "Tiny gradients underflowing to zero in FP16", "Slow data loading", "Branch divergence"], answer: 1, explain: "Multiplying the loss by a large factor lifts small gradients into FP16's range; they're scaled back down before the update." },
+  { q: "Why does FP16 also speed up memory-bound operations like ReLU?", options: ["Tensor Cores do ReLU", "Each number takes half the bytes, so twice as many move per second", "It skips the operation", "It uses the CPU"], answer: 1, explain: "Memory-bound speed is bytes ÷ bandwidth. Half the bytes = up to twice the speed." },
 ];
 const RESULT = {
-  perfect: "Perfect! You know exactly how a CPU hands work to a GPU.",
-  good: "Good. Replay 'CUDA C vs PyTorch' and match each step.",
-  low: "Revisit 'Watch It Happen': allocate, copy in, launch, copy out, free.",
+  perfect: "Perfect! You understand why AI runs on fewer bits.",
+  good: "Good. Replay 'The Formats' and try 70000 and 1e-8.",
+  low: "Revisit 'Will It Fit?' and 'The Formats': bits per number decide memory, range and precision.",
   done: "Unit 5.2 Complete!",
-  body: "You can list and explain the five offloading steps, map them to CUDA C and PyTorch, and see where the time goes.",
-  next: "Next up: Unit 5.3 — Kernels, Grids, Blocks, Threads.",
-  teaser: "Step 3 says 'launch on this many threads'. How do you organise a million of them? Exam halls and roll numbers.",
+  body: "You can compare FP32, FP16, BF16 and INT8, explain why AI tolerates rounding, use mixed precision, and estimate the speed payoff.",
+  next: "Next up: Unit 5.3 — Compute-bound vs Memory-bound.",
+  teaser: "One chart, the roofline, tells you the speed limit of any operation on any GPU.",
 };
 
 const UNIT_WORDS = [
-  ["cudaMalloc", "CUDA memory allocate", "Reserves space in GPU memory.", "new here"],
-  ["cudaMemcpy", "CUDA memory copy", "Copies between host and device, in the direction you name.", "new here"],
-  ["cudaFree", "CUDA free", "Releases GPU memory.", "new here"],
-  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Unit 3.3).", "from Unit 3.3"],
-  ["DMA", "Direct Memory Access", "Moves the data over PCIe (COA Unit 5).", "from COA"],
+  ["FP32 / FP16", "32-bit / 16-bit floating point", "IEEE 754 formats (COA): 1 sign + 8/5 exponent + 23/10 mantissa bits.", "from COA"],
+  ["BF16", "Brain Floating Point 16", "16 bits with FP32's 8-bit exponent and a 7-bit mantissa. Designed for AI.", "new here"],
+  ["INT8 / INT4", "8-bit / 4-bit integers", "Whole numbers plus a scale factor; used to shrink models for inference.", "new here"],
+  ["TOPS", "Tera Operations Per Second", "Like TFLOPS, but for integer operations.", "new here"],
+  ["AMP", "Automatic Mixed Precision", "PyTorch's autocast + GradScaler: FP16 where safe, FP32 where needed.", "new here"],
 ];
 
 // ── Quiz ──
@@ -344,10 +367,10 @@ function TextbookNote() {
 
 export default function Unit5_2({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "One Line, Five Steps" },
-    { id: "s1", label: "Watch It Happen" },
-    { id: "s2", label: "CUDA C vs PyTorch" },
-    { id: "s3", label: "Where the Time Goes" },
+    { id: "s0", label: "Will It Fit?" },
+    { id: "s1", label: "The Formats" },
+    { id: "s2", label: "Does AI Notice?" },
+    { id: "s3", label: "The Speed Payoff" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -357,10 +380,10 @@ export default function Unit5_2({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🖐️ One Line, Five Steps — what hides behind .to('cuda')</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎬 Watch It Happen — two memories, five steps</h3><StepWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚙️ CUDA C vs PyTorch — the steps in code</h3><CodeMapWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏱️ Where the Time Goes — copies vs computing</h3><TimelineWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>💾 Will It Fit? — bits per number = memory</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔢 The Formats — FP32, FP16, BF16 (IEEE 754 from COA)</h3><FormatWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 Does AI Notice? — rounding, quantisation, loss scaling</h3><NoticeWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚡ The Speed Payoff — Tensor Cores and fewer bytes</h3><SpeedWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.2.</p>
@@ -371,10 +394,10 @@ export default function Unit5_2({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🖐️</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🔢</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.2</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>The Five Steps of Offloading</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Precision: FP32 → FP16/BF16 → INT8</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

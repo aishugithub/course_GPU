@@ -1,163 +1,213 @@
 //@@META
-{"unit": "5.1", "module": 5, "title": "Host & Device on PCIe", "icon": "🔌", "lab": "Lab05_CPU_GPU_Teamwork.ipynb", "labNo": 5, "gpu": true}
+{"unit": "5.1", "module": 5, "title": "Parallel Matrix Multiply & Tiling", "icon": "🧩", "lab": "Lab5A_Why_GPUs_Make_AI_Fast.ipynb", "labNo": "5A", "gpu": true}
 //@@WIDGETS
 
-// ── Section 1: Need — the data is in the wrong building ──
+// ── Section 1: Need — the naive kernel is starving ──
 function NeedWidget() {
-  const [fixed, setFixed] = useState(false);
+  const [n, setN] = useState(1024);
+  const reads = 2 * n * n * n;                  // every thread reads a row of A and a column of B
+  const bytes = reads * 4;
+  const flops = 2 * n ** 3;
+  const tMem = bytes / 320e9, tComp = flops / 8.1e12;
   return (
     <div>
       <Frame>
-        A first-time GPU user moves the model to the GPU and runs it on some data. Python stops with an error. Toggle to see the broken code,
-        then the fix.
+        The obvious GPU matrix multiply: one thread per output cell C[row][col], each reading a whole row of A and column of B from global memory
+        (Unit 4.3's 2-D grid). Every number of A is fetched <b style={{ color: C.red }}>n times</b>, once by every thread that needs it. Count the traffic.
       </Frame>
-      <Btn onClick={() => setFixed((v) => !v)} color={fixed ? C.green : C.red}>{fixed ? "◀ Show the broken version" : "▶ Fix it"}</Btn>
-      <div style={{ marginTop: 12 }}>
-        <Code color={fixed ? C.green : C.red} title={fixed ? "✅ WORKS" : "❌ CRASHES"}>{fixed ? `model = model.to("cuda")      # weights → GPU memory
-x = x.to("cuda")              # data   → GPU memory too
-y = model(x)                  # ✓ both live on the GPU` : `model = model.to("cuda")      # weights → GPU memory
-y = model(x)                  # x is still in CPU memory!`}</Code>
-        {!fixed && (
-          <pre style={{ marginTop: 8, background: "#2a1214", border: `1px solid ${C.red}`, borderRadius: 8, padding: 10, color: C.red, fontFamily: "monospace", fontSize: 11.5, whiteSpace: "pre-wrap" }}>
-{`RuntimeError: Expected all tensors to be on the same device,
-but found at least two devices, cuda:0 and cpu!`}
-          </pre>
-        )}
+      <Code color={C.red} title="❌ NAIVE KERNEL: everything from global memory">{`__global__ void matmul_naive(const float *A, const float *B, float *C, int n) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < n && col < n) {
+        float sum = 0.0f;
+        for (int k = 0; k < n; k++)
+            sum += A[row * n + k] * B[k * n + col];   // 2 global reads per FMA
+        C[row * n + col] = sum;
+    }
+}`}</Code>
+      <Slider label={<>Matrix size n = <b style={{ color: C.accent }}>{n}</b></>} value={n} min={256} max={4096} step={256} onChange={setN} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="GLOBAL-MEMORY READS" value={`${(bytes / 1e9).toFixed(1)} GB`} color={C.red} />
+        <Stat label="TIME FOR THAT TRAFFIC" value={`${(tMem * 1e3).toFixed(0)} ms`} color={C.red} />
+        <Stat label="TIME FOR THE MATHS" value={`${(tComp * 1e3).toFixed(1)} ms`} color={C.green} />
       </div>
-      <Insight color={fixed ? C.green : C.red} title="The GPU can only compute on data that's in the GPU's own memory.">
-        The GPU is a separate card with its own memory, like a coaching centre in a different building. Before it can work on your numbers,
-        someone has to carry them over. This module is about that carrying.
+      <Insight color={C.red} title="Two global reads for every multiply-add: memory-bound by a factor of about 100.">
+        This is Unit 3.4's 'feeding the beast' problem. (Caches soften it a little in practice, but not enough.) The cure is to fetch each number
+        ONCE into fast shared memory and let many threads reuse it.
       </Insight>
     </div>
   );
 }
 
-// ── Section 2: The system picture ──
-const PARTS = {
-  cpu: { t: "CPU (the host)", d: "Runs your Python program, makes decisions, and tells the GPU what to do. In CUDA language the CPU side is called the HOST.", c: C.orange },
-  ram: { t: "Host memory (RAM)", d: "Where your program's variables, the dataset and NumPy arrays live, around 12 GB on Colab. The GPU can't compute directly on it.", c: C.orange },
-  pcie: { t: "PCIe bus", d: "The slot the GPU card plugs into: a high-speed serial bus (COA Unit 5: standard I/O interfaces). The T4 uses PCIe Gen 3 ×16, about 16 GB/s in theory and around 12 GB/s in practice. Copies are done by DMA engines on the GPU, without the CPU moving each byte.", c: C.yellow },
-  gpu: { t: "GPU (the device)", d: "The SMs, cores and Tensor Cores from Module 4. In CUDA language the GPU side is called the DEVICE.", c: C.green },
-  vram: { t: "Device memory (GDDR6)", d: "The GPU's own 16 GB, delivering 320 GB/s, about 25× faster than PCIe. Your model weights and tensors must be here for the GPU to use them.", c: C.green },
-};
-function SystemWidget() {
-  const [k, setK] = useState("pcie");
-  const Box = ({ id, x, y, w, h, label }) => (
-    <g onClick={() => setK(id)} style={{ cursor: "pointer" }}>
-      <rect x={x} y={y} width={w} height={h} rx="8" fill={PARTS[id].c + (k === id ? "44" : "18")} stroke={PARTS[id].c} strokeWidth={k === id ? 2.5 : 1.2} />
-      <text x={x + w / 2} y={y + h / 2 + 4} fill={C.text} fontSize="12" textAnchor="middle">{label}</text>
-    </g>
-  );
-  return (
-    <div>
-      <Frame>Every GPU computer looks like this. Click each part. (Numbers for Colab's T4 machine, approximate.)</Frame>
-      <svg viewBox="0 0 520 190" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-        <text x="20" y="20" fill={C.orange} fontSize="11" fontWeight="700">HOST</text>
-        <text x="390" y="20" fill={C.green} fontSize="11" fontWeight="700">DEVICE</text>
-        <Box id="cpu" x={20} y={30} w={140} h={50} label="CPU" />
-        <Box id="ram" x={20} y={110} w={140} h={50} label="RAM ≈ 12 GB" />
-        <line x1="90" y1="80" x2="90" y2="110" stroke={C.orange} strokeWidth="2" />
-        <Box id="pcie" x={185} y={70} w={150} h={40} label="PCIe ≈ 12 GB/s" />
-        <line x1="160" y1="90" x2="185" y2="90" stroke={C.yellow} strokeWidth="3" /><line x1="335" y1="90" x2="360" y2="90" stroke={C.yellow} strokeWidth="3" />
-        <Box id="gpu" x={360} y={30} w={140} h={50} label="GPU (40 SMs)" />
-        <Box id="vram" x={360} y={110} w={140} h={50} label="GDDR6 16 GB" />
-        <line x1="430" y1="80" x2="430" y2="110" stroke={C.green} strokeWidth="5" />
-        <text x="438" y="100" fill={C.green} fontSize="9">320 GB/s</text>
-      </svg>
-      <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: PARTS[k].c + "14", border: `1px solid ${PARTS[k].c}55`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.text }}>{PARTS[k].t}.</b> {PARTS[k].d}
-      </div>
-      <Insight color={C.yellow} title="To the CPU, the GPU is an I/O device on a bus, exactly like in COA Unit 5.">
-        Your COA knowledge applies directly: the GPU card sits on PCIe, data moves by DMA, and the GPU signals when it's done. The narrow
-        PCIe link between two fast memories is the bottleneck to respect.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 3: What a copy costs ──
-function CopyWidget() {
-  const [mb, setMb] = useState(500);
-  const [ops, setOps] = useState(1);
-  const pcie = mb / 12000, inside = (mb / 320000) * ops;
-  const total = pcie * 2 + inside;
+// ── Section 2: The tiling idea ──
+function IdeaWidget() {
+  const [T, setT] = useState(16);
+  const n = 4096;
+  const reduce = T;
+  const intensity = (T / 4).toFixed(1);                 // FLOPs per byte of global traffic ≈ 2·T / (2·4)
+  const perf = Math.min(8.1e12, 320e9 * (T / 4));
   return (
     <div>
       <Frame>
-        Move data over, do some GPU operations on it, bring the result back. How much of the time is just carrying? Change the data size and
-        how many operations the GPU does on the data while it's there (each one reads and writes it at 320 GB/s).
+        A study group needs the same 32 reference pages. Bad plan: every student walks to the library for every page. Good plan: fetch a stack of pages
+        to the group's table <b style={{ color: C.teal }}>once</b>, and everyone reads them there. A GPU <b style={{ color: C.text }}>thread block</b> does the same: it loads a T × T
+        <b style={{ color: C.teal }}> tile</b> of A and of B into <b style={{ color: C.teal }}>shared memory</b> (Unit 3.4), and all T × T threads reuse it. Choose the tile size.
       </Frame>
-      <Slider label={<>Data size = <b style={{ color: C.teal }}>{mb} MB</b></>} value={mb} min={1} max={4000} onChange={setMb} color={C.teal} />
-      <Slider label={<>GPU operations done on it before copying back = <b style={{ color: C.green }}>{ops}</b></>} value={ops} min={1} max={500} onChange={setOps} color={C.green} />
-      <div style={{ display: "flex", height: 34, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}`, marginTop: 6 }}>
-        <div style={{ width: `${(pcie / total) * 100}%`, background: C.yellow, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11, fontWeight: 700 }}>copy in</div>
-        <div style={{ width: `${(inside / total) * 100}%`, minWidth: 3, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11, fontWeight: 700 }}>{inside / total > 0.15 ? "GPU work" : ""}</div>
-        <div style={{ width: `${(pcie / total) * 100}%`, background: C.yellow, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11, fontWeight: 700 }}>copy out</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {[1, 2, 4, 8, 16, 32].map((v) => <Btn key={v} ghost={v !== T} onClick={() => setT(v)} color={C.teal}>T = {v}</Btn>)}
       </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="EACH PCIe COPY" value={`${(pcie * 1000).toFixed(1)} ms`} color={C.yellow} />
-        <Stat label="GPU WORK" value={`${(inside * 1000).toFixed(1)} ms`} color={C.green} />
-        <Stat label="TIME SPENT COPYING" value={`${((2 * pcie / total) * 100).toFixed(0)}%`} color={2 * pcie / total > 0.5 ? C.red : C.green} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="GLOBAL READS CUT BY" value={`${reduce}×`} color={C.teal} />
+        <Stat label="FLOPs PER BYTE FETCHED" value={intensity} color={C.purple} />
+        <Stat label="SPEED LIMIT ON THE T4 (FP32)" value={`${(perf / 1e12).toFixed(2)} TFLOPS`} color={perf >= 8.1e12 ? C.green : C.yellow} />
       </div>
-      <Insight color={C.green} title="Copy once, compute many times, copy back once.">
-        One operation per copy wastes about 98% of the time on PCIe. Hundreds of operations per copy (like a whole training run on data that stays
-        on the GPU) make the copy negligible. That's why models and batches are moved to the GPU and kept there.
+      <div style={{ height: 22, background: C.card, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}`, marginTop: 10 }}>
+        <div style={{ width: `${(perf / 8.1e12) * 100}%`, height: "100%", background: perf >= 8.1e12 ? C.green : C.yellow }} />
+      </div>
+      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>T = 1 is the naive kernel. A 16 × 16 or 32 × 32 tile is typical: it must fit in the 96 KB of shared memory per SM, and 32 × 32 = 1,024 is the maximum block size.</div>
+      <Insight color={C.teal} title="Each number fetched from global memory is now used T times instead of once.">
+        Tiling cuts global traffic by T× and moves the kernel much closer to the compute limit. Expert libraries finish the job with extra
+        tricks (tiles in registers too). It's the same principle as the cache locality you studied in COA (Hamacher Ch 8),
+        except that the programmer manages this 'cache' by hand.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: Other ways to connect ──
-const VARIANTS = [
-  { t: "Pinned (page-locked) host memory", c: C.teal, d: "Normal RAM can be moved around by the operating system's paging, so the GPU's DMA engine can't read it directly: the driver first copies it into a locked staging area. Pinned memory is locked in place, so DMA reads it directly. Copies get faster and can overlap with computing. In PyTorch: DataLoader(pin_memory=True)." },
-  { t: "Integrated GPU / unified memory", c: C.purple, d: "Phones, laptops with integrated graphics and Apple M-series chips put the CPU and GPU on one chip sharing ONE memory: no PCIe copy at all. The trade-off is less total memory bandwidth than a big discrete GPU." },
-  { t: "NVLink", c: C.green, d: "NVIDIA's direct GPU-to-GPU link in data-centre servers: hundreds of GB/s, many times faster than PCIe. It lets 8 GPUs work on one model (Unit 7.4)." },
-  { t: "Newer PCIe generations", c: C.yellow, d: "Each PCIe generation roughly doubles the speed: Gen 3 ≈ 16 GB/s, Gen 4 ≈ 32 GB/s, Gen 5 ≈ 64 GB/s for ×16 (theoretical, approximate). Still far below the GPU's own memory." },
-];
-function VariantsWidget() {
-  const [i, setI] = useState(0);
+// ── Section 3: Trace the tiles ──
+function TileTraceWidget() {
+  const [p, setP] = useState(0);
+  const N = 8, T = 4, phases = N / T;
+  const tileCell = (m, r, c) => {
+    // block computing C tile (0,1): rows 0-3, cols 4-7
+    if (m === "C") return r < 4 && c >= 4 ? (p > 0 ? "acc" : "target") : null;
+    if (p === 0) return null;
+    const k = p - 1;
+    if (m === "A") return r < 4 && Math.floor(c / T) === k ? "load" : r < 4 && Math.floor(c / T) < k ? "used" : null;
+    if (m === "B") return c >= 4 && Math.floor(r / T) === k ? "load" : c >= 4 && Math.floor(r / T) < k ? "used" : null;
+    return null;
+  };
+  const colr = { load: C.teal, used: C.border, acc: C.green, target: C.yellow };
   return (
     <div>
-      <Frame>The basic picture has some important variations. Click each.</Frame>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        {VARIANTS.map((v, k) => <Btn key={k} ghost={k !== i} onClick={() => setI(k)} color={v.c}>{v.t}</Btn>)}
+      <Frame>
+        One thread block computes the 4 × 4 tile of C shown in yellow (8 × 8 matrices, tiles of 4). It walks along A's rows and B's columns in
+        <b style={{ color: C.text }}> phases</b>: each phase loads one tile of A and one of B into shared memory, waits until everyone has loaded
+        (<code>__syncthreads()</code>), then every thread does 4 multiply-adds from shared memory.
+      </Frame>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
+        {["A", "B", "C"].map((m) => (
+          <div key={m}>
+            <div style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>{m}</div>
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${N}, 18px)`, gap: 1.5 }}>
+              {Array.from({ length: N * N }, (_, i) => {
+                const r = Math.floor(i / N), c = i % N, s = tileCell(m, r, c);
+                return <div key={i} style={{ width: 18, height: 18, borderRadius: 2, background: s ? colr[s] + (s === "used" ? "" : "88") : C.card, border: `1px solid ${(c % T === 0 && c) || (r % T === 0 && r) ? C.muted + "66" : C.border}` }} />;
+              })}
+            </div>
+          </div>
+        ))}
+        <div style={{ minWidth: 150 }}>
+          <div style={{ color: C.teal, fontSize: 11 }}>■ in shared memory now</div>
+          <div style={{ color: C.muted, fontSize: 11 }}>■ already used</div>
+          <div style={{ color: C.green, fontSize: 11 }}>■ C partial sums growing</div>
+        </div>
       </div>
-      <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 8, background: VARIANTS[i].c + "14", border: `1px solid ${VARIANTS[i].c}55`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{VARIANTS[i].d}</div>
-      <Insight color={C.teal} title="The goal is always the same: make the host-device link matter less.">
-        Lock memory so DMA can use it directly, share memory instead of copying, or build faster links. All of them attack the same bottleneck.
+      <div style={{ marginTop: 10, minHeight: 38, color: C.text, fontSize: 13, lineHeight: 1.6 }}>
+        {p === 0 ? "Start: the block's 16 threads each own one cell of C's yellow tile; their sums start at 0." : p < phases ? `Phase ${p}: load A tile (rows 0–3, cols ${(p - 1) * 4}–${p * 4 - 1}) and B tile (rows ${(p - 1) * 4}–${p * 4 - 1}, cols 4–7) into shared memory → __syncthreads() → 4 FMAs per thread from shared memory → __syncthreads().` : `Phase ${p}: the last pair of tiles. Each thread has now done all 8 FMAs and writes its finished C cell to global memory.`}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Btn onClick={() => setP((v) => Math.min(phases, v + 1))} color={C.teal}>Next phase ▶ ({p} / {phases})</Btn>
+        <Btn ghost onClick={() => setP(0)}>↺ Reset</Btn>
+      </div>
+      <Insight color={C.green} title="Load a tile together, sync, compute from shared memory, sync, slide to the next tile.">
+        Each element of A and B is read from global memory once per block instead of once per thread. For real 16 × 16 tiles that's 16× less traffic.
       </Insight>
-      <LabCard part="A" title="Where does a tensor live, and what does moving it cost?"
-        what="Check tensor.device, trigger the 'same device' error and fix it, then time .to('cuda') for growing sizes to measure your PCIe speed, with and without pinned memory."
-        expect="'cpu' and 'cuda:0' devices, copy speeds of a few GB/s up to about 12 GB/s, and pinned memory copying noticeably faster." />
+    </div>
+  );
+}
+
+// ── Section 4: The code — and the library that beats it ──
+function CodeWidget() {
+  const [v, setV] = useState("tiled");
+  const KERNELS = {
+    tiled: `#define T 16
+__global__ void matmul_tiled(const float *A, const float *B, float *C, int n) {
+    __shared__ float As[T][T], Bs[T][T];          // the group's table
+    int row = blockIdx.y * T + threadIdx.y;
+    int col = blockIdx.x * T + threadIdx.x;
+    float sum = 0.0f;
+    for (int p = 0; p < n / T; p++) {             // one phase per tile pair
+        As[threadIdx.y][threadIdx.x] = A[row * n + p * T + threadIdx.x];
+        Bs[threadIdx.y][threadIdx.x] = B[(p * T + threadIdx.y) * n + col];
+        __syncthreads();                          // wait: tiles fully loaded
+        for (int k = 0; k < T; k++)
+            sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];   // from shared memory
+        __syncthreads();                          // wait: everyone finished reading
+    }
+    C[row * n + col] = sum;                       // (assumes n is a multiple of T)
+}`,
+    torch: `# PyTorch calls NVIDIA's cuBLAS library, written by NVIDIA engineers:
+C = A @ B
+
+# cuBLAS uses tiling AND much more: register tiles, double buffering,
+# Tensor Cores for FP16, and kernels tuned for each GPU model.`,
+  };
+  return (
+    <div>
+      <Frame>
+        Here's the tiled kernel (in the style of Kirk & Hwu Ch 5), next to what you'll actually write in AI code. Compare.
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <Btn ghost={v !== "tiled"} onClick={() => setV("tiled")} color={C.teal}>⚙️ Tiled kernel (CUDA C)</Btn>
+        <Btn ghost={v !== "torch"} onClick={() => setV("torch")}>🔥 PyTorch (cuBLAS)</Btn>
+      </div>
+      <Code color={v === "tiled" ? C.teal : C.accent}>{KERNELS[v]}</Code>
+      <table style={{ width: "100%", marginTop: 12, borderCollapse: "collapse", fontSize: 12.5 }}>
+        <thead><tr style={{ color: C.muted, textAlign: "left" }}><th style={{ padding: 6 }}>Version (n = 4096, T4, FP32)</th><th>Typical speed</th></tr></thead>
+        <tbody style={{ color: C.text }}>
+          {[["Naive kernel", "≈ 0.3–0.8 TFLOPS", C.red], ["Tiled kernel (T = 16)", "≈ 1–2 TFLOPS", C.yellow], ["cuBLAS via PyTorch", "≈ 4–5 TFLOPS", C.green], ["cuBLAS, FP16 Tensor Cores", "≈ 20–40 TFLOPS", C.green]].map(([a, b, c]) => (
+            <tr key={a} style={{ borderTop: `1px solid ${C.border}` }}><td style={{ padding: 6 }}>{a}</td><td style={{ color: c, fontFamily: "monospace" }}>{b}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>Approximate ranges; you'll measure your own in the lab.</div>
+      <Insight title="Understand tiling; use the library.">
+        Writing your own matrix multiply teaches you why GPUs are fast. In real projects, the expert-tuned library is several times faster again,
+        and PyTorch uses it automatically for every Linear layer.
+      </Insight>
+      <LabCard part="A" title="Naive vs tiled vs cuBLAS"
+        what="Run the naive and tiled kernels above through CuPy for n = 1024 and 2048, check they agree with PyTorch, and compare their TFLOPS with torch's A @ B in FP32 and FP16."
+        expect="tiled clearly faster than naive, cuBLAS faster again, and FP16 Tensor Cores fastest of all." />
     </div>
   );
 }
 //@@SECTIONS
-[["Wrong Building", "🏢 The Data Is in the Wrong Building", "NeedWidget"],
- ["Host & Device", "🔌 Host & Device — the system picture", "SystemWidget"],
- ["What a Copy Costs", "📦 What a Copy Costs — PCIe vs GPU memory", "CopyWidget"],
- ["Variations", "🔀 Variations — pinned memory, unified memory, NVLink", "VariantsWidget"]]
+[["The Starving Kernel", "🍽️ The Starving Kernel — naive matrix multiply", "NeedWidget"],
+ ["The Tiling Idea", "📚 The Tiling Idea — fetch once, reuse many times", "IdeaWidget"],
+ ["Trace the Tiles", "🧩 Trace the Tiles — phase by phase", "TileTraceWidget"],
+ ["Code & cuBLAS", "⚙️ The Code — and the library that beats it", "CodeWidget"]]
 //@@QUIZ
 const QUESTIONS = [
-  { q: "In CUDA terminology, the 'host' is…", options: ["The GPU", "The CPU and its memory", "The PCIe bus", "The cloud server"], answer: 1, explain: "Host = CPU + RAM; device = GPU + its own memory." },
-  { q: "PyTorch says 'Expected all tensors to be on the same device, cuda:0 and cpu'. What's the fix?", options: ["Restart Colab", "Move the CPU tensor to the GPU with .to('cuda')", "Use a smaller batch", "Turn off the GPU"], answer: 1, explain: "The GPU can only compute on data in its own memory. Move the data (or the model) so both are on the same device." },
-  { q: "Copying 1.2 GB over PCIe at 12 GB/s takes about…", options: ["1 ms", "10 ms", "100 ms", "1 s"], answer: 2, explain: "1.2 GB ÷ 12 GB/s = 0.1 s = 100 ms. Inside the GPU (320 GB/s) the same data moves in about 4 ms." },
-  { q: "Why is pinned (page-locked) memory faster to copy?", options: ["It's stored on the GPU", "The GPU's DMA engine can read it directly, without an extra staging copy", "It compresses the data", "It uses NVLink"], answer: 1, explain: "Pageable memory might be moved by the OS, so it's first copied to a locked buffer. Pinned memory skips that step." },
+  { q: "In the naive matrix-multiply kernel, how many global-memory reads does each multiply-add need?", options: ["0", "1", "2", "n"], answer: 2, explain: "One element of A and one of B, both from global memory: 2 reads (8 bytes) for 2 FLOPs. Badly memory-bound." },
+  { q: "With 16 × 16 tiles in shared memory, global-memory traffic is reduced by about…", options: ["2×", "16×", "256×", "Not at all"], answer: 1, explain: "Each element loaded into a tile is reused by 16 threads instead of being fetched 16 separate times." },
+  { q: "Why is __syncthreads() needed after loading a tile?", options: ["To free memory", "So no thread starts computing before the whole tile is loaded by its teammates", "To launch the next kernel", "To copy data to the CPU"], answer: 1, explain: "Each thread loads one element; all of them must finish before anyone reads the tile." },
+  { q: "In a real AI project, how should you do matrix multiplication on the GPU?", options: ["Write a naive kernel", "Write a tiled kernel", "Use the library (PyTorch → cuBLAS)", "Use the CPU"], answer: 2, explain: "cuBLAS is far more optimised than hand-written kernels; PyTorch calls it automatically." },
 ];
 const RESULT = {
-  perfect: "Perfect! You understand the host-device split.",
-  good: "Good. Replay 'What a Copy Costs' and push the operations slider.",
-  low: "Revisit 'Host & Device': two memories, one narrow bus.",
+  perfect: "Perfect! You know the core trick behind fast GPU maths.",
+  good: "Good. Replay 'Trace the Tiles' phase by phase.",
+  low: "Revisit 'The Tiling Idea': fetch once into shared memory, reuse many times.",
   done: "Unit 5.1 Complete!",
-  body: "You can explain host vs device, the PCIe link, copy costs, and pinned memory, unified memory and NVLink.",
-  next: "Next up: Unit 5.2 — The Five Steps of Offloading.",
-  teaser: "Allocate, copy in, launch, copy out, free: exactly how the CPU hands a job to the GPU.",
+  body: "You can explain why naive matrix multiply is memory-bound, how tiling with shared memory fixes it, and why libraries win.",
+  next: "Next up: Unit 5.2 — Precision: FP32 → FP16/BF16 → INT8.",
+  teaser: "Fewer bits per number: half the memory, double the speed, and Tensor Cores switched on. Does AI even notice?",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["host / device", "CPU side / GPU side", "CUDA's names for the two halves of the system.", "new here"],
-  ["PCIe", "Peripheral Component Interconnect Express", "The bus the GPU card plugs into (COA Unit 5).", "from COA"],
-  ["DMA", "Direct Memory Access", "Hardware that copies data without the CPU moving each byte (COA Unit 5).", "from COA"],
-  ["VRAM / GDDR6", "the GPU's own memory", "Video RAM; on the T4 it's 16 GB of GDDR6.", "from Unit 4.1"],
-  ["NVLink", "NVIDIA's GPU-to-GPU link", "Much faster than PCIe; used in multi-GPU servers.", "new here"],
+  ["tile", "a small square block of a matrix", "Loaded into shared memory and reused by a thread block.", "new here"],
+  ["__shared__", "CUDA's shared-memory keyword", "Declares an array in the SM's fast shared memory (Unit 3.4).", "new here"],
+  ["__syncthreads()", "block barrier", "Every thread in the block waits here until all have arrived.", "new here"],
+  ["cuBLAS", "CUDA Basic Linear Algebra Subprograms", "NVIDIA's highly tuned matrix library, used by PyTorch.", "new here"],
+  ["FMA", "Fused Multiply-Add", "a × b + c in one instruction.", "from Unit 3.1"],
 ];

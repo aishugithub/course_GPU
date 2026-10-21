@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab04_Inside_a_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab4_CPU_GPU_Teamwork.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -68,192 +68,186 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 5 (Memory architecture and data locality) · H&P §4.4 (GPU memory structures) · Hamacher Ch 8 (Memory)";
+const TEXTBOOK = "Kirk & Hwu Ch 2 · Hamacher Ch 3 (Interrupts: the same 'start it and carry on' idea)";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-// ── Section 1: Need — feeding the beast ──
+// ── Section 1: Need — the impossible timing ──
 function NeedWidget() {
-  const [r, setR] = useState(1);
-  const bw = 320e9, peak = 8.1e12;
-  const flops = Math.min(peak, (bw * r) / 4);    // 1 FMA = 2 FLOPs needs 2 floats = 8 bytes when nothing is reused
+  const [synced, setSynced] = useState(false);
   return (
     <div>
       <Frame>
-        The T4 can do 8.1 TFLOPS (FP32), but every FMA needs two numbers to work on. Its main memory delivers <b style={{ color: C.teal }}>320 GB/s</b>.
-        If every number had to come fresh from memory and be used once, how fast could the T4 really go? Now let each fetched number be
-        <b style={{ color: C.green }}> reused</b> several times from fast on-chip storage.
+        A student times a 4096 × 4096 matrix multiply on the T4: 137 billion FLOPs. The stopwatch says <b style={{ color: C.red }}>0.03 ms</b>, which would be
+        4,500 TFLOPS, about 70× the GPU's peak. Something is wrong. Toggle the fix.
       </Frame>
-      <Slider label={<>Reuse: each number fetched from memory is used in <b style={{ color: C.green }}>{r}</b> FMA{r > 1 ? "s" : ""}</>} value={r} min={1} max={200} onChange={setR} color={C.green} />
-      <div style={{ height: 26, background: C.card, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <div style={{ width: `${(flops / peak) * 100}%`, height: "100%", background: flops >= peak ? C.green : C.yellow, transition: "width 0.3s" }} />
+      <Btn onClick={() => setSynced((v) => !v)} color={synced ? C.green : C.red}>{synced ? "◀ Show the wrong timing" : "▶ Add synchronisation"}</Btn>
+      <div style={{ marginTop: 12 }}>
+        <Code color={synced ? C.green : C.red} title={synced ? "✅ CORRECT TIMING" : "❌ WRONG TIMING"}>{synced ? `torch.cuda.synchronize()          # wait for earlier GPU work
+t0 = time.perf_counter()
+c = a @ b                         # launch
+torch.cuda.synchronize()          # WAIT until the GPU has finished
+t1 = time.perf_counter()
+print((t1 - t0) * 1000, "ms")     # ≈ 30 ms  →  ≈ 4.5 TFLOPS  ✓` : `t0 = time.perf_counter()
+c = a @ b                         # launch
+t1 = time.perf_counter()
+print((t1 - t0) * 1000, "ms")     # 0.03 ms ?!`}</Code>
       </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="ACHIEVABLE SPEED" value={`${(flops / 1e12).toFixed(2)} TFLOPS`} color={flops >= peak ? C.green : C.yellow} />
-        <Stat label="SHARE OF PEAK" value={`${((flops / peak) * 100).toFixed(1)}%`} color={C.purple} />
-        <Stat label="BANDWIDTH NEEDED WITH NO REUSE" value="≈ 32 TB/s (100× too much)" color={C.red} />
-      </div>
-      <Insight color={C.yellow} title="Without reuse the T4 runs at about 1% of its peak, starved for data.">
-        The arithmetic is cheap; moving the numbers is expensive. Every fast GPU program is really a plan for reusing data held in small, fast
-        memories close to the cores. This unit maps those memories.
+      <Insight color={synced ? C.green : C.red} title={synced ? "Now the stopwatch waits for the GPU, and the number is believable." : "The stopwatch measured how long it took to GIVE the order, not to DO the work."}>
+        A GPU launch is <b>asynchronous</b>: the CPU drops the job into the GPU's queue and moves straight on, without waiting. This unit explains the
+        queue, and why it's a feature, not a bug.
       </Insight>
     </div>
   );
 }
 
-// ── Section 2: The memory hierarchy ──
-const LEVELS = [
-  { k: "reg", t: "Registers", size: "256 KB per SM (≈ 10 MB on the chip)", lat: "≈ 1 cycle", who: "one thread", c: C.green, coa: "Processor registers R0…Rn" },
-  { k: "smem", t: "Shared memory / L1 cache", size: "96 KB per SM", lat: "≈ 20–30 cycles", who: "one thread block, on one SM", c: C.teal, coa: "L1 cache" },
-  { k: "l2", t: "L2 cache", size: "4 MB (whole chip)", lat: "≈ 200 cycles", who: "all SMs", c: C.accent, coa: "L2 / L3 cache" },
-  { k: "global", t: "Global memory (GDDR6)", size: "16 GB", lat: "≈ 400–600 cycles · 320 GB/s", who: "every thread, and the CPU (by copying)", c: C.purple, coa: "Main memory (RAM)" },
-  { k: "host", t: "CPU's RAM, over PCIe", size: "12+ GB on Colab", lat: "microseconds · ≈ 12 GB/s", who: "reached only by explicit copies", c: C.orange, coa: "(like a disk: far away)" },
-];
-function HierarchyWidget() {
-  const [k, setK] = useState("smem");
-  const [coa, setCoa] = useState(false);
-  const L = LEVELS.find((x) => x.k === k);
+// ── Section 2: The command queue ──
+const CMDS = ["copy x → GPU", "matmul", "relu", "matmul", "softmax", "copy result → CPU"];
+function QueueWidget() {
+  const [t, setT] = useState(0);
+  const issued = Math.min(CMDS.length, t * 2);       // the CPU issues fast
+  const done = Math.max(0, Math.min(CMDS.length, t - 1));  // the GPU finishes one per tick, after a delay
+  const cpuWaiting = t >= 3 && done < CMDS.length;
   return (
     <div>
       <Frame>
-        Like the CPU memory hierarchy in COA (Hamacher Ch 8), a GPU has layers: the closer to the cores, the faster and smaller. Click a level.
-        Toggle to see the matching COA level. (Approximate T4 figures.)
+        Like ordering at a busy restaurant: you hand over your order slip and go back to your table; the kitchen works through the slips
+        in order. The CPU puts GPU commands into a queue (CUDA calls it a <b style={{ color: C.accent }}>stream</b>) and carries on. Step through time.
       </Frame>
-      <label style={{ color: C.muted, fontSize: 12.5, cursor: "pointer" }}><input type="checkbox" checked={coa} onChange={(e) => setCoa(e.target.checked)} /> Show the matching CPU (COA) level</label>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginTop: 10 }}>
-        {LEVELS.map((x, i) => (
-          <div key={x.k} onClick={() => setK(x.k)} style={{ width: `${40 + i * 15}%`, cursor: "pointer", padding: "8px 10px", borderRadius: 6, textAlign: "center", background: x.c + (k === x.k ? "44" : "1A"), border: `1.5px solid ${x.c}`, color: C.text, fontSize: 12.5, fontWeight: k === x.k ? 700 : 400 }}>
-            {x.t}{coa && <span style={{ color: C.muted, fontWeight: 400 }}> · COA: {x.coa}</span>}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-        <Stat label="SIZE" value={L.size} color={L.c} />
-        <Stat label="SPEED" value={L.lat} color={L.c} />
-        <Stat label="WHO CAN SEE IT" value={L.who} color={L.c} />
-      </div>
-      <Insight color={C.teal} title="Same idea as COA: keep the data you're using in the small, fast levels.">
-        The difference is who manages it. A CPU's caches work automatically. On a GPU, the fastest shared level (shared memory) is a
-        scratchpad that the programmer fills deliberately. Unit 6.1 does exactly that.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 3: Who shares what — confusing names ──
-const SPACES = {
-  register: { t: "Registers", who: "one thread only", scope: (sm, b, th) => sm === 0 && b === 0 && th === 0, note: "Each thread's own variables, like i in the vector-add kernel. The fastest storage there is." },
-  shared: { t: "'Shared' memory", who: "the threads of ONE block (on one SM)", scope: (sm, b) => sm === 0 && b === 0, note: "The name misleads: it's shared only inside one thread block, a team of threads that runs together on one SM (Unit 5.3 shows how you pick block sizes). Hennessy & Patterson point out that it's really LOCAL to the block." },
-  global: { t: "'Global' memory", who: "EVERY thread on the GPU, plus the CPU by copying", scope: () => true, note: "The big 16 GB memory. This is the one that's truly shared: every thread, in every block, on every SM, can read and write it. Your tensors live here." },
-};
-function ScopeWidget() {
-  const [k, setK] = useState("shared");
-  const s = SPACES[k];
-  return (
-    <div>
-      <Frame>
-        CUDA's memory names are famously confusing. Pick one and see which threads can reach it. The picture shows 2 SMs, each running 2
-        thread blocks of 8 threads.
-      </Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        {Object.entries(SPACES).map(([key, v]) => <Btn key={key} ghost={key !== k} onClick={() => setK(key)}>{v.t}</Btn>)}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {[0, 1].map((sm) => (
-          <div key={sm} style={{ border: `1.5px solid ${C.border}`, borderRadius: 10, padding: 8 }}>
-            <div style={{ color: C.muted, fontSize: 11, marginBottom: 6 }}>SM {sm}</div>
-            {[0, 1].map((b) => (
-              <div key={b} style={{ border: `1px dashed ${C.border}`, borderRadius: 8, padding: 6, marginBottom: 6 }}>
-                <div style={{ color: C.muted, fontSize: 10, marginBottom: 4 }}>block {b}</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 3 }}>
-                  {Array.from({ length: 8 }, (_, th) => {
-                    const on = s.scope(sm, b, th);
-                    return <div key={th} style={{ height: 18, borderRadius: 3, background: on ? C.green : C.card, border: `1px solid ${on ? C.green : C.border}` }} />;
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.green }}>{s.t}: visible to {s.who}.</b> {s.note}
-      </div>
-      <Insight color={C.purple} title="'Shared' = shared by one block. 'Global' = shared by everyone.">
-        A handy memory trick: global is like the college library (anyone can go there, but it's a walk); shared memory is your department's
-        cupboard (only your team, but right next to you); registers are your own pocket.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 4: Coalescing + bandwidth ──
-function CoalesceWidget() {
-  const [pattern, setPattern] = useState("seq");
-  const [mb, setMb] = useState(400);
-  const addr = Array.from({ length: 32 }, (_, i) => (pattern === "seq" ? i : pattern === "stride" ? i * 32 : [5, 900, 33, 412, 77, 640, 2, 1000, 300, 150, 820, 64, 501, 13, 700, 222, 999, 45, 380, 610, 91, 870, 256, 128, 777, 18, 560, 430, 330, 950, 60, 705][i]));
-  const segs = new Set(addr.map((a) => Math.floor(a / 32)));   // 32 floats = one 128-byte segment
-  const eff = 1 / segs.size;
-  return (
-    <div>
-      <Frame>
-        Memory delivers data in chunks of <b style={{ color: C.text }}>128 bytes</b> (32 floats). When the 32 threads of a warp read 32 neighbouring
-        floats, one chunk serves them all. That's <b style={{ color: C.green }}>coalesced</b>. If their addresses are far apart, the memory must fetch
-        many chunks and throw most of each away. Choose how the warp reads.
-      </Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-        <Btn ghost={pattern !== "seq"} onClick={() => setPattern("seq")} color={C.green}>x[i]: neighbours</Btn>
-        <Btn ghost={pattern !== "stride"} onClick={() => setPattern("stride")} color={C.red}>x[i * 32]: strided</Btn>
-        <Btn ghost={pattern !== "rand"} onClick={() => setPattern("rand")} color={C.orange}>random</Btn>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 1 }}>
-        {Array.from({ length: 32 }, (_, s) => <div key={s} style={{ height: 16, background: segs.has(s) ? (pattern === "seq" ? C.green : C.red) : C.card, border: `1px solid ${C.border}` }} />)}
-      </div>
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>Each box = one 128-byte chunk of memory (32 shown). Coloured = fetched for this one warp read.</div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="CHUNKS FETCHED" value={segs.size} color={segs.size === 1 ? C.green : C.red} />
-        <Stat label="USEFUL BYTES" value={`${(eff * 100).toFixed(0)}%`} color={segs.size === 1 ? C.green : C.red} />
-      </div>
-      <div style={{ marginTop: 16, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
-        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Bandwidth calculator</div>
-        <Slider label={<>Data to read + write = <b style={{ color: C.teal }}>{mb} MB</b></>} value={mb} min={1} max={4000} onChange={setMb} color={C.teal} />
-        <div style={{ fontFamily: "monospace", fontSize: 13, color: C.text }}>
-          time ≥ {mb} MB ÷ 320 GB/s = <b style={{ color: C.green }}>{((mb / 320000) * 1000).toFixed(2)} ms</b> (coalesced) · ≈ <b style={{ color: C.red }}>{((mb / 320000) * 1000 / Math.max(eff, 1 / 32)).toFixed(1)} ms</b> ({pattern === "seq" ? "same" : "this pattern"})
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ background: C.card, borderRadius: 10, padding: 10, border: `1.5px solid ${C.orange}` }}>
+          <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, marginBottom: 6 }}>🧠 CPU (host)</div>
+          {CMDS.map((c, i) => <div key={i} style={{ fontFamily: "monospace", fontSize: 11.5, color: i < issued ? C.text : C.border }}>{i < issued ? "✓ queued: " : "   "}{c}</div>)}
+          <div style={{ fontFamily: "monospace", fontSize: 11.5, marginTop: 6, color: cpuWaiting ? C.red : t >= 3 ? C.green : C.border }}>{t < 3 ? "" : cpuWaiting ? "⏳ print(result) → must WAIT" : "✓ print(result)"}</div>
+        </div>
+        <div style={{ background: C.card, borderRadius: 10, padding: 10, border: `1.5px solid ${C.green}` }}>
+          <div style={{ color: C.green, fontWeight: 700, fontSize: 12, marginBottom: 6 }}>⚡ GPU queue (stream)</div>
+          {CMDS.map((c, i) => <div key={i} style={{ fontFamily: "monospace", fontSize: 11.5, color: i < done ? C.green : i === done && i < issued ? C.yellow : i < issued ? C.text : C.border }}>{i < done ? "✓ done:    " : i === done && i < issued ? "▶ running: " : i < issued ? "  waiting: " : "   "}{c}</div>)}
         </div>
       </div>
-      <Insight color={C.green} title="Neighbouring threads should read neighbouring addresses.">
-        Simple operations like ReLU or vector add are limited by memory, not maths, so their speed is set by bytes ÷ bandwidth, and only if access is
-        coalesced. PyTorch's built-in operations are written to coalesce.
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <Btn onClick={() => setT((v) => Math.min(8, v + 1))}>Time ▶ ({t})</Btn>
+        <Btn ghost onClick={() => setT(0)}>↺ Reset</Btn>
+      </div>
+      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8, lineHeight: 1.6 }}>
+        {t === 0 ? "Press Time." : t < 3 ? "The CPU races ahead, queuing commands much faster than the GPU runs them." : cpuWaiting ? "The CPU needs an actual VALUE (to print it), so it has to wait for the queue to finish: a synchronisation point." : "Everything finished; the CPU got its value."}
+      </div>
+      <Insight color={C.accent} title="Launches return immediately. The CPU only waits when it needs a result.">
+        Like the interrupt-driven I/O in COA (Hamacher Ch 3): start the device, carry on with other work, and get notified when it's done,
+        instead of standing over the device.
       </Insight>
-      <LabCard part="D" title="Measure your GPU's memory bandwidth"
-        what="Copy a large tensor inside the GPU and compute GB/s, then time a kernel reading with stride 1 vs stride 32."
-        expect="roughly 200–250 GB/s for the copy (a good fraction of the 320 GB/s peak) and the strided read running several times slower." />
+    </div>
+  );
+}
+
+// ── Section 3: Overlap is the payoff ──
+function OverlapWidget() {
+  const [mode, setMode] = useState("serial");
+  const steps = 5, prep = 6, gpu = 8;
+  const serial = steps * (prep + gpu);
+  const overlap = prep + steps * Math.max(prep, gpu);
+  const T = mode === "serial" ? serial : overlap;
+  const X = (v) => (v / serial) * 100;
+  return (
+    <div>
+      <Frame>
+        Because launches don't wait, the CPU can prepare the <b style={{ color: C.orange }}>next batch</b> (load and decode images) while the GPU is still training on the
+        <b style={{ color: C.green }}> current</b> one. Compare doing them one after the other with overlapping them.
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        <Btn ghost={mode !== "serial"} onClick={() => setMode("serial")} color={C.red}>One after the other</Btn>
+        <Btn ghost={mode !== "overlap"} onClick={() => setMode("overlap")} color={C.green}>Overlapped</Btn>
+      </div>
+      {["CPU", "GPU"].map((lane) => (
+        <div key={lane} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <div style={{ width: 40, color: lane === "CPU" ? C.orange : C.green, fontSize: 12, fontWeight: 700 }}>{lane}</div>
+          <div style={{ position: "relative", flex: 1, height: 26, background: C.card, borderRadius: 4 }}>
+            {Array.from({ length: steps }, (_, k) => {
+              const start = mode === "serial" ? k * (prep + gpu) + (lane === "GPU" ? prep : 0) : lane === "CPU" ? k * Math.max(prep, gpu) : prep + k * Math.max(prep, gpu);
+              const len = lane === "CPU" ? prep : gpu;
+              return <div key={k} style={{ position: "absolute", left: `${X(start)}%`, width: `${X(len)}%`, top: 2, bottom: 2, background: lane === "CPU" ? C.orange : C.green, borderRadius: 3, fontSize: 9.5, color: "#0D1117", display: "flex", alignItems: "center", justifyContent: "center" }}>{lane === "CPU" ? `prep ${k + 1}` : `train ${k + 1}`}</div>;
+            })}
+          </div>
+        </div>
+      ))}
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="TOTAL TIME (5 BATCHES)" value={`${T} units`} color={mode === "serial" ? C.red : C.green} />
+        <Stat label="GPU BUSY" value={`${Math.round((steps * gpu / T) * 100)}%`} color={mode === "serial" ? C.red : C.green} />
+      </div>
+      <Insight color={C.green} title="Overlap turns 'prep + train' into 'whichever is slower'.">
+        This is what PyTorch's DataLoader does with <code>num_workers</code> (CPU processes preparing batches in the background) and
+        <code> pin_memory=True</code> + <code>.to("cuda", non_blocking=True)</code> (copies that run while the GPU computes). It's Amdahl's law (Unit 2.4)
+        fought with parallelism.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 4: Hidden synchronisation points ──
+const LOOP = [
+  { l: "for images, labels in loader:", sync: false, why: "Fine: loading happens on CPU workers." },
+  { l: "    images = images.to('cuda', non_blocking=True)", sync: false, why: "With pinned memory, this copy is queued and doesn't make the CPU wait." },
+  { l: "    loss = loss_fn(model(images), labels)", sync: false, why: "Kernel launches: queued, no waiting." },
+  { l: "    loss.backward(); opt.step(); opt.zero_grad()", sync: false, why: "More launches: queued." },
+  { l: "    total += loss.item()", sync: true, why: "SYNC! .item() needs the actual number on the CPU, so the CPU waits for ALL queued GPU work, every iteration." },
+  { l: "    if torch.isnan(loss):", sync: true, why: "SYNC! A Python 'if' needs a real True/False, so the GPU result must be fetched." },
+  { l: "    print(loss)", sync: true, why: "SYNC! Printing a GPU tensor copies it to the CPU." },
+  { l: "    preds.append(model(images).cpu())", sync: true, why: "SYNC! .cpu() is a copy out, and it must wait for the result." },
+];
+function HiddenSyncWidget() {
+  const [pick, setPick] = useState({});
+  const found = LOOP.filter((x, i) => pick[i] && x.sync).length;
+  return (
+    <div>
+      <Frame>
+        Some innocent-looking lines force the CPU to stop and wait for the GPU, which kills the overlap. Click every line you think causes a
+        synchronisation in this training loop.
+      </Frame>
+      <pre style={{ margin: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 11.5, lineHeight: 1.6 }}>
+        {LOOP.map((x, i) => {
+          const p = pick[i];
+          return (
+            <div key={i} onClick={() => setPick((s) => ({ ...s, [i]: true }))} style={{ cursor: "pointer", padding: "2px 6px", borderRadius: 4, color: C.text, background: p ? (x.sync ? C.red + "22" : C.green + "18") : "transparent", borderLeft: `3px solid ${p ? (x.sync ? C.red : C.green) : "transparent"}` }}>
+              {x.l}
+              {p && <div style={{ fontFamily: "'Segoe UI', sans-serif", fontSize: 11.5, color: x.sync ? C.red : C.green }}>{x.why}</div>}
+            </div>
+          );
+        })}
+      </pre>
+      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>Sync points found: {found} / 4</div>
+      <Insight color={C.red} title="Anything that needs a GPU value on the CPU forces a wait: .item(), .cpu(), print, Python if on a tensor.">
+        They're fine occasionally (say every 100 steps for logging), but harmful in every iteration. The standard fix: accumulate on the GPU, and fetch
+        once at the end of the epoch.
+      </Insight>
+      <LabCard part="D" title="Wrong vs right timing, and the cost of .item()"
+        what="Time a matrix multiply with and without torch.cuda.synchronize(), then train a small model for an epoch calling loss.item() every step vs only at the end, and compare."
+        expect="an impossibly fast unsynchronised time, a realistic synchronised one, and the every-step .item() version measurably slower." />
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "Without any data reuse, the T4 (320 GB/s, 8.1 TFLOPS) reaches about what share of its peak?", options: ["100%", "50%", "10%", "1%"], answer: 3, explain: "320 GB/s ÷ 8 bytes per FMA × 2 FLOPs ≈ 80 GFLOPS: about 1% of 8.1 TFLOPS. Reuse is essential." },
-  { q: "CUDA 'shared memory' is visible to…", options: ["Every thread on the GPU", "The threads of one thread block, on one SM", "Only the CPU", "One thread"], answer: 1, explain: "Despite the name, it's private to one block. 'Global memory' is the one everyone shares." },
-  { q: "Which access pattern is coalesced?", options: ["Thread i reads x[i]", "Thread i reads x[i * 32]", "Thread i reads a random element", "Thread i reads x[1000 − 37·i]"], answer: 0, explain: "Neighbouring threads reading neighbouring addresses fall in the same 128-byte chunk, so one fetch serves the whole warp." },
-  { q: "A ReLU kernel reads 200 MB and writes 200 MB on a 320 GB/s GPU. Its best possible time is about…", options: ["0.125 ms", "1.25 ms", "12.5 ms", "125 ms"], answer: 1, explain: "400 MB ÷ 320 GB/s = 1.25 ms. ReLU barely does any maths; memory sets its speed." },
+  { q: "Why did timing c = a @ b without synchronisation give an impossibly small number?", options: ["The GPU cached the result", "The launch returns immediately; the timer stopped before the GPU finished", "Matrix multiplication is free", "The CPU did the work"], answer: 1, explain: "GPU launches are asynchronous. You must call torch.cuda.synchronize() before reading the clock." },
+  { q: "Which line forces the CPU to wait for the GPU?", options: ["y = model(x)", "loss.backward()", "value = loss.item()", "x = x.to('cuda', non_blocking=True)"], answer: 2, explain: ".item() returns a Python number, which requires the GPU's result to be finished and copied over." },
+  { q: "CPU prep takes 6 ms per batch and GPU training 8 ms. Overlapped, 100 batches take about…", options: ["1,400 ms", "800 ms", "600 ms", "200 ms"], answer: 1, explain: "Overlapped, each step costs max(6, 8) = 8 ms: about 800 ms (plus one initial prep), instead of 1,400 ms in sequence." },
+  { q: "The asynchronous GPU queue is most like which COA idea?", options: ["Polling a device in a loop", "Interrupt-driven I/O: start the device, carry on, get notified when it's done", "Microprogrammed control", "Direct-mapped cache"], answer: 1, explain: "Like interrupt-driven I/O, the CPU doesn't stand and wait. It issues work and continues, synchronising only when it needs the result." },
 ];
 const RESULT = {
-  perfect: "Perfect! You understand what really limits GPU speed.",
-  good: "Good. Replay 'Feeding the Beast' and see how much reuse is needed.",
-  low: "Revisit 'The Hierarchy' and 'Coalescing': bytes, not FLOPs, are often the limit.",
+  perfect: "Perfect! You won't be fooled by GPU timings.",
+  good: "Good. Replay 'Hidden Sync Points' and find all four.",
+  low: "Revisit 'The Command Queue': launch and carry on, wait only when needed.",
   done: "Unit 4.4 Complete!",
-  body: "You can map the GPU memory hierarchy, explain CUDA's memory spaces, coalescing, and bandwidth-limited speed.",
-  next: "Next up: Unit 4.C — Capstone: Map a Job onto a GPU.",
-  teaser: "Take a real AI job and plan it on the T4: threads, warps, SMs, bytes, and time.",
+  body: "You can explain asynchronous launches, streams, synchronisation, overlap, and hidden sync points.",
+  next: "Next up: Unit 4.C — Capstone: Where Did the Time Go?",
+  teaser: "A team's GPU training is mysteriously slow. Profile it, find the culprits, fix them.",
 };
 
 const UNIT_WORDS = [
-  ["GB/s / TB/s", "gigabytes / terabytes per second", "Bandwidth: how many bytes per second memory can deliver.", "from Unit 3.C"],
-  ["GDDR6", "Graphics Double Data Rate 6", "The GPU's global memory.", "from Unit 4.1"],
-  ["coalesced", "combined", "A warp's 32 reads merged into as few memory chunks as possible.", "new here"],
-  ["thread block", "a team of threads on one SM", "Threads that run together and share 'shared memory'. Chosen by the programmer in Unit 5.3.", "new here"],
-  ["PCIe", "Peripheral Component Interconnect Express", "The CPU–GPU bus.", "from Unit 3.C"],
+  ["async", "asynchronous", "Doesn't wait for the work to finish before returning.", "new here"],
+  ["stream", "a CUDA command queue", "GPU commands in one stream run in order; the CPU keeps going.", "new here"],
+  ["sync", "synchronise", "Make the CPU wait until the GPU's queued work is finished.", "new here"],
+  ["non_blocking", "a PyTorch copy option", "Lets a copy from pinned memory run without making the CPU wait.", "new here"],
+  ["DataLoader", "PyTorch's batch loader", "Prepares batches, optionally with background CPU workers.", "from Unit 2.4"],
 ];
 
 // ── Quiz ──
@@ -344,10 +338,10 @@ function TextbookNote() {
 
 export default function Unit4_4({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "Feeding the Beast" },
-    { id: "s1", label: "The Hierarchy" },
-    { id: "s2", label: "Who Shares What" },
-    { id: "s3", label: "Coalescing" },
+    { id: "s0", label: "The Impossible Timing" },
+    { id: "s1", label: "The Command Queue" },
+    { id: "s2", label: "Overlap" },
+    { id: "s3", label: "Hidden Sync Points" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -357,10 +351,10 @@ export default function Unit4_4({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🚰 Feeding the Beast — FLOPS need bytes</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🏔️ The Memory Hierarchy — registers to PCIe</h3><HierarchyWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🗝️ Who Shares What — 'shared' vs 'global'</h3><ScopeWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧲 Coalescing — read like a warp</h3><CoalesceWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏱️ The Impossible Timing — 70× faster than peak?</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📬 The Command Queue — launch and carry on</h3><QueueWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔀 Overlap — prepare the next batch while the GPU trains</h3><OverlapWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🕵️ Hidden Sync Points — lines that make the CPU wait</h3><HiddenSyncWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 4.4.</p>
@@ -371,10 +365,10 @@ export default function Unit4_4({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🚰</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📬</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 4 › UNIT 4.4</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>GPU Memory & Bandwidth</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Async Launch & Synchronization</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

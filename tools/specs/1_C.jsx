@@ -1,42 +1,29 @@
 //@@META
-{"unit": "1.C", "module": 1, "title": "Capstone: Train a Tiny Network", "icon": "🏆", "lab": "Lab01_AI_Basics.ipynb", "labNo": 1}
+{"unit": "1.C", "module": 1, "title": "Capstone: The Compute Bill", "icon": "🏆", "lab": "Lab1_AI_Is_Hungry.ipynb", "labNo": "1"}
 //@@WIDGETS
 
-// [hours, attendance %, passed]
-const CLASS = [
-  [0.5, 40, 0], [1.0, 65, 0], [1.5, 85, 0], [2.0, 95, 0], [2.5, 60, 0], [3.0, 45, 0], [3.0, 80, 1],
-  [3.5, 70, 1], [4.0, 50, 1], [4.5, 35, 0], [5.0, 40, 1], [5.5, 75, 1], [6.0, 55, 1], [2.5, 92, 1],
-  [1.0, 98, 0], [4.0, 90, 1], [2.0, 55, 0], [5.0, 25, 0], [3.5, 40, 0], [1.5, 50, 0],
-];
-const sig = (z) => 1 / (1 + Math.exp(-z));
-function epochStep({ w1, w2, b }, lr) {
-  let g1 = 0, g2 = 0, gb = 0, loss = 0, right = 0;
-  for (const [h, a, y] of CLASS) {
-    const x1 = h / 6, x2 = a / 100, p = sig(w1 * x1 + w2 * x2 + b);
-    g1 += (p - y) * x1; g2 += (p - y) * x2; gb += p - y;
-    loss += -(y * Math.log(p + 1e-9) + (1 - y) * Math.log(1 - p + 1e-9));
-    if ((p >= 0.5 ? 1 : 0) === y) right++;
-  }
-  const n = CLASS.length;
-  return { next: { w1: w1 - lr * g1 / n, w2: w2 - lr * g2 / n, b: b - lr * gb / n }, loss: loss / n, right };
-}
+const fmt = (x) => {
+  const u = [["", 1], [" thousand", 1e3], [" million", 1e6], [" billion", 1e9], [" trillion", 1e12], [" quadrillion", 1e15], [" quintillion", 1e18]];
+  let k = 0; while (k < u.length - 1 && x >= u[k + 1][1]) k++;
+  return `${(x / u[k][1]).toFixed(x / u[k][1] < 10 ? 1 : 0)}${u[k][0]}`;
+};
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Students become numbers: hours / 6 and attendance / 100", "Unit 1.2"],
-  ["A neuron with 2 weights + a bias, sigmoid activation", "Unit 1.3"],
-  ["A loss that measures how wrong the predictions are", "Unit 1.4"],
-  ["Gradient descent to nudge the weights, epoch after epoch", "Unit 1.4"],
-  ["All 20 students at once: X @ w, a matrix multiply", "Unit 1.5"],
+  ["FLOPs per token ≈ 2 × parameters", "Unit 1.1"],
+  ["A token is about ¾ of a word", "Unit 1.1"],
+  ["time = work (FLOPs) ÷ speed (FLOPS)", "Unit 1.1"],
+  ["Inference only: no backward pass needed to answer questions", "Unit 1.2"],
+  ["Different students' questions are independent, so they can be answered in parallel", "Unit 1.3"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
   return (
     <div>
       <Frame>
-        Your college wants an early-warning system: from a student's <b style={{ color: C.text }}>daily study hours</b> and
-        <b style={{ color: C.text }}> attendance</b>, predict PASS or FAIL so that teachers can help in time. You have last year's records for
-        20 students. Nobody gives you the rule; your model must learn it. Tick each tool once you've found where you learned it.
+        Your principal wants a <b style={{ color: C.text }}>College Helpdesk Bot</b>: students ask about timetables, fees and exams, and an AI model
+        answers. Before buying anything, she asks you: <i>how much computing does this need each day, which machine can handle it, and what will
+        it cost?</i> Tick each tool once you've found where you learned it.
       </Frame>
       {TOOLS.map(([t, u], i) => {
         const on = ticks.includes(i);
@@ -48,9 +35,8 @@ function MissionWidget() {
           </div>
         );
       })}
-      <Insight color={C.green} title="Every piece is something you already know.">
-        This capstone just connects them: numbers in → neuron → loss → gradient descent → a trained model. That chain is the whole of
-        machine learning, at its smallest.
+      <Insight color={C.green} title="An engineer's estimate needs no special software, just these five facts and a calculator.">
+        Real AI teams do exactly this "back-of-the-envelope" maths before spending lakhs of rupees on hardware.
       </Insight>
     </div>
   );
@@ -58,185 +44,163 @@ function MissionWidget() {
 
 // ── Section 2: Build in Steps ──
 const VERSIONS = [
-  { tag: "v1", title: "Forward pass only", color: C.teal, why: "First make the model produce SOME prediction. With all weights at 0, the sigmoid says 0.5 (\"no idea\") for everyone. That's a model, just an untrained one.", code: `import numpy as np
-hours  = np.array([0.5, 1.0, 1.5, ...])   # 20 students
-att    = np.array([40, 65, 85, ...])
-passed = np.array([0, 0, 0, ...])
+  { tag: "v1", title: "Work for ONE answer", color: C.teal, why: "Start small: how many FLOPs does a single answer take? Model size × 2 × tokens.", code: `params = 7e9                 # a 7-billion-parameter model
+words_per_answer = 200
+tokens = words_per_answer / 0.75          # ≈ 267 tokens
 
-X = np.column_stack([hours / 6, att / 100])   # Unit 1.2: scale to 0..1
-w = np.zeros(2); b = 0.0
+flops_per_answer = 2 * params * tokens
+print(f"{flops_per_answer:.2e} FLOPs per answer")   # ≈ 3.7e12` },
+  { tag: "v2", title: "+ a whole day", color: C.yellow, why: "One answer is fine, but the college has thousands of students. Multiply by the number of questions per day.", code: `students = 5000
+questions_each = 4
+answers_per_day = students * questions_each      # 20,000
 
-def sigmoid(z):
-    return 1 / (1 + np.exp(-z))
+flops_per_day = flops_per_answer * answers_per_day
+print(f"{flops_per_day:.2e} FLOPs per day")       # ≈ 7.5e16` },
+  { tag: "v3", title: "+ machines, time & money", color: C.green, why: "Now divide by each machine's speed. Real programs reach only part of the peak, so include a utilisation factor. Then turn GPU-hours into rupees.", code: `machines = {                      # peak FLOPS (approximate)
+    "laptop CPU": 0.2e12,
+    "T4 GPU (FP16)": 65e12,
+}
+utilisation = 0.3                 # real code rarely hits peak
+rupees_per_gpu_hour = 35          # assumed cloud price
 
-p = sigmoid(X @ w + b)     # Units 1.3 + 1.5: 20 neurons-worth at once
-print(p)                   # all 0.5 — the model knows nothing yet` },
-  { tag: "v2", title: "+ measure the loss", color: C.yellow, why: "Before improving, we need a score for 'how wrong'. For YES/NO answers we use cross-entropy loss: it punishes a confident wrong answer very hard. At p = 0.5 for everyone, the loss is about 0.69.", code: `# ...v1 code...
-loss = -np.mean(passed * np.log(p) + (1 - passed) * np.log(1 - p))
-print(loss)                # 0.693 — the 'knows nothing' loss` },
-  { tag: "v3", title: "+ the training loop", color: C.green, why: "Now the loop from Unit 1.4. For a sigmoid neuron with cross-entropy, the gradient works out to a neat formula: (prediction − answer) × input. Repeat 500 times and the weights find the rule.", code: `lr = 2.0
-for epoch in range(500):
-    p = sigmoid(X @ w + b)                      # 1. predict
-    loss = -np.mean(passed*np.log(p) + (1-passed)*np.log(1-p))  # 2. loss
-    grad_w = X.T @ (p - passed) / len(passed)   # 3. gradients
-    grad_b = np.mean(p - passed)
-    w -= lr * grad_w                            # 4. nudge
-    b -= lr * grad_b
-    if epoch % 100 == 0:
-        print(epoch, round(loss, 3))
+for name, peak in machines.items():
+    hours = flops_per_day / (peak * utilisation) / 3600
+    print(f"{name:14s}: {hours:8.1f} hours of work per day")
 
-accuracy = np.mean((p >= 0.5) == passed)
-print("accuracy:", accuracy)` },
+t4_hours = flops_per_day / (65e12 * utilisation) / 3600
+print(f"Cloud cost ≈ ₹{t4_hours * rupees_per_gpu_hour:.0f} per day")` },
 ];
 function BuildWidget() {
   const [v, setV] = useState(0);
   const cur = VERSIONS[v];
   return (
     <div>
-      <Frame>Real programmers grow a program one idea at a time. Click through the three versions; each adds ONE idea.</Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+      <Frame>Grow the estimator one idea at a time. Each version adds ONE idea.</Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {VERSIONS.map((x, i) => <Btn key={x.tag} ghost={i !== v} onClick={() => setV(i)} color={x.color}>{x.tag}: {x.title}</Btn>)}
       </div>
       <div style={{ padding: "10px 14px", borderRadius: 8, background: cur.color + "14", border: `1px solid ${cur.color}55`, color: C.muted, fontSize: 13, lineHeight: 1.7, marginBottom: 12 }}>
         <b style={{ color: cur.color }}>{cur.tag}: </b>{cur.why}
       </div>
       <Code color={cur.color}>{cur.code}</Code>
-      <Insight title="Predict, measure, correct: three versions, three ideas.">
-        Version 3 is a complete machine-learning program. It's under 20 lines, because the hard part is ideas, not code.
+      <Insight title="One answer → one day → machines and money.">
+        Each version answers a bigger question using the previous one. That's how estimates, and programs, should grow.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Play It — train live ──
+// ── Section 3: Play It — the estimator ──
+const MACH = [
+  { m: "Laptop CPU (NumPy)", f: 2e11 },
+  { m: "NVIDIA T4, FP32", f: 8.1e12 },
+  { m: "NVIDIA T4, FP16 Tensor Cores", f: 6.5e13 },
+  { m: "NVIDIA A100, FP16 Tensor Cores", f: 3.12e14 },
+];
 function PlayWidget() {
-  const [m, setM] = useState({ w1: 0, w2: 0, b: 0 });
-  const [hist, setHist] = useState([]);
-  const [lr, setLr] = useState(2);
-  const stat = epochStep(m, lr);
-  const train = (k) => {
-    let cur = m; const h = [];
-    for (let i = 0; i < k; i++) { const r = epochStep(cur, lr); h.push(r.loss); cur = r.next; }
-    setM(cur); setHist((p) => [...p, ...h].slice(-600));
-  };
-  const reset = () => { setM({ w1: 0, w2: 0, b: 0 }); setHist([]); };
-  const PX = (h) => 30 + (h / 6.5) * 300, PY = (a) => 200 - ((a - 20) / 85) * 185;
-  // decision boundary: w1*h/6 + w2*a/100 + b = 0 → a = -(w1*h/6 + b) * 100 / w2
-  let line = null;
-  if (Math.abs(m.w2) > 1e-6) {
-    const aAt = (h) => -(m.w1 * h / 6 + m.b) * 100 / m.w2;
-    line = [PX(0), PY(aAt(0)), PX(6.5), PY(aAt(6.5))];
-  }
-  const maxL = Math.max(0.7, ...hist);
+  const [students, setStudents] = useState(5000);
+  const [q, setQ] = useState(4);
+  const [words, setWords] = useState(200);
+  const [params, setParams] = useState(7);
+  const [util, setUtil] = useState(30);
+  const [rate, setRate] = useState(35);
+  const perDay = 2 * params * 1e9 * (words / 0.75) * students * q;
   return (
     <div>
-      <Frame>
-        Press Train and watch gradient descent work. The blue line is where the model switches from FAIL to PASS. Each press runs epochs
-        on all 20 students. Try a tiny learning rate, then a huge one.
-      </Frame>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <svg viewBox="0 0 340 215" style={{ flex: 1.4, minWidth: 260, background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-          <defs><clipPath id="plot"><rect x="30" y="10" width="300" height="190" /></clipPath></defs>
-          <line x1="30" y1="200" x2="335" y2="200" stroke={C.border} /><line x1="30" y1="10" x2="30" y2="200" stroke={C.border} />
-          <text x="300" y="212" fill={C.muted} fontSize="9">hours →</text><text x="2" y="14" fill={C.muted} fontSize="9">att%</text>
-          {line && <line x1={line[0]} y1={line[1]} x2={line[2]} y2={line[3]} stroke={C.accent} strokeWidth="2.5" clipPath="url(#plot)" />}
-          {CLASS.map(([h, a, y], i) => {
-            const p = sig(m.w1 * h / 6 + m.w2 * a / 100 + m.b), ok = (p >= 0.5 ? 1 : 0) === y;
-            return <g key={i}><circle cx={PX(h)} cy={PY(a)} r="6" fill={y ? C.green : C.red} />{!ok && <circle cx={PX(h)} cy={PY(a)} r="9.5" fill="none" stroke={C.yellow} strokeWidth="1.5" />}</g>;
-          })}
-        </svg>
-        <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: 8 }}>
-          <Stat label="EPOCHS RUN" value={hist.length} color={C.purple} />
-          <Stat label="LOSS" value={stat.loss.toFixed(3)} color={C.yellow} />
-          <Stat label="ACCURACY" value={`${stat.right} / 20`} color={stat.right >= 19 ? C.green : C.orange} />
-          <div style={{ fontFamily: "monospace", fontSize: 11.5, color: C.muted }}>w₁={m.w1.toFixed(2)} w₂={m.w2.toFixed(2)} b={m.b.toFixed(2)}</div>
-        </div>
+      <Frame>Your estimator, live. Change the college and the model, and see whether each machine can keep up within 24 hours, and at what cost.</Frame>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <Slider label={<>Students = <b style={{ color: C.teal }}>{students.toLocaleString("en-IN")}</b></>} value={students} min={500} max={50000} step={500} onChange={setStudents} color={C.teal} />
+        <Slider label={<>Questions per student per day = <b style={{ color: C.teal }}>{q}</b></>} value={q} min={1} max={20} onChange={setQ} color={C.teal} />
+        <Slider label={<>Words per answer = <b style={{ color: C.purple }}>{words}</b></>} value={words} min={20} max={1000} step={10} onChange={setWords} color={C.purple} />
+        <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} B</b> parameters</>} value={params} min={1} max={70} onChange={setParams} />
+        <Slider label={<>Utilisation = <b style={{ color: C.yellow }}>{util}%</b> of peak</>} value={util} min={5} max={80} step={5} onChange={setUtil} color={C.yellow} />
+        <Slider label={<>Cloud price = <b style={{ color: C.green }}>₹{rate}</b> per GPU-hour</>} value={rate} min={10} max={300} step={5} onChange={setRate} color={C.green} />
       </div>
-      <svg viewBox="0 0 340 60" style={{ width: "100%", marginTop: 8, background: C.card, borderRadius: 8, border: `1px solid ${C.border}` }}>
-        <text x="6" y="12" fill={C.yellow} fontSize="9">loss over epochs</text>
-        {hist.length > 1 && <polyline fill="none" stroke={C.yellow} strokeWidth="1.5" points={hist.map((l, i) => `${10 + (i / Math.max(1, hist.length - 1)) * 320},${55 - (Math.min(l, maxL) / maxL) * 40}`).join(" ")} />}
-      </svg>
-      <Slider label={<>learning rate = <b style={{ color: C.orange }}>{lr}</b></>} value={lr} min={0.1} max={30} step={0.1} onChange={setLr} color={C.orange} />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Btn onClick={() => train(1)}>Train 1 epoch</Btn>
-        <Btn onClick={() => train(50)} color={C.green}>Train 50 epochs</Btn>
-        <Btn onClick={() => train(500)} color={C.purple}>Train 500</Btn>
-        <Btn ghost onClick={reset}>↺ Reset</Btn>
+      <Stat label="WORK PER DAY" value={`${fmt(perDay)} FLOPs`} color={C.orange} />
+      <div style={{ marginTop: 10 }}>
+        {MACH.map((x) => {
+          const hrs = perDay / (x.f * util / 100) / 3600;
+          const n = Math.ceil(hrs / 24);
+          return (
+            <div key={x.m} style={{ display: "flex", gap: 8, alignItems: "center", background: C.card, borderRadius: 8, padding: "8px 12px", marginBottom: 6, border: `1.5px solid ${hrs <= 24 ? C.green : C.red}` }}>
+              <div style={{ flex: 1, color: C.text, fontSize: 13 }}>{x.m}</div>
+              <div style={{ fontFamily: "monospace", fontSize: 12.5, color: hrs <= 24 ? C.green : C.red }}>{hrs < 1 ? `${(hrs * 60).toFixed(0)} min` : `${hrs.toFixed(1)} h`} of work/day</div>
+              <div style={{ fontFamily: "monospace", fontSize: 12, color: C.muted, minWidth: 120, textAlign: "right" }}>{hrs <= 24 ? "✓ 1 machine" : `needs ${n.toLocaleString("en-IN")} machines`}</div>
+            </div>
+          );
+        })}
       </div>
-      <Insight color={C.green} title="You just watched a machine learn.">
-        Nobody told it "hours + attendance". It found the boundary by itself, from data, by gradient descent. One student stays wrong
-        however long you train: real data is messy (remember VIJAY and NISHA?). A good model is right most of the time, not always.
+      <Stat label="T4 CLOUD COST PER DAY (FP16)" value={`₹${Math.round(perDay / (6.5e13 * util / 100) / 3600 * rate).toLocaleString("en-IN")}`} color={C.green} />
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Speeds are approximate published peaks; the price is an assumption, so check current rates. Unit 5.3 shows why chatbot answers often run slower than this FLOPs estimate (memory speed becomes the limit).</div>
+      <Insight color={C.green} title="The laptop CPU can't keep up with even a small college; a single GPU usually can.">
+        Same arithmetic, same model. The difference is entirely how many operations the machine does per second. Module 2 opens up that
+        difference: CPU vs GPU.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: Full code + the real lab ──
+// ── Section 4: Full code + lab ──
 function CodeWidget() {
   return (
     <div>
-      <Frame>
-        Here is the complete program. It runs as-is in any Python with NumPy. In Lab 1 Part F you'll go one big step further: a real network
-        recognising handwritten digits, trained with PyTorch, timed on the CPU.
-      </Frame>
-      <Code color={C.green} title="🧠 tiny_network.py — the whole capstone">{`import numpy as np
+      <Frame>The complete estimator, runnable in any Python. In Lab 1 Part D you'll replace the guessed "laptop CPU" speed with one you measure yourself.</Frame>
+      <Code color={C.green} title="🧾 compute_bill.py">{`params            = 7e9      # model size
+students          = 5000
+questions_each    = 4
+words_per_answer  = 200
+utilisation       = 0.3
+rupees_per_hour   = 35       # assumption: check current cloud prices
 
-hours  = np.array([0.5,1.0,1.5,2.0,2.5,3.0,3.0,3.5,4.0,4.5,5.0,5.5,6.0,2.5,1.0,4.0,2.0,5.0,3.5,1.5])
-att    = np.array([40, 65, 85, 95, 60, 45, 80, 70, 50, 35, 40, 75, 55, 92, 98, 90, 55, 25, 40, 50])
-passed = np.array([0,  0,  0,  0,  0,  0,  1,  1,  1,  0,  1,  1,  1,  1,  0,  1,  0,  0,  0,  0])
+tokens_per_answer = words_per_answer / 0.75
+flops_per_day = 2 * params * tokens_per_answer * students * questions_each
+print(f"Work per day: {flops_per_day:.2e} FLOPs")
 
-X = np.column_stack([hours / 6, att / 100])
-w, b, lr = np.zeros(2), 0.0, 2.0
-sigmoid = lambda z: 1 / (1 + np.exp(-z))
+machines = {"laptop CPU": 0.2e12, "T4 FP32": 8.1e12, "T4 FP16": 65e12, "A100 FP16": 312e12}
+for name, peak in machines.items():
+    hours = flops_per_day / (peak * utilisation) / 3600
+    fits = "fits in a day" if hours <= 24 else f"needs {int(hours // 24) + 1} machines"
+    print(f"{name:10s} {hours:10.1f} h/day   {fits}")
 
-for epoch in range(500):
-    p = sigmoid(X @ w + b)
-    loss = -np.mean(passed*np.log(p + 1e-9) + (1-passed)*np.log(1 - p + 1e-9))
-    w -= lr * X.T @ (p - passed) / len(passed)
-    b -= lr * np.mean(p - passed)
-    if epoch % 100 == 0:
-        print(f"epoch {epoch:3d}  loss {loss:.3f}")
-
-print("weights:", w.round(2), "bias:", round(b, 2))
-print("accuracy:", np.mean((p >= 0.5) == passed))
-print("New student, 4 h & 85%:", "PASS" if sigmoid(np.array([4/6, 0.85]) @ w + b) >= 0.5 else "FAIL")`}</Code>
+t4 = flops_per_day / (65e12 * utilisation) / 3600
+print(f"T4 cloud cost: about ₹{t4 * rupees_per_hour:,.0f} per day")`}</Code>
       <div style={{ marginTop: 12, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) add a third feature, homework submitted (0/1); (2) print the loss every 10 epochs and
-        plot it; (3) try lr = 0.1 and lr = 50 and explain what you see.
+        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) add a peak hour, when 40% of the day's questions arrive in one hour: how many GPUs do you need then?
+        (2) Add a one-time training cost using 6 × parameters × tokens (Unit 1.2).
       </div>
-      <LabCard part="F" title="Your first real AI: handwritten digits on the CPU"
-        what="Load the 60,000-image MNIST dataset, build a 784 → 128 → 10 network in PyTorch, train it for 3 epochs on the CPU, and time each epoch. Write down the time: Module 2 asks where it all goes."
-        expect="accuracy around 95–97%, and each epoch taking several seconds on Colab's CPU." />
-      <Insight color={C.orange} title="Twenty students trained instantly. Sixty thousand images take seconds. A chatbot takes months.">
-        It's the same multiply-add arithmetic at every scale. Module 2 counts exactly how much of it there is, and why an ordinary CPU starts to choke.
+      <LabCard part="D" title="Measure your own CPU's speed"
+        what="Time matrix multiplication in plain Python and in NumPy for growing sizes, plot time against n, and compute your machine's real GFLOPS = 2n³ ÷ time. Then put that number into the estimator."
+        expect="plain Python reaching only tens of MFLOPS, NumPy reaching tens to hundreds of GFLOPS, and time growing about 8× when n doubles." />
+      <Insight color={C.orange} title="Module 1 complete: you can now put a number on AI's hunger.">
+        Next you'll meet the machine built to feed it.
       </Insight>
     </div>
   );
 }
 //@@SECTIONS
-[["The Mission", "🎯 The Mission — an early-warning system for your college", "MissionWidget"],
- ["Build in Steps", "🪜 Build in Steps — predict, measure, correct", "BuildWidget"],
- ["Play It", "▶️ Play It — train the network live", "PlayWidget"],
- ["Full Code & Lab", "📜 Full Code — and your first real AI", "CodeWidget"]]
+[["The Mission", "🎯 The Mission — the College Helpdesk Bot", "MissionWidget"],
+ ["Build in Steps", "🪜 Build in Steps — one answer → one day → money", "BuildWidget"],
+ ["Play It", "▶️ Play It — your compute estimator", "PlayWidget"],
+ ["Full Code & Lab", "📜 Full Code — and measure your own CPU", "CodeWidget"]]
 //@@QUIZ
 const QUESTIONS = [
-  { q: "Before any training (all weights 0), what does the sigmoid neuron predict for every student?", options: ["0", "1", "0.5", "It crashes"], answer: 2, explain: "z = 0 for everyone, and sigmoid(0) = 0.5: 'no idea'. Training moves the weights away from this." },
-  { q: "Why divide hours by 6 and attendance by 100 before training?", options: ["To save memory", "To put both features on a similar 0–1 scale so that one doesn't dominate the steps", "Because PyTorch requires it", "To make the data private"], answer: 1, explain: "Unscaled, attendance (up to 100) would swamp hours (up to 6) and gradient descent would zig-zag. Scaling keeps the steps balanced." },
-  { q: "Training stops improving at 19 / 20 correct. What's the best explanation?", options: ["The code has a bug", "One student doesn't follow the pattern; no straight line can fit everyone", "The learning rate must be 0", "It needs a GPU"], answer: 1, explain: "Real data is noisy. With one neuron the boundary is a straight line, and an 'unusual' student (only 4 hours and 50% attendance, yet passed) falls on the wrong side." },
-  { q: "In the training loop, which line is the 'nudge' step?", options: ["p = sigmoid(X @ w + b)", "loss = -np.mean(...)", "w -= lr * grad_w", "print(epoch, loss)"], answer: 2, explain: "Predict → loss → gradient → nudge. w -= lr × gradient moves the weights a little downhill." },
+  { q: "A 7-billion-parameter model writes a 300-token answer. About how many FLOPs is that?", options: ["2.1 × 10⁹", "4.2 × 10¹²", "2.1 × 10¹²", "7 × 10⁹"], answer: 1, explain: "2 × 7 × 10⁹ × 300 = 4.2 × 10¹² FLOPs." },
+  { q: "A machine's peak is 10 TFLOPS but your program reaches 30% of it. What speed should you use in the estimate?", options: ["10 TFLOPS", "3 TFLOPS", "30 TFLOPS", "0.3 TFLOPS"], answer: 1, explain: "Effective speed = peak × utilisation = 10 × 0.3 = 3 TFLOPS." },
+  { q: "The bot needs 48 GPU-hours of work every day. How many GPUs must run round the clock?", options: ["1", "2", "24", "48"], answer: 1, explain: "Each GPU gives 24 hours a day: 48 ÷ 24 = 2 GPUs. This only works because different students' questions are independent and can run in parallel." },
+  { q: "Why doesn't the helpdesk estimate include a backward pass?", options: ["It's too small to matter", "Answering questions is inference; the backward pass is only needed for training", "GPUs skip it automatically", "Chatbots have no layers"], answer: 1, explain: "Using a trained model is forward-only (Unit 1.2). Backward passes and updates belong to training." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can build and train a neural network from scratch.",
-  good: "Good. Replay 'Play It' and try different learning rates.",
-  low: "Revisit 'Build in Steps': predict, measure, correct is the whole story.",
-  done: "Module 1 Complete! 🧠",
-  body: "You know what AI really is: numbers in, multiply-adds, a loss, and gradient descent to learn the weights.",
-  next: "Next up: Module 2 — Why Is AI So Hungry?",
-  teaser: "Count the multiply-adds in a real model and discover why an ordinary CPU starts gasping for breath.",
+  perfect: "Perfect! You can size an AI deployment like an engineer.",
+  good: "Good. Replay 'Play It' and push the sliders to extremes.",
+  low: "Revisit 'Build in Steps': one answer → one day → machines.",
+  done: "Module 1 Complete! 🍔",
+  body: "You can count AI's work, separate training from inference, spot the parallelism, and estimate time and cost on real machines.",
+  next: "Next up: Module 2 — CPU vs GPU.",
+  teaser: "Why does a chip with thousands of 'slow' cores beat a CPU with a few fast ones? Time to race them.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["BCE", "Binary Cross-Entropy", "The loss for YES/NO predictions. It punishes confident wrong answers hard.", "new here"],
-  ["MNIST", "the handwritten-digit dataset", "60,000 training images of digits, 28 × 28 each.", "from Unit 1.2"],
-  ["CPU", "Central Processing Unit", "The main processor of a computer, the one you studied in COA.", "from COA"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A machine's speed.", "from Unit 1.1"],
+  ["A100", "NVIDIA A100", "A data-centre GPU, much bigger than Colab's T4.", "new here"],
+  ["GPU-hour", "one GPU used for one hour", "How cloud companies charge for GPUs.", "new here"],
 ];

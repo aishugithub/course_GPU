@@ -1,210 +1,211 @@
 //@@META
-{"unit": "2.3", "module": 2, "title": "Every Output Is Independent", "icon": "🧩", "lab": "Lab02_AI_Is_Hungry.ipynb", "labNo": 2}
+{"unit": "2.3", "module": 2, "title": "SIMD → SIMT", "icon": "➗", "lab": "Lab2_CPU_vs_GPU.ipynb", "labNo": "2", "gpu": true}
 //@@WIDGETS
 
-// ── Section 1: Need — one worker, n³ steps ──
-function NeedWidget() {
-  const [n, setN] = useState(1000);
-  const macs = n ** 3;
-  const secs = macs / 1e9;
-  const show = secs < 1 ? `${(secs * 1000).toFixed(1)} ms` : secs < 120 ? `${secs.toFixed(1)} s` : secs < 7200 ? `${(secs / 60).toFixed(0)} min` : `${(secs / 3600).toFixed(1)} hours`;
+// ── Section 1: Flynn's taxonomy ──
+const FLYNN = {
+  SISD: { full: "Single Instruction, Single Data", ex: "The processor you studied in COA: one instruction stream working on one piece of data at a time.", c: C.muted },
+  SIMD: { full: "Single Instruction, Multiple Data", ex: "ONE instruction applied to MANY data items at once: CPU vector units (Hamacher §12.2) and, underneath, GPUs. This is the AI-friendly box.", c: C.green },
+  MISD: { full: "Multiple Instruction, Single Data", ex: "Several instruction streams on the same data. Very rare: used mainly for fault-tolerant systems that run the same input through different checks.", c: C.muted },
+  MIMD: { full: "Multiple Instruction, Multiple Data", ex: "Independent processors, each with its own program and data: multicore CPUs, clusters of computers.", c: C.orange },
+};
+function FlynnWidget() {
+  const [k, setK] = useState("SIMD");
+  const cell = (key) => (
+    <div onClick={() => setK(key)} style={{ cursor: "pointer", background: k === key ? FLYNN[key].c + "33" : C.card, border: `2px solid ${k === key ? FLYNN[key].c : C.border}`, borderRadius: 10, padding: 14, textAlign: "center" }}>
+      <div style={{ color: C.text, fontWeight: 700, fontSize: 18, fontFamily: "monospace" }}>{key}</div>
+      <div style={{ color: C.muted, fontSize: 11 }}>{FLYNN[key].full}</div>
+    </div>
+  );
   return (
     <div>
       <Frame>
-        Multiplying two n × n matrices takes n × n output cells, each a dot product of length n: <b style={{ color: C.text }}>n³ multiply-adds</b>.
-        Suppose a single worker does one MAC per nanosecond (10⁹ per second), one after another, the way the CPU in COA steps through
-        instructions. Drag n.
+        In 1966 Michael Flynn sorted computers by two questions: how many <b style={{ color: C.text }}>instruction</b> streams, and how many
+        <b style={{ color: C.text }}> data</b> streams? Click each box.
       </Frame>
-      <Slider label={<>Matrix size n = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={n} min={100} max={20000} step={100} onChange={setN} />
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Stat label="OUTPUT CELLS (n²)" value={(n * n).toLocaleString("en-IN")} color={C.teal} />
-        <Stat label="MACs (n³)" value={macs.toExponential(2)} color={C.orange} />
-        <Stat label="ONE WORKER, IN ORDER" value={show} color={secs > 60 ? C.red : C.yellow} />
+      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr", gap: 8, alignItems: "center" }}>
+        <div /><div style={{ color: C.muted, fontSize: 12, textAlign: "center" }}>Single Data</div><div style={{ color: C.muted, fontSize: 12, textAlign: "center" }}>Multiple Data</div>
+        <div style={{ color: C.muted, fontSize: 12 }}>Single Instruction</div>{cell("SISD")}{cell("SIMD")}
+        <div style={{ color: C.muted, fontSize: 12 }}>Multiple Instruction</div>{cell("MISD")}{cell("MIMD")}
       </div>
-      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>Double n and the time goes up 8×. A single layer of a big model can be a matrix with a size in the thousands, and it's used again for every token.</div>
-      <Insight color={C.red} title="Doing it one step at a time doesn't scale.">
-        Making the single worker faster helps only a little (Unit 3.2 shows why clock speeds stopped rising). The real question is: do these
-        steps actually <i>have</i> to happen one after another?
+      <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: FLYNN[k].c + "14", border: `1px solid ${FLYNN[k].c}55`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
+        <b style={{ color: C.text }}>{k}: {FLYNN[k].full}.</b> {FLYNN[k].ex}
+      </div>
+      <Insight color={C.green} title="AI's work is 'do the same thing to lots of numbers', which is exactly SIMD.">
+        Apply ReLU to a million numbers, multiply every row by the same weights: one instruction, many data. That's the box GPUs live in.
       </Insight>
     </div>
   );
 }
 
-// ── Section 2: Who waits for whom? ──
-function DependWidget() {
-  const [task, setTask] = useState("matmul");
-  const [cell, setCell] = useState([1, 2]);
-  const [day, setDay] = useState(3);
-  const N = 4;
-  const deposits = [500, -200, 300, -100, 400, 250];
-  const bal = deposits.reduce((acc, d) => [...acc, (acc.length ? acc[acc.length - 1] : 1000) + d], []);
+// ── Section 2: SIMD lanes — Hamacher's vectorised loop ──
+function SimdWidget() {
+  const N = 16;
+  const [L, setL] = useState(4);
+  const [step, setStep] = useState(0);
+  const passes = Math.ceil(N / L);
+  const doneUpTo = step * L;
   return (
     <div>
       <Frame>
-        Two jobs that look alike: both produce a list of answers using additions. Click an answer to see exactly what it needs before it can be
-        computed.
-      </Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        <Btn ghost={task !== "matmul"} onClick={() => setTask("matmul")}>🧮 Matrix multiply C = A × B</Btn>
-        <Btn ghost={task !== "bank"} onClick={() => setTask("bank")} color={C.orange}>🏦 Running bank balance</Btn>
-      </div>
-      {task === "matmul" ? (
-        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-          {["A", "B", "C"].map((m) => (
-            <div key={m}>
-              <div style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>{m}</div>
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${N}, 28px)`, gap: 3 }}>
-                {Array.from({ length: N * N }, (_, k) => {
-                  const r = Math.floor(k / N), c = k % N;
-                  const on = m === "A" ? r === cell[0] : m === "B" ? c === cell[1] : r === cell[0] && c === cell[1];
-                  return <div key={k} onClick={() => m === "C" && setCell([r, c])} style={{ width: 28, height: 28, borderRadius: 4, cursor: m === "C" ? "pointer" : "default", background: on ? (m === "C" ? C.green : C.accent) + "55" : C.card, border: `1.5px solid ${on ? (m === "C" ? C.green : C.accent) : C.border}` }} />;
-                })}
-              </div>
-            </div>
-          ))}
-          <div style={{ flex: 1, minWidth: 200, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-            C[{cell[0]}][{cell[1]}] needs <b style={{ color: C.accent }}>row {cell[0]} of A</b> and <b style={{ color: C.accent }}>column {cell[1]} of B</b>,
-            and <b style={{ color: C.green }}>no other cell of C</b>. Click other C cells: none of them ever waits for another.
-          </div>
-        </div>
-      ) : (
-        <div>
-          <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 8px", fontFamily: "monospace", fontSize: 12, color: C.muted }}>start ₹1000</div>
-            {bal.map((b, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ color: i <= day ? C.orange : C.border }}>→</span>
-                <div onClick={() => setDay(i)} style={{ cursor: "pointer", background: i <= day ? C.orange + "33" : C.card, border: `1.5px solid ${i === day ? C.orange : C.border}`, borderRadius: 6, padding: "6px 8px", fontFamily: "monospace", fontSize: 12, color: C.text }}>
-                  day {i + 1}<br />₹{b}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>
-            Day {day + 1}'s balance needs day {day}'s balance{day > 0 ? `, which needs day ${day - 1}'s` : ""}… all the way back to the start. A <b style={{ color: C.orange }}>chain</b>:
-            nobody can work on day {day + 1} until every earlier day is done.
-          </div>
-        </div>
-      )}
-      <Insight title="Independent outputs can all be computed at the same time. A chain can't.">
-        Matrix multiplication, the core of AI (Unit 1.5), is the perfectly independent kind. That's the gift hidden inside AI's huge appetite.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 3: Hire more workers ──
-const WCOL = [C.accent, C.green, C.orange, C.purple, C.teal, C.yellow, C.red, "#F778BA"];
-function WorkersWidget() {
-  const [w, setW] = useState(4);
-  const [job, setJob] = useState("grid");
-  const [t, setT] = useState(0);
-  const timer = useRef(null);
-  const JOBS = 64;
-  const steps = job === "grid" ? Math.ceil(JOBS / w) : JOBS;
-  useEffect(() => () => clearInterval(timer.current), []);
-  const run = () => { clearInterval(timer.current); setT(0); timer.current = setInterval(() => setT((v) => { if (v >= steps) { clearInterval(timer.current); return v; } return v + 1; }), 120); };
-  const doneAt = (k) => (job === "grid" ? Math.floor(k / w) + 1 : k + 1);
-  return (
-    <div>
-      <Frame>
-        64 pieces of work, and you can hire workers. For the <b style={{ color: C.green }}>grid</b> (independent cells), each worker grabs a cell.
-        For the <b style={{ color: C.orange }}>chain</b>, step k must wait for step k − 1. Hire workers and press Run.
+        Hamacher §12.2 uses this example: C[i] = A[i] + B[i] for N elements. A normal loop handles ONE element per pass. A
+        <b style={{ color: C.green }}> vector instruction</b> works on L elements at once using L parallel ALU lanes. Choose the vector length, then
+        step through.
       </Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        <Btn ghost={job !== "grid"} onClick={() => { setJob("grid"); setT(0); }} color={C.green}>Independent grid</Btn>
-        <Btn ghost={job !== "chain"} onClick={() => { setJob("chain"); setT(0); }} color={C.orange}>Chain</Btn>
+        {[1, 4, 8, 16].map((v) => <Btn key={v} ghost={v !== L} onClick={() => { setL(v); setStep(0); }} color={C.green}>L = {v}{v === 1 ? " (scalar)" : ""}</Btn>)}
       </div>
-      <Slider label={<>Workers = <b style={{ color: C.accent }}>{w}</b></>} value={w} min={1} max={64} onChange={(v) => { setW(v); setT(0); }} />
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 24px)", gap: 3 }}>
-          {Array.from({ length: JOBS }, (_, k) => {
-            const done = doneAt(k) <= t;
-            const owner = job === "grid" ? k % w : 0;
-            return <div key={k} style={{ width: 24, height: 24, borderRadius: 4, background: done ? WCOL[owner % 8] : C.card, border: `1px solid ${C.border}`, opacity: done ? 0.9 : 1 }} />;
-          })}
-        </div>
-        <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: 8 }}>
-          <Btn onClick={run}>▶ Run</Btn>
-          <Stat label="TIME STEPS NEEDED" value={steps} color={job === "grid" ? C.green : C.orange} />
-          <Stat label="SPEED-UP vs 1 WORKER" value={`${(JOBS / steps).toFixed(1)}×`} color={C.purple} />
-          <div style={{ color: C.muted, fontSize: 12 }}>{job === "chain" && w > 1 ? `${w - 1} workers stand idle: they have nothing they're allowed to do.` : job === "grid" ? "Colours show which worker did each cell." : ""}</div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${N}, 1fr)`, gap: 3 }}>
+        {Array.from({ length: N }, (_, i) => {
+          const done = i < doneUpTo, now = i >= doneUpTo - L && i < doneUpTo;
+          return (
+            <div key={i} style={{ textAlign: "center", borderRadius: 4, padding: "4px 0", background: now ? C.green + "55" : done ? C.green + "22" : C.card, border: `1px solid ${now ? C.green : C.border}`, fontFamily: "monospace", fontSize: 10.5, color: C.text }}>
+              {i}<br />{done ? "✓" : "·"}
+            </div>
+          );
+        })}
       </div>
-      <Insight color={C.green} title="For independent work, N workers ≈ N times faster. For a chain, extra workers do nothing.">
-        Remember this picture: Module 3 builds a chip from thousands of workers. That only pays off because AI's work is the grid kind.
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <Btn onClick={() => setStep((s) => Math.min(passes, s + 1))} color={C.green}>One pass ▶ ({step} / {passes})</Btn>
+        <Btn ghost onClick={() => setStep(0)}>↺ Reset</Btn>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+        <Code color={C.orange} title="⚙️ SCALAR LOOP: 9 instructions × N passes">{`LOOP: Load     R6, (R2)     ; R6 ← [A[i]]
+      Load     R7, (R3)     ; R7 ← [B[i]]
+      Add      R8, R6, R7
+      Store    R8, (R4)     ; C[i] ← [R8]
+      Add      R2, R2, #4
+      Add      R3, R3, #4
+      Add      R4, R4, #4
+      Subtract R5, R5, #1
+      Branch_if_[R5]>0  LOOP`}</Code>
+        <Code color={C.green} title={`➗ VECTOR LOOP: 9 instructions × N/L passes`}>{`LOOP: VectorLoad  V0, (R2)   ; L elements of A
+      VectorLoad  V1, (R3)   ; L elements of B
+      VectorAdd   V2, V0, V1 ; L adds at once
+      VectorStore V2, (R4)
+      Add      R2, R2, #4L
+      Add      R3, R3, #4L
+      Add      R4, R4, #4L
+      Subtract R5, R5, #L
+      Branch_if_[R5]>0  LOOP`}</Code>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="INSTRUCTIONS, SCALAR" value={`9 × ${N} = ${9 * N}`} color={C.orange} />
+        <Stat label={`INSTRUCTIONS, L = ${L}`} value={`9 × ${passes} = ${9 * passes}`} color={C.green} />
+      </div>
+      <Insight color={C.green} title="One vector instruction does L additions, so the loop runs N/L times instead of N.">
+        This is SIMD inside a CPU. Your laptop's CPU has vector units with 8 or 16 lanes, which is part of why NumPy beat plain Python by
+        hundreds of times in Lab 1.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: Spot the parallelism in AI ──
-const OPS = [
-  { o: "Apply ReLU to every number in a layer's output", p: true, why: "Each number is changed on its own. Fully parallel." },
-  { o: "Run 64 images of a batch through layer 1", p: true, why: "The images don't affect each other inside a layer. Parallel." },
-  { o: "Compute layer 2 before layer 1 has finished", p: false, why: "Layer 2's input IS layer 1's output. Layers form a chain, but each layer inside is parallel." },
-  { o: "Multiply two big matrices", p: true, why: "Every output cell is an independent dot product." },
-  { o: "Start epoch 2 before epoch 1's weight updates are done", p: false, why: "Epoch 2 needs the weights produced by epoch 1. A chain." },
-  { o: "A chatbot generating word 5 before word 4", p: false, why: "Each new word depends on the words before it. Generation is a chain, which is why answers appear word by word." },
-  { o: "Add the bias to all 128 neurons of a layer", p: true, why: "128 separate additions with nothing shared. Parallel." },
-  { o: "Compare 10 lakh predictions with the right answers", p: true, why: "Each comparison is separate. (Adding up the results afterwards can also be done in parallel, in a tree of pairs.)" },
-];
-function SpotWidget() {
-  const [ans, setAns] = useState({});
-  const right = OPS.filter((x, i) => ans[i] === x.p).length;
+// ── Section 3: SIMT — write for one thread, run thousands ──
+const KLINES = ["__global__ void add(float *A, float *B, float *C) {", "    int i = blockIdx.x * blockDim.x + threadIdx.x;", "    C[i] = A[i] + B[i];", "}", "", "add<<<N / 256, 256>>>(A, B, C);   // launch N threads"];
+const AV = [3, 1, 4, 1, 5, 9, 2, 6], BV = [2, 7, 1, 8, 2, 8, 1, 8];
+function SimtWidget() {
+  const [s, setS] = useState(0);
+  const line = [5, 1, 2, 3][s];
   return (
     <div>
-      <Frame>Can each piece of work run at the same time as the others (parallel), or must it wait in line (chain)? Decide for each AI operation.</Frame>
-      {OPS.map((x, i) => {
-        const a = ans[i];
-        return (
-          <div key={i} style={{ background: C.card, border: `1px solid ${a === undefined ? C.border : a === x.p ? C.green : C.red}`, borderRadius: 8, padding: "9px 12px", marginBottom: 7 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 220, color: C.text, fontSize: 13 }}>{x.o}</div>
-              {[[true, "⚡ Parallel", C.green], [false, "⛓️ Chain", C.orange]].map(([v, l, c]) => (
-                <button key={l} onClick={() => a === undefined && setAns((s) => ({ ...s, [i]: v }))} style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${c}`, background: a === v ? c + "33" : "transparent", color: C.text, fontSize: 12, cursor: a === undefined ? "pointer" : "default" }}>{l}</button>
-              ))}
-            </div>
-            {a !== undefined && <div style={{ marginTop: 5, fontSize: 12, color: a === x.p ? C.green : C.red }}>{a === x.p ? "✓ " : "✗ "}{x.why}</div>}
+      <Frame>
+        A GPU flips the idea around. You write the code for <b style={{ color: C.text }}>ONE</b> element, called a <b style={{ color: C.accent }}>kernel</b>,
+        and launch it on thousands of <b style={{ color: C.accent }}>threads</b>. Every thread runs the same instructions, but each has its own
+        number i and its own registers. NVIDIA calls this <b style={{ color: C.green }}>SIMT</b>: Single Instruction, Multiple Threads. Step through with 8 threads.
+      </Frame>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <Code color={C.orange} title="🐢 CPU: one loop, one element after another">{`for i in range(N):
+    C[i] = A[i] + B[i]`}</Code>
+        <pre style={{ margin: 0, background: C.card, border: `1.5px solid ${C.accent}`, borderRadius: 10, padding: 12, fontFamily: "monospace", fontSize: 11, lineHeight: 1.7, color: C.text, whiteSpace: "pre-wrap" }}>
+          <div style={{ color: C.accent, fontWeight: 700, fontSize: 12, marginBottom: 6, fontFamily: "'Segoe UI', sans-serif" }}>⚡ GPU: a kernel, run by N threads (CUDA C)</div>
+          {KLINES.map((l, k) => <div key={k} style={{ background: k === line ? C.accent + "22" : "transparent", borderLeft: `3px solid ${k === line ? C.accent : "transparent"}`, paddingLeft: 4 }}>{l || " "}</div>)}
+        </pre>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 5 }}>
+        {AV.map((a, i) => (
+          <div key={i} style={{ background: C.card, border: `1.5px solid ${s >= 1 ? C.teal : C.border}`, borderRadius: 8, padding: 6, fontFamily: "monospace", fontSize: 10.5, color: C.muted, textAlign: "center" }}>
+            <div style={{ color: C.text, fontWeight: 700 }}>thread {i}</div>
+            <div style={{ color: s >= 2 ? C.teal : C.border }}>i = {s >= 2 ? i : "?"}</div>
+            <div style={{ color: s >= 3 ? C.green : C.border }}>C = {s >= 3 ? a + BV[i] : "?"}</div>
           </div>
-        );
-      })}
-      {Object.keys(ans).length === OPS.length && (
-        <Insight color={C.purple} title={`${right} / ${OPS.length}. Inside every step AI is massively parallel; between steps it's a chain.`}>
-          So the winning machine does each step with thousands of workers at once and runs the steps in order. That's exactly a GPU working
-          alongside a CPU.
-        </Insight>
-      )}
-      <LabCard part="C" title="Loops vs vectorised code"
-        what="Apply ReLU to 10 lakh numbers with a Python for-loop, then with one NumPy call; do the same for a running total. See which job speeds up and which doesn't."
-        expect="NumPy's ReLU is far faster than the loop. np.cumsum is fast too (it's compiled code), but it still has to walk the chain one value after another, so it can't be shared out among many workers." />
+        ))}
+      </div>
+      <div style={{ marginTop: 10, minHeight: 36, color: C.text, fontSize: 13, lineHeight: 1.6 }}>
+        {["The CPU launches the kernel with N threads (here 8 of them; really thousands).", "All threads start the same instruction at the same time.", "Each thread works out ITS OWN index i from its built-in IDs: same instruction, different data.", "Each thread adds its own pair. All 8 additions happen in one step. No loop!"][s]}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Btn onClick={() => setS((v) => Math.min(3, v + 1))}>Step ▶ ({s + 1} / 4)</Btn>
+        <Btn ghost onClick={() => setS(0)}>↺ Reset</Btn>
+      </div>
+      <Insight title="SIMD: you write one wide instruction. SIMT: you write a normal program for one thread, and the GPU runs thousands of copies.">
+        The loop disappears: it's replaced by "how many threads to launch". You'll write this exact kernel yourself in Module 4.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 4: Warps — SIMT on SIMD hardware ──
+function WarpWidget() {
+  const [n, setN] = useState(10000);
+  const warps = Math.ceil(n / 32);
+  const sms = 40;
+  return (
+    <div>
+      <Frame>
+        Underneath, the GPU really is SIMD hardware. It groups threads into bundles of <b style={{ color: C.purple }}>32 called warps</b>; the 32
+        threads of a warp share one instruction unit and move in lock-step. Warps are spread across the GPU's
+        <b style={{ color: C.text }}> streaming multiprocessors</b> (the T4 has 40). Choose how many elements to process.
+      </Frame>
+      <Slider label={<>Elements (one thread each) = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={n} min={32} max={1000000} step={32} onChange={setN} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="THREADS" value={n.toLocaleString("en-IN")} color={C.accent} />
+        <Stat label="WARPS (÷ 32)" value={warps.toLocaleString("en-IN")} color={C.purple} />
+        <Stat label="WARPS PER SM (40 SMs)" value={(warps / sms).toFixed(1)} color={C.green} />
+      </div>
+      <table style={{ width: "100%", marginTop: 14, borderCollapse: "collapse", fontSize: 12.5 }}>
+        <thead><tr style={{ color: C.muted, textAlign: "left" }}><th style={{ padding: 6 }}></th><th>CPU SIMD</th><th>GPU SIMT</th></tr></thead>
+        <tbody style={{ color: C.text }}>
+          {[["You write", "wide vector instructions (or the compiler does)", "an ordinary program for ONE thread"], ["Width", "4–16 lanes", "32 threads per warp × thousands of warps"], ["Each lane has", "a slot in a vector register", "its own registers and its own index"], ["Good for", "short bursts inside a CPU program", "huge, regular, independent work, like AI"]].map((r) => (
+            <tr key={r[0]} style={{ borderTop: `1px solid ${C.border}` }}><td style={{ padding: 6, color: C.muted }}>{r[0]}</td><td style={{ color: C.orange }}>{r[1]}</td><td style={{ color: C.green }}>{r[2]}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      <Insight color={C.purple} title="A warp of 32 threads is the GPU's real unit of execution.">
+        Remember "32". It explains a lot in Module 3: why if/else inside a kernel can be slow, and why GPUs like jobs with thousands of threads.
+      </Insight>
+      <LabCard part="C" title="Vector add: CPU vs GPU"
+        what="Add two arrays of growing size, first with NumPy on the CPU, then with PyTorch on the GPU, timing both correctly (with torch.cuda.synchronize)."
+        expect="the CPU wins for small arrays and the GPU wins clearly for arrays of millions of elements." />
     </div>
   );
 }
 //@@SECTIONS
-[["One After Another", "🐢 One After Another — n³ steps for one worker", "NeedWidget"],
- ["Who Waits for Whom?", "🔗 Who Waits for Whom? — independent vs chained", "DependWidget"],
- ["Hire More Workers", "👷 Hire More Workers — when does it help?", "WorkersWidget"],
- ["Spot the Parallelism", "🔍 Spot the Parallelism — inside AI", "SpotWidget"]]
+[["Flynn's Taxonomy", "🗂️ Flynn's Taxonomy — SISD, SIMD, MISD, MIMD", "FlynnWidget"],
+ ["SIMD Lanes", "➗ SIMD — one instruction, many lanes (Hamacher §12.2)", "SimdWidget"],
+ ["SIMT Threads", "🧵 SIMT — write for one thread, run thousands", "SimtWidget"],
+ ["Warps", "📦 Warps — 32 threads in lock-step", "WarpWidget"]]
 //@@QUIZ
 const QUESTIONS = [
-  { q: "To compute cell C[2][3] of C = A × B, you need…", options: ["All of C computed first", "Row 2 of A and column 3 of B", "Column 2 of A and row 3 of B", "C[2][2]"], answer: 1, explain: "Each output cell is the dot product of one row of A with one column of B. No other output cell is needed." },
-  { q: "64 independent tasks, 16 workers, each task takes 1 time step. How many steps?", options: ["1", "4", "16", "64"], answer: 1, explain: "Each step, 16 tasks finish: 64 ÷ 16 = 4 steps." },
-  { q: "A 64-step chain (each step needs the previous one) with 16 workers takes…", options: ["4 steps", "16 steps", "64 steps", "1 step"], answer: 2, explain: "Only one step can ever run at a time, so the extra workers stay idle: still 64 steps." },
-  { q: "Which part of a neural network is a CHAIN?", options: ["The neurons within one layer", "The images within one batch", "The layers, one after another", "The cells of a matrix multiply"], answer: 2, explain: "Layer 2 needs layer 1's output. Inside each layer, though, everything is parallel." },
+  { q: "A multicore CPU running different programs on each core is which Flynn class?", options: ["SISD", "SIMD", "MISD", "MIMD"], answer: 3, explain: "Multiple independent instruction streams on multiple data streams: MIMD." },
+  { q: "Hamacher's loop has 9 instructions per pass. With N = 64 and vector length L = 8, how many instructions run?", options: ["9", "72", "576", "64"], answer: 1, explain: "The vectorised loop runs N/L = 8 passes × 9 instructions = 72, compared with 9 × 64 = 576 for the scalar loop." },
+  { q: "In a CUDA kernel, how does each thread know which element to work on?", options: ["It reads a loop counter", "It computes its own index from built-in IDs (blockIdx, threadIdx)", "The CPU tells each thread separately", "It picks one at random"], answer: 1, explain: "i = blockIdx.x * blockDim.x + threadIdx.x gives every thread a unique index: same code, different data." },
+  { q: "How many threads are in one warp on NVIDIA GPUs?", options: ["8", "16", "32", "1024"], answer: 2, explain: "A warp is 32 threads that share one instruction unit and execute in lock-step." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can see the parallelism hidden in AI.",
-  good: "Good. Replay 'Hire More Workers' with the chain.",
-  low: "Revisit 'Who Waits for Whom?': independent vs chained is the key idea for the next module.",
+  perfect: "Perfect! You understand how GPUs run code.",
+  good: "Good. Replay 'SIMT Threads' and watch each thread find its own i.",
+  low: "Revisit 'SIMD Lanes' then 'SIMT Threads': one instruction, many data is the heart of it.",
   done: "Unit 2.3 Complete!",
-  body: "You can tell independent work from chained work, and you know that matrix multiplication is perfectly parallel.",
-  next: "Next up: Unit 2.C — Capstone: The Compute Bill.",
-  teaser: "Estimate what it really takes to train and run an AI model for your college, and measure your own CPU's speed.",
+  body: "You can place machines in Flynn's taxonomy, explain vectorisation (Hamacher §12.2), and describe SIMT threads and warps.",
+  next: "Next up: Unit 2.4 — Amdahl's Law.",
+  teaser: "The GPU makes the matrix multiply 100× faster, but the whole program only 3× faster. Why?",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["MAC", "Multiply-Accumulate", "One multiply plus one add.", "from Unit 1.3"],
-  ["n³", "n cubed", "n × n × n. The number of MACs in an n × n matrix multiply.", "new here"],
-  ["ReLU", "Rectified Linear Unit", "Negative → 0, positive stays. Applied to every number on its own.", "from Unit 1.3"],
+  ["SISD / SIMD / MISD / MIMD", "Flynn's four classes", "Single or Multiple Instruction streams × Single or Multiple Data streams.", "new here"],
+  ["SIMT", "Single Instruction, Multiple Threads", "NVIDIA's model: one program, thousands of threads, each with its own data.", "new here"],
+  ["L", "vector length", "How many elements one vector instruction handles at once (Hamacher §12.2).", "new here"],
+  ["SM", "Streaming Multiprocessor", "One of the GPU's 'mini-processors'; the T4 has 40. Unit 3.1 opens one up.", "new here"],
+  ["RTN", "Register Transfer Notation", "R6 ← [A[i]] means 'load the value at A[i] into R6'.", "from COA"],
 ];

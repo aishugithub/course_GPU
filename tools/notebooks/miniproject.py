@@ -22,7 +22,7 @@ md("## 0 · Setup"),
 GPU_SETUP,
 md("""
 ---
-## 1 · Plan  *(Units 2.1, 2.2, 6.3, 7.2)*
+## 1 · Plan  *(Units 1.1, 1.2, 5.3, 5.7)*
 Before writing any training code, estimate:
 | Quantity | Your estimate | How you got it |
 |---|---|---|
@@ -50,7 +50,7 @@ code("""
 """),
 md("""
 ---
-## 3 · Run it on the GPU  *(Modules 3, 5)*
+## 3 · Run it on the GPU  *(Modules 2, 4)*
 Same code, `device = "cuda"`. Remember: move the model once, synchronise before reading the clock.
 """),
 code("""
@@ -58,7 +58,7 @@ code("""
 """),
 md("""
 ---
-## 4 · Where does the time go?  *(Unit 5.C)*
+## 4 · Where does the time go?  *(Unit 4.C)*
 Time the phases (data, copy, compute) with `sync()`, or use the PyTorch profiler. Check `!nvidia-smi` while it runs.
 """),
 code("""
@@ -66,7 +66,7 @@ code("""
 """),
 md("""
 ---
-## 5 · Optimise  *(Module 6)*
+## 5 · Optimise  *(Module 5)*
 Apply at least ONE: bigger batch · num_workers + pin_memory · no per-step sync · mixed precision (autocast) · data kept on the GPU · INT8/FP16 for inference.
 Change one thing at a time and measure each.
 """),

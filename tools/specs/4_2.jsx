@@ -1,198 +1,192 @@
 //@@META
-{"unit": "4.2", "module": 4, "title": "Warps & Branch Divergence", "icon": "🔀", "lab": "Lab04_Inside_a_GPU.ipynb", "labNo": 4, "gpu": true}
+{"unit": "4.2", "module": 4, "title": "The Five Steps of Offloading", "icon": "🖐️", "lab": "Lab4_CPU_GPU_Teamwork.ipynb", "labNo": "4", "gpu": true}
 //@@WIDGETS
 
-const PATTERNS = {
-  allPos: { name: "All positive", f: () => 1 },
-  allNeg: { name: "All negative", f: () => 0 },
-  half: { name: "First 16 / last 16", f: (i) => (i < 16 ? 1 : 0) },
-  alt: { name: "Alternating", f: (i) => i % 2 },
-  rand: { name: "Random", f: (i) => [1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1][i] },
-};
-
-// ── Section 1: Need — a marching band with an if-statement ──
-function NeedWidget() {
-  const [p, setP] = useState("alt");
-  const lanes = Array.from({ length: 32 }, (_, i) => PATTERNS[p].f(i));
-  const anyT = lanes.some((v) => v), anyF = lanes.some((v) => !v);
-  const passes = (anyT ? 1 : 0) + (anyF ? 1 : 0);
-  return (
-    <div>
-      <Frame>
-        A warp is like a <b style={{ color: C.text }}>marching band of 32</b>: one drum major (the warp scheduler) calls one step, and everyone does it
-        together. Now the kernel says <code style={{ color: C.accent }}>if (x[i] &gt; 0) path A else path B</code>. What if band members disagree? Choose
-        what data the 32 threads see.
-      </Frame>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-        {Object.entries(PATTERNS).map(([k, v]) => <Btn key={k} ghost={k !== p} onClick={() => setP(k)}>{v.name}</Btn>)}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(16, 1fr)", gap: 3 }}>
-        {lanes.map((v, i) => <div key={i} style={{ height: 26, borderRadius: 4, background: v ? C.green : C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#0D1117", fontWeight: 700 }}>{v ? "A" : "B"}</div>)}
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-        <Stat label="PATHS THE WARP MUST RUN" value={passes === 1 ? "1 (all agree)" : "2 (A, then B)"} color={passes === 1 ? C.green : C.red} />
-        <Stat label="TIME vs NO BRANCH" value={`${passes}×`} color={passes === 1 ? C.green : C.red} />
-      </div>
-      <Insight color={C.red} title="When threads in one warp disagree, the warp runs BOTH paths, one after the other.">
-        The band can't march two ways at once. So first the A-players march while the B-players stand still, then the reverse. This is called
-        <b> branch divergence</b>. Notice that "First 16 / last 16" diverges too: what matters is disagreement inside a warp.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 2: Trace a diverging warp ──
-const VALS = [3, -1, 4, -2, 5, -6, 2, -7];
 const STEPS = [
-  { t: "All 8 lanes (of the warp's 32) evaluate the condition x > 0 together.", active: () => true, phase: "cond" },
-  { t: "Path A (y = x × 2): only lanes where x > 0 are switched on. The others are masked off and sit idle.", active: (v) => v > 0, phase: "A" },
-  { t: "Path B (y = 0): now the other lanes run, and the A lanes sit idle.", active: (v) => v <= 0, phase: "B" },
-  { t: "The paths re-join (reconverge). Every lane is active again for the next instruction.", active: () => true, phase: "join" },
+  { k: "alloc", t: "1 · Allocate", c: C.purple, d: "The CPU asks the GPU driver to reserve space in GPU memory for the inputs and the output. Nothing is copied yet; it's like booking seats.", cuda: [2, 3], torch: [1] },
+  { k: "in", t: "2 · Copy in", c: C.yellow, d: "The input data travels from host RAM to device memory over PCIe, moved by the GPU's DMA engine (COA Unit 5).", cuda: [5, 6], torch: [2] },
+  { k: "launch", t: "3 · Launch the kernel", c: C.green, d: "The CPU tells the GPU: run THIS function on THIS many threads. The thousands of threads (Modules 2–3) do the work. The CPU doesn't wait; it carries on (Unit 4.4).", cuda: [8], torch: [3] },
+  { k: "out", t: "4 · Copy out", c: C.yellow, d: "The result travels back from device memory to host RAM over PCIe, so the CPU can print it, save it, or use it in decisions.", cuda: [10], torch: [4] },
+  { k: "free", t: "5 · Free", c: C.purple, d: "The GPU memory is released so other data can use it. Forget this in a loop and GPU memory slowly fills up (Unit 5.8).", cuda: [12, 13], torch: [5] },
 ];
-function TraceWidget() {
-  const [s, setS] = useState(0);
-  const st = STEPS[s];
-  const busy = VALS.filter((v) => st.active(v)).length;
-  const y = VALS.map((v, i) => (s >= 1 && v > 0 ? v * 2 : s >= 2 && v <= 0 ? 0 : null));
-  return (
-    <div>
-      <Frame>Step through one warp running the if/else. Grey lanes are <b style={{ color: C.text }}>masked off</b>: switched on but doing nothing.</Frame>
-      <Code color={C.accent}>{`if (x[i] > 0)
-    y[i] = x[i] * 2;     // path A
-else
-    y[i] = 0;            // path B`}</Code>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 6, marginTop: 12 }}>
-        {VALS.map((v, i) => {
-          const on = st.active(v);
-          const col = st.phase === "A" ? C.green : st.phase === "B" ? C.orange : C.accent;
-          return (
-            <div key={i} style={{ background: on ? col + "33" : C.card, border: `1.5px solid ${on ? col : C.border}`, borderRadius: 8, padding: 6, textAlign: "center", fontFamily: "monospace", fontSize: 11, opacity: on ? 1 : 0.45 }}>
-              <div style={{ color: C.muted }}>lane {i}</div>
-              <div style={{ color: C.text }}>x = {v}</div>
-              <div style={{ color: y[i] === null ? C.border : C.teal }}>y = {y[i] === null ? "?" : y[i]}</div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 10, minHeight: 40, color: C.text, fontSize: 13, lineHeight: 1.6 }}>{st.t}</div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <Btn onClick={() => setS((v) => Math.min(3, v + 1))}>Step ▶ ({s + 1} / 4)</Btn>
-        <Btn ghost onClick={() => setS(0)}>↺ Reset</Btn>
-        <Stat label="LANES DOING USEFUL WORK" value={`${busy} / 8`} color={busy === 8 ? C.green : C.yellow} />
-      </div>
-      <Insight color={C.yellow} title="During each branch, half the warp is idle. That's wasted hardware.">
-        It still gives the right answer, because each lane only commits the result of its own path. It just takes longer.
-      </Insight>
-    </div>
-  );
-}
+const CUDA_LINES = [
+  "// host code (runs on the CPU), CUDA C",
+  "float *dA, *dB;                                   // device pointers",
+  "cudaMalloc(&dA, n * sizeof(float));               // 1 allocate",
+  "cudaMalloc(&dB, n * sizeof(float));",
+  "",
+  "cudaMemcpy(dA, hA, n * sizeof(float),",
+  "           cudaMemcpyHostToDevice);               // 2 copy in",
+  "",
+  "relu<<<(n + 255) / 256, 256>>>(dA, dB, n);        // 3 launch",
+  "",
+  "cudaMemcpy(hB, dB, n * sizeof(float), cudaMemcpyDeviceToHost);  // 4 copy out",
+  "",
+  "cudaFree(dA);                                     // 5 free",
+  "cudaFree(dB);",
+];
+const TORCH_LINES = [
+  "# the same five steps in PyTorch",
+  "b_gpu = torch.empty(n, device='cuda')    # 1 allocate",
+  "a_gpu = a_cpu.to('cuda')                 # 2 copy in (allocates too)",
+  "torch.clamp(a_gpu, min=0, out=b_gpu)     # 3 launch a kernel (ReLU)",
+  "b_cpu = b_gpu.cpu()                      # 4 copy out",
+  "del a_gpu, b_gpu                         # 5 free (PyTorch keeps it cached)",
+];
 
-// ── Section 3: What does divergence cost? ──
-function CostWidget() {
-  const [a, setA] = useState(20);
-  const [b, setB] = useState(20);
-  const [layout, setLayout] = useState("warp");
-  // 64 threads = 2 warps; half take A
-  const warpPath = layout === "warp" ? [[true], [false]] : [[true, false], [true, false]];
-  const time = warpPath.reduce((s, w) => s + (w.includes(true) ? a : 0) + (w.includes(false) ? b : 0), 0);
-  const ideal = a + b;
+// ── Section 1: Need — what hides behind one line ──
+function NeedWidget() {
+  const [open, setOpen] = useState(false);
   return (
     <div>
       <Frame>
-        64 threads (2 warps). Half must take path A (costs <b style={{ color: C.green }}>a</b> cycles), half path B (costs <b style={{ color: C.orange }}>b</b> cycles).
-        The question is HOW the halves are arranged: by warp, or mixed inside each warp? (The 2 warps take turns on one scheduler here.)
+        In PyTorch, running something on the GPU looks like one innocent line. Behind it, the CPU and GPU go through a fixed routine. Click to
+        unfold it.
       </Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        <Btn ghost={layout !== "warp"} onClick={() => setLayout("warp")} color={C.green}>Warp 0 = all A, warp 1 = all B</Btn>
-        <Btn ghost={layout !== "mixed"} onClick={() => setLayout("mixed")} color={C.red}>Mixed (even/odd threads)</Btn>
-      </div>
-      <Slider label={<>Path A cost a = <b style={{ color: C.green }}>{a}</b> cycles</>} value={a} min={1} max={100} onChange={setA} color={C.green} />
-      <Slider label={<>Path B cost b = <b style={{ color: C.orange }}>{b}</b> cycles</>} value={b} min={1} max={100} onChange={setB} color={C.orange} />
-      {warpPath.map((w, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <div style={{ width: 60, color: C.muted, fontSize: 12 }}>warp {i}</div>
-          <div style={{ display: "flex", flex: 1, height: 22 }}>
-            {w.includes(true) && <div style={{ width: `${(a / 200) * 100}%`, background: C.green, borderRadius: 3 }} />}
-            {w.includes(false) && <div style={{ width: `${(b / 200) * 100}%`, background: C.orange, borderRadius: 3, marginLeft: 2 }} />}
-          </div>
+      <Code color={C.accent}>{`y = torch.relu(x.to("cuda")).cpu()`}</Code>
+      <div style={{ marginTop: 10 }}><Btn onClick={() => setOpen((v) => !v)} color={C.purple}>{open ? "▲ Fold it back" : "▼ What really happens?"}</Btn></div>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          {STEPS.map((s) => (
+            <div key={s.k} style={{ display: "flex", gap: 10, alignItems: "center", background: C.card, border: `1.5px solid ${s.c}`, borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+              <b style={{ color: s.c, fontSize: 13, minWidth: 140 }}>{s.t}</b>
+              <span style={{ color: C.muted, fontSize: 12.5 }}>{s.d.split(".")[0]}.</span>
+            </div>
+          ))}
         </div>
-      ))}
-      <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-        <Stat label="TOTAL CYCLES" value={time} color={layout === "warp" ? C.green : C.red} />
-        <Stat label="vs NO DIVERGENCE" value={`${(time / ideal).toFixed(1)}×`} color={layout === "warp" ? C.green : C.red} />
-      </div>
-      <Insight color={C.purple} title="Same threads, same work: arrange them so each warp agrees, and divergence disappears.">
-        Branches aren't bad in themselves. Branches that split a warp are. And the more expensive the two paths, the more it hurts.
+      )}
+      <Insight color={C.purple} title="Every GPU job, in every framework, follows the same five steps.">
+        Allocate → copy in → launch → copy out → free. Knowing them explains GPU errors, slowness and memory problems.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: Fixing divergence ──
-function FixWidget() {
-  const [fix, setFix] = useState("branchfree");
-  const FIXES = {
-    branchfree: { t: "Replace the branch with arithmetic", c: C.green, before: `if (x[i] > 0)
-    y[i] = x[i];
-else
-    y[i] = 0;`, after: `y[i] = fmaxf(x[i], 0.0f);   // ReLU, no branch at all`, note: "Every lane runs the same single instruction. This is how ReLU is written inside PyTorch's GPU kernels." },
-    select: { t: "Compute both, then pick", c: C.teal, before: `if (mask[i])
-    y[i] = a[i] * 2;
-else
-    y[i] = b[i] + 1;`, after: `float pa = a[i] * 2;
-float pb = b[i] + 1;
-y[i] = mask[i] ? pa : pb;   // a 'select', not a jump`, note: "When both paths are cheap, doing both and selecting is faster than diverging. Compilers often do this automatically." },
-    group: { t: "Group the data so warps agree", c: C.purple, before: `// pixels of two kinds mixed together:
-// sky, road, sky, road, sky, road …`, after: `// sort first so a whole warp sees one kind:
-// sky ×32, sky ×32, …, road ×32, road ×32`, note: "If similar items sit next to each other, each warp takes one path. This works when the paths are expensive and can't be removed." },
-  };
-  const f = FIXES[fix];
+// ── Section 2: Step through it ──
+function StepWidget() {
+  const [i, setI] = useState(-1);
+  const host = { a: true, b: i >= 3 };
+  const dev = { a: i >= 1 && i < 4, slots: i >= 0 && i < 4, b: i >= 2 && i < 4 };
+  const col = i >= 0 ? STEPS[i].c : C.border;
   return (
     <div>
-      <Frame>Three standard ways to avoid divergence. Pick one to see a before/after.</Frame>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-        {Object.entries(FIXES).map(([k, v]) => <Btn key={k} ghost={k !== fix} onClick={() => setFix(k)} color={v.c}>{v.t}</Btn>)}
+      <Frame>Watch the two memories as the steps happen. The job: ReLU on an array A, giving B.</Frame>
+      <svg viewBox="0 0 520 200" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
+        <text x="20" y="20" fill={C.orange} fontSize="11" fontWeight="700">HOST RAM</text>
+        <text x="350" y="20" fill={C.green} fontSize="11" fontWeight="700">DEVICE MEMORY</text>
+        <rect x="20" y="30" width="150" height="150" rx="8" fill="none" stroke={C.orange} />
+        <rect x="350" y="30" width="150" height="150" rx="8" fill="none" stroke={C.green} />
+        <rect x="35" y="50" width="120" height="40" rx="6" fill={C.teal + "44"} stroke={C.teal} /><text x="95" y="75" fill={C.text} fontSize="12" textAnchor="middle">A (input)</text>
+        {host.b && <g><rect x="35" y="120" width="120" height="40" rx="6" fill={C.green + "44"} stroke={C.green} /><text x="95" y="145" fill={C.text} fontSize="12" textAnchor="middle">B (result)</text></g>}
+        {dev.slots && <g><rect x="365" y="50" width="120" height="40" rx="6" fill={dev.a ? C.teal + "44" : "none"} stroke={C.purple} strokeDasharray={dev.a ? "0" : "5 4"} /><text x="425" y="75" fill={C.text} fontSize="12" textAnchor="middle">{dev.a ? "A (copy)" : "space for A"}</text></g>}
+        {dev.slots && <g><rect x="365" y="120" width="120" height="40" rx="6" fill={dev.b ? C.green + "44" : "none"} stroke={C.purple} strokeDasharray={dev.b ? "0" : "5 4"} /><text x="425" y="145" fill={C.text} fontSize="12" textAnchor="middle">{dev.b ? "B = ReLU(A)" : "space for B"}</text></g>}
+        {i === 1 && <g><line x1="175" y1="70" x2="345" y2="70" stroke={C.yellow} strokeWidth="3" /><text x="260" y="62" fill={C.yellow} fontSize="11" textAnchor="middle">PCIe → (DMA)</text></g>}
+        {i === 2 && <text x="425" y="112" fill={C.green} fontSize="11" textAnchor="middle">⚡ thousands of threads</text>}
+        {i === 3 && <g><line x1="345" y1="140" x2="175" y2="140" stroke={C.yellow} strokeWidth="3" /><text x="260" y="132" fill={C.yellow} fontSize="11" textAnchor="middle">← PCIe (DMA)</text></g>}
+        {i === 4 && <text x="425" y="112" fill={C.purple} fontSize="11" textAnchor="middle">memory released ✓</text>}
+      </svg>
+      <div style={{ marginTop: 10, minHeight: 46, padding: "8px 12px", borderRadius: 8, background: col + "14", border: `1px solid ${col}55`, color: C.muted, fontSize: 13, lineHeight: 1.6 }}>
+        {i < 0 ? "Start: A exists only in host RAM. The GPU knows nothing about it yet." : <><b style={{ color: STEPS[i].c }}>{STEPS[i].t}.</b> {STEPS[i].d}</>}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Code color={C.red} title="❌ DIVERGES">{f.before}</Code>
-        <Code color={f.c} title="✅ WARP-FRIENDLY">{f.after}</Code>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <Btn onClick={() => setI((v) => Math.min(4, v + 1))}>Step ▶ ({i + 1} / 5)</Btn>
+        <Btn ghost onClick={() => setI(-1)}>↺ Reset</Btn>
       </div>
-      <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>{f.note}</div>
-      <Insight title="Good news: PyTorch's built-in operations are already written this way.">
-        You'll meet divergence when you write your own kernels (Module 5), and it's the reason AI's regular "same thing to every number"
-        operations suit GPUs so well.
+      <Insight color={C.yellow} title="Two of the five steps cross PCIe, and only one is the actual computing.">
+        That's why Unit 4.1's rule matters: copy once, compute many times.
       </Insight>
-      <LabCard part="B" title="Measure branch divergence for real"
-        what="Run a tiny CUDA kernel (through CuPy) with an expensive if/else, first with the branch decided by (thread index ÷ 32), so warps agree, then by (thread index % 2), so every warp splits. Time both."
-        expect="the even/odd version takes roughly twice as long, even though the total work is the same." />
+    </div>
+  );
+}
+
+// ── Section 3: The steps in code ──
+function CodeMapWidget() {
+  const [k, setK] = useState(0);
+  const s = STEPS[k];
+  return (
+    <div>
+      <Frame>
+        Here are the five steps written in <b style={{ color: C.text }}>CUDA C</b> (the low level, what really happens) and in <b style={{ color: C.accent }}>PyTorch</b> (what
+        you'll actually write). Click a step to light up its lines in both.
+      </Frame>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {STEPS.map((x, i) => <Btn key={x.k} ghost={i !== k} onClick={() => setK(i)} color={x.c}>{x.t}</Btn>)}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 12 }}>
+        <pre style={{ margin: 0, background: C.card, border: `1.5px solid ${C.orange}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.65, color: C.text, overflowX: "auto" }}>
+          <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, marginBottom: 4, fontFamily: "'Segoe UI', sans-serif" }}>⚙️ CUDA C (low level)</div>
+          {CUDA_LINES.map((l, n) => <div key={n} style={{ background: s.cuda.includes(n) || (s.k === "in" && n === 6) ? s.c + "33" : "transparent", borderLeft: `3px solid ${s.cuda.includes(n) ? s.c : "transparent"}`, paddingLeft: 4 }}>{l || " "}</div>)}
+        </pre>
+        <pre style={{ margin: 0, background: C.card, border: `1.5px solid ${C.accent}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.65, color: C.text, overflowX: "auto" }}>
+          <div style={{ color: C.accent, fontWeight: 700, fontSize: 12, marginBottom: 4, fontFamily: "'Segoe UI', sans-serif" }}>🔥 PyTorch</div>
+          {TORCH_LINES.map((l, n) => <div key={n} style={{ background: s.torch.includes(n) ? s.c + "33" : "transparent", borderLeft: `3px solid ${s.torch.includes(n) ? s.c : "transparent"}`, paddingLeft: 4 }}>{l}</div>)}
+        </pre>
+      </div>
+      <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>{s.d}</div>
+      <Insight title="PyTorch hides the five steps; it doesn't remove them.">
+        <code>.to("cuda")</code> = allocate + copy in. Every operation = a kernel launch. <code>.cpu()</code> = copy out. When a tensor is no longer used,
+        PyTorch frees it, but keeps the memory cached for reuse, which is why nvidia-smi can show memory 'in use' (Unit 5.8).
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 4: The timeline — where does the time go? ──
+function TimelineWidget() {
+  const [reps, setReps] = useState(1);
+  const alloc = 0.1, cin = 33, kern = 1.3, cout = 33, free = 0.05;
+  const total = alloc + cin + kern * reps + cout + free;
+  const parts = [["allocate", alloc, C.purple], ["copy in", cin, C.yellow], [`kernel × ${reps}`, kern * reps, C.green], ["copy out", cout, C.yellow], ["free", free, C.purple]];
+  return (
+    <div>
+      <Frame>
+        Typical T4 timings for ReLU on 400 MB (approximate). Change how many GPU operations run on the data before it comes back, and watch
+        where the time goes.
+      </Frame>
+      <Slider label={<>Operations on the GPU before copying back = <b style={{ color: C.green }}>{reps}</b></>} value={reps} min={1} max={300} onChange={setReps} color={C.green} />
+      <div style={{ display: "flex", height: 34, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
+        {parts.map(([t, v, c]) => <div key={t} title={t} style={{ width: `${(v / total) * 100}%`, minWidth: v > 0.5 ? 3 : 0, background: c, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 10.5, fontWeight: 700, overflow: "hidden", whiteSpace: "nowrap" }}>{v / total > 0.12 ? t : ""}</div>)}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="TOTAL" value={`${total.toFixed(1)} ms`} color={C.text} />
+        <Stat label="SHARE THAT IS COMPUTING" value={`${((kern * reps / total) * 100).toFixed(0)}%`} color={kern * reps / total > 0.5 ? C.green : C.red} />
+      </div>
+      <Insight color={C.green} title="With one operation, about 98% of the time is carrying data. With hundreds, the carrying almost disappears.">
+        This is exactly what training does: the model and each batch go to the GPU, then thousands of kernels run on them. Real AI code is built
+        around keeping data on the device.
+      </Insight>
+      <LabCard part="B" title="Do the five steps yourself and time each one"
+        what="Using PyTorch, do allocate → copy in → ReLU → copy out → free as separate lines and time each step with synchronisation. Then do the same with CuPy, which looks almost exactly like the CUDA C version."
+        expect="the two copies taking far longer than the ReLU itself, and a timing bar much like the one in this section." />
     </div>
   );
 }
 //@@SECTIONS
-[["The Marching Band", "🥁 The Marching Band — when 32 threads disagree", "NeedWidget"],
- ["Trace a Warp", "🔀 Trace a Diverging Warp — masks and idle lanes", "TraceWidget"],
- ["The Cost", "⏱️ The Cost — arrangement is everything", "CostWidget"],
- ["Fixes", "🛠️ Fixing Divergence — three standard tricks", "FixWidget"]]
+[["One Line, Five Steps", "🖐️ One Line, Five Steps — what hides behind .to('cuda')", "NeedWidget"],
+ ["Watch It Happen", "🎬 Watch It Happen — two memories, five steps", "StepWidget"],
+ ["CUDA C vs PyTorch", "⚙️ CUDA C vs PyTorch — the steps in code", "CodeMapWidget"],
+ ["Where the Time Goes", "⏱️ Where the Time Goes — copies vs computing", "TimelineWidget"]]
 //@@QUIZ
 const QUESTIONS = [
-  { q: "In one warp, 31 threads take the if-path and 1 thread takes the else-path. What happens?", options: ["The 1 thread is skipped", "The warp runs both paths one after the other, idling lanes as needed", "The warp splits into two warps permanently", "It crashes"], answer: 1, explain: "Any disagreement inside a warp forces both paths to run in sequence, with inactive lanes masked off. Even one odd thread out costs a whole extra path." },
-  { q: "Which condition causes NO divergence for 64 threads in 2 warps?", options: ["if (i % 2 == 0)", "if (i < 32)", "if (i % 3 == 0)", "if (x[i] > 0) with random data"], answer: 1, explain: "i < 32 is true for exactly warp 0 and false for exactly warp 1, so each warp agrees internally." },
-  { q: "Why is ReLU written as fmaxf(x, 0) in GPU kernels instead of an if/else?", options: ["fmaxf is more accurate", "It avoids branching, so all 32 lanes run the same instruction", "if/else is not allowed in CUDA", "It uses less memory"], answer: 1, explain: "A branch-free instruction keeps the whole warp busy, with no divergence possible." },
-  { q: "Divergence matters most when…", options: ["Both paths are tiny", "Both paths are expensive and threads in the same warp disagree", "All threads agree", "The GPU has many SMs"], answer: 1, explain: "The cost is running both paths in sequence, so it hurts when the paths are long and warps are mixed." },
+  { q: "What is the correct order of the five steps?", options: ["Launch, allocate, copy in, copy out, free", "Allocate, copy in, launch, copy out, free", "Copy in, launch, allocate, free, copy out", "Allocate, launch, copy in, free, copy out"], answer: 1, explain: "Reserve the space, bring the data in, run the kernel, bring the result back, release the space." },
+  { q: "In PyTorch, which line performs the 'copy out' step?", options: ["x.to('cuda')", "torch.relu(x)", "y.cpu()", "torch.empty(n, device='cuda')"], answer: 2, explain: ".cpu() copies a tensor from device memory back to host RAM." },
+  { q: "cudaMemcpy(dA, hA, size, cudaMemcpyHostToDevice) does what?", options: ["Frees device memory", "Copies data from host RAM to device memory", "Launches a kernel", "Copies from device to host"], answer: 1, explain: "HostToDevice: from the CPU's memory (hA) into GPU memory (dA)." },
+  { q: "A program copies data to the GPU, runs ONE small kernel, and copies it back, inside a loop. What's the best fix?", options: ["Use a faster CPU", "Keep the data on the GPU and run all the operations there before copying back once", "Copy smaller pieces more often", "Free the memory twice"], answer: 1, explain: "Copies dominate. Moving data once and doing many operations on the device is the key optimisation." },
 ];
 const RESULT = {
-  perfect: "Perfect! You think like a GPU programmer.",
-  good: "Good. Replay 'The Cost' and switch between the two layouts.",
-  low: "Revisit 'The Marching Band': lock-step is the key idea.",
+  perfect: "Perfect! You know exactly how a CPU hands work to a GPU.",
+  good: "Good. Replay 'CUDA C vs PyTorch' and match each step.",
+  low: "Revisit 'Watch It Happen': allocate, copy in, launch, copy out, free.",
   done: "Unit 4.2 Complete!",
-  body: "You can explain warp lock-step execution, branch divergence and its cost, and three ways to avoid it.",
-  next: "Next up: Unit 4.3 — Hiding Latency.",
-  teaser: "GPU memory takes hundreds of cycles to answer. So why aren't the cores always waiting?",
+  body: "You can list and explain the five offloading steps, map them to CUDA C and PyTorch, and see where the time goes.",
+  next: "Next up: Unit 4.3 — Kernels, Grids, Blocks, Threads.",
+  teaser: "Step 3 says 'launch on this many threads'. How do you organise a million of them? Exam halls and roll numbers.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["warp", "a group of 32 threads", "They share one instruction stream and move in lock-step.", "from Unit 3.3"],
-  ["mask", "active mask", "Which lanes of a warp are switched on for the current instruction.", "new here"],
-  ["fmaxf", "floating-point maximum (CUDA C)", "Returns the larger of two floats, with no branch.", "new here"],
-  ["CuPy", "a NumPy-like library for NVIDIA GPUs", "Lets Python run small CUDA kernels, used in the lab.", "new here"],
+  ["cudaMalloc", "CUDA memory allocate", "Reserves space in GPU memory.", "new here"],
+  ["cudaMemcpy", "CUDA memory copy", "Copies between host and device, in the direction you name.", "new here"],
+  ["cudaFree", "CUDA free", "Releases GPU memory.", "new here"],
+  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Unit 2.3).", "from Unit 2.3"],
+  ["DMA", "Direct Memory Access", "Moves the data over PCIe (COA Unit 5).", "from COA"],
 ];

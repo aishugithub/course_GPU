@@ -5,3 +5,6 @@ dist/
 # test-run downloads (MNIST etc.) from tools/notebooks/run_nb.py
 tools/notebooks/data/
 __pycache__/
+
+# personal teaching documents (not published)
+Class - aishu/

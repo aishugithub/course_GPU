@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab02_AI_Is_Hungry.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2_CPU_vs_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -39,7 +39,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
       <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2 in Colab ↗</a>
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
 }
@@ -68,32 +68,53 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L Ch 13 (Computational performance) · Hamacher Ch 1 (Performance)";
+const TEXTBOOK = "Hamacher §12.2.1 (GPUs) · H&P §4.4";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-const fmt = (x) => {
-  const u = [["", 1], [" thousand", 1e3], [" million", 1e6], [" billion", 1e9], [" trillion", 1e12], [" quadrillion", 1e15], [" quintillion", 1e18]];
-  let k = 0; while (k < u.length - 1 && x >= u[k + 1][1]) k++;
-  return `${(x / u[k][1]).toFixed(x / u[k][1] < 10 ? 1 : 0)}${u[k][0]}`;
-};
+// Simple, labelled timing model (all figures approximate):
+// CPU 0.2 TFLOPS effective, 20 GB/s memory · GPU 4 TFLOPS effective FP32, 300 GB/s memory,
+// 20 µs to launch work, PCIe copies at 12 GB/s
+const CPU_F = 2e11, CPU_BW = 2e10, GPU_F = 4e12, GPU_BW = 3e11, LAUNCH = 2e-5, PCIE = 1.2e10;
+const tfmt = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : s < 1 ? `${(s * 1e3).toFixed(1)} ms` : `${s.toFixed(2)} s`);
+
+const JOBS = [
+  { id: "tiny", t: "Add two lists of 100 numbers", parallel: true, flops: 100, bytes: 1200, serial: 0, ans: "cpu",
+    why: "The GPU's 20 µs launch cost is thousands of times longer than the work itself. Tiny jobs stay on the CPU (Unit 2.1)." },
+  { id: "matmul", t: "Multiply two 4096 × 4096 matrices", parallel: true, flops: 2 * 4096 ** 3, bytes: 3 * 4096 * 4096 * 4, serial: 0, ans: "gpu",
+    why: "1.4 × 10¹¹ FLOPs of perfectly independent work (Unit 1.3). Even after copying 200 MB over PCIe, the GPU wins clearly." },
+  { id: "csv", t: "Parse 10,000 lines of a messy CSV with lots of if/else in Python", parallel: false, flops: 0, bytes: 0, serial: 0.08, ans: "cpu",
+    why: "Branchy, one-line-at-a-time Python string work isn't SIMD work at all. p ≈ 0, so Amdahl gives no speed-up (Unit 2.4). This is the CPU's home ground." },
+  { id: "relu_cpu", t: "Apply ReLU to 5 crore numbers that are in CPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: true, ans: "cpu",
+    why: "A trap! Only one comparison per number, but 400 MB must cross PCIe and come back. Copying takes longer than the CPU needs to just do it. Where the data lives matters (Module 4)." },
+  { id: "relu_gpu", t: "Apply ReLU to 5 crore numbers already in GPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: false, ans: "gpu",
+    why: "Same job, but the data is already on the GPU, so there's no copy. The GPU's fast memory makes it about 15× quicker. Keep data on the GPU between steps!" },
+  { id: "chat", t: "A 7-billion-parameter chatbot writes one 200-word answer", parallel: true, flops: 3.7e12, bytes: 0, serial: 0, ans: "gpu",
+    why: "3.7 × 10¹² FLOPs of matrix multiplies: about 18 s of arithmetic on the CPU, under a second on the GPU (even faster with FP16, Unit 5.2). This is exactly why AI runs on GPUs." },
+];
+function times(j) {
+  if (!j.parallel) return { cpu: j.serial, gpu: j.serial + LAUNCH, note: "no parallel work to offload" };
+  const cpu = Math.max(j.flops / CPU_F, j.bytes / CPU_BW);
+  const copy = j.copy === false ? 0 : j.bytes / PCIE;
+  const gpu = LAUNCH + copy + Math.max(j.flops / GPU_F, j.bytes / GPU_BW);
+  return { cpu, gpu, copy };
+}
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["FLOPs per token ≈ 2 × parameters", "Unit 2.1"],
-  ["A token is about ¾ of a word", "Unit 2.1"],
-  ["time = work (FLOPs) ÷ speed (FLOPS)", "Unit 2.1"],
-  ["Inference only: no backward pass needed to answer questions", "Unit 2.2"],
-  ["Different students' questions are independent, so they can be answered in parallel", "Unit 2.3"],
+  ["Latency vs throughput, and the GPU's start-up cost", "Unit 2.1"],
+  ["time = work ÷ speed", "Unit 1.1"],
+  ["Is the work independent (SIMD/SIMT-friendly)?", "Units 1.3, 2.3"],
+  ["Amdahl: the serial part sets the ceiling", "Unit 2.4"],
+  ["Data must be copied to the GPU before it can work on it", "preview of Module 4"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
   return (
     <div>
       <Frame>
-        Your principal wants a <b style={{ color: C.text }}>College Helpdesk Bot</b>: students ask about timetables, fees and exams, and an AI model
-        answers. Before buying anything, she asks you: <i>how much computing does this need each day, which machine can handle it, and what will
-        it cost?</i> Tick each tool once you've found where you learned it.
+        You're the student coordinator of the college's new AI lab, with one GPU server. Teams bring you jobs and ask: <i>"Should this run on the
+        CPU or the GPU?"</i> A wrong call wastes GPU time that other teams need. Your tools:
       </Frame>
       {TOOLS.map(([t, u], i) => {
         const on = ticks.includes(i);
@@ -105,8 +126,9 @@ function MissionWidget() {
           </div>
         );
       })}
-      <Insight color={C.green} title="An engineer's estimate needs no special software, just these five facts and a calculator.">
-        Real AI teams do exactly this "back-of-the-envelope" maths before spending lakhs of rupees on hardware.
+      <Insight color={C.green} title="'Use the GPU for everything' is wrong. So is 'the GPU is just for graphics'.">
+        The right answer depends on the size of the work, how parallel it is, and where the data lives. By the end of this capstone you'll decide in
+        seconds.
       </Insight>
     </div>
   );
@@ -114,38 +136,31 @@ function MissionWidget() {
 
 // ── Section 2: Build in Steps ──
 const VERSIONS = [
-  { tag: "v1", title: "Work for ONE answer", color: C.teal, why: "Start small: how many FLOPs does a single answer take? Model size × 2 × tokens.", code: `params = 7e9                 # a 7-billion-parameter model
-words_per_answer = 200
-tokens = words_per_answer / 0.75          # ≈ 267 tokens
+  { tag: "v1", title: "Compute time only", color: C.teal, why: "First guess: time = FLOPs ÷ speed on each machine. But this ignores two GPU costs, so it says 'GPU' for everything, even tiny jobs.", code: `CPU_FLOPS, GPU_FLOPS = 0.2e12, 4e12        # effective speeds (approx.)
 
-flops_per_answer = 2 * params * tokens
-print(f"{flops_per_answer:.2e} FLOPs per answer")   # ≈ 3.7e12` },
-  { tag: "v2", title: "+ a whole day", color: C.yellow, why: "One answer is fine, but the college has thousands of students. Multiply by the number of questions per day.", code: `students = 5000
-questions_each = 4
-answers_per_day = students * questions_each      # 20,000
+def cpu_time(flops): return flops / CPU_FLOPS
+def gpu_time(flops): return flops / GPU_FLOPS` },
+  { tag: "v2", title: "+ launch and copy costs", color: C.yellow, why: "A GPU job has a fixed launch cost (~20 µs), and its data must cross PCIe (~12 GB/s) unless it's already there. Now tiny jobs and copy-heavy jobs correctly go to the CPU.", code: `LAUNCH = 20e-6          # seconds to start GPU work
+PCIE   = 12e9           # bytes per second over the PCIe bus
 
-flops_per_day = flops_per_answer * answers_per_day
-print(f"{flops_per_day:.2e} FLOPs per day")       # ≈ 7.5e16` },
-  { tag: "v3", title: "+ machines, time & money", color: C.green, why: "Now divide by each machine's speed. Real programs reach only part of the peak, so include a utilisation factor. Then turn GPU-hours into rupees.", code: `machines = {                      # peak FLOPS (approximate)
-    "laptop CPU": 0.2e12,
-    "T4 GPU (FP16)": 65e12,
-}
-utilisation = 0.3                 # real code rarely hits peak
-rupees_per_gpu_hour = 35          # assumed cloud price
+def gpu_time(flops, nbytes, data_on_gpu=False):
+    copy = 0 if data_on_gpu else nbytes / PCIE
+    return LAUNCH + copy + flops / GPU_FLOPS` },
+  { tag: "v3", title: "+ Amdahl's serial part", color: C.green, why: "Real programs have a serial part that no GPU can speed up. Add it to both sides, then decide.", code: `def decide(flops, nbytes, serial_s=0.0, data_on_gpu=False):
+    cpu = serial_s + cpu_time(flops)
+    gpu = serial_s + gpu_time(flops, nbytes, data_on_gpu)
+    winner = "GPU" if gpu < cpu else "CPU"
+    return winner, cpu, gpu
 
-for name, peak in machines.items():
-    hours = flops_per_day / (peak * utilisation) / 3600
-    print(f"{name:14s}: {hours:8.1f} hours of work per day")
-
-t4_hours = flops_per_day / (65e12 * utilisation) / 3600
-print(f"Cloud cost ≈ ₹{t4_hours * rupees_per_gpu_hour:.0f} per day")` },
+print(decide(2 * 4096**3, 3 * 4096**2 * 4))   # ('GPU', 0.69, 0.05)
+print(decide(100, 1200))                      # ('CPU', ...)` },
 ];
 function BuildWidget() {
   const [v, setV] = useState(0);
   const cur = VERSIONS[v];
   return (
     <div>
-      <Frame>Grow the estimator one idea at a time. Each version adds ONE idea.</Frame>
+      <Frame>Grow a "CPU or GPU?" decision function, one idea per version.</Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {VERSIONS.map((x, i) => <Btn key={x.tag} ghost={i !== v} onClick={() => setV(i)} color={x.color}>{x.tag}: {x.title}</Btn>)}
       </div>
@@ -153,59 +168,48 @@ function BuildWidget() {
         <b style={{ color: cur.color }}>{cur.tag}: </b>{cur.why}
       </div>
       <Code color={cur.color}>{cur.code}</Code>
-      <Insight title="One answer → one day → machines and money.">
-        Each version answers a bigger question using the previous one. That's how estimates, and programs, should grow.
+      <Insight title="Each version fixes the previous one's wrong answers.">
+        v1 sends everything to the GPU; v2 learns about launch and copy costs; v3 respects Amdahl. That's how engineering models improve.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Play It — the estimator ──
-const MACH = [
-  { m: "Laptop CPU (NumPy)", f: 2e11 },
-  { m: "NVIDIA T4, FP32", f: 8.1e12 },
-  { m: "NVIDIA T4, FP16 Tensor Cores", f: 6.5e13 },
-  { m: "NVIDIA A100, FP16 Tensor Cores", f: 3.12e14 },
-];
+// ── Section 3: Play It — the job queue ──
 function PlayWidget() {
-  const [students, setStudents] = useState(5000);
-  const [q, setQ] = useState(4);
-  const [words, setWords] = useState(200);
-  const [params, setParams] = useState(7);
-  const [util, setUtil] = useState(30);
-  const [rate, setRate] = useState(35);
-  const perDay = 2 * params * 1e9 * (words / 0.75) * students * q;
+  const [picks, setPicks] = useState({});
+  const right = JOBS.filter((j) => picks[j.id] === j.ans).length;
   return (
     <div>
-      <Frame>Your estimator, live. Change the college and the model, and see whether each machine can keep up within 24 hours, and at what cost.</Frame>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-        <Slider label={<>Students = <b style={{ color: C.teal }}>{students.toLocaleString("en-IN")}</b></>} value={students} min={500} max={50000} step={500} onChange={setStudents} color={C.teal} />
-        <Slider label={<>Questions per student per day = <b style={{ color: C.teal }}>{q}</b></>} value={q} min={1} max={20} onChange={setQ} color={C.teal} />
-        <Slider label={<>Words per answer = <b style={{ color: C.purple }}>{words}</b></>} value={words} min={20} max={1000} step={10} onChange={setWords} color={C.purple} />
-        <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} B</b> parameters</>} value={params} min={1} max={70} onChange={setParams} />
-        <Slider label={<>Utilisation = <b style={{ color: C.yellow }}>{util}%</b> of peak</>} value={util} min={5} max={80} step={5} onChange={setUtil} color={C.yellow} />
-        <Slider label={<>Cloud price = <b style={{ color: C.green }}>₹{rate}</b> per GPU-hour</>} value={rate} min={10} max={300} step={5} onChange={setRate} color={C.green} />
-      </div>
-      <Stat label="WORK PER DAY" value={`${fmt(perDay)} FLOPs`} color={C.orange} />
-      <div style={{ marginTop: 10 }}>
-        {MACH.map((x) => {
-          const hrs = perDay / (x.f * util / 100) / 3600;
-          const n = Math.ceil(hrs / 24);
-          return (
-            <div key={x.m} style={{ display: "flex", gap: 8, alignItems: "center", background: C.card, borderRadius: 8, padding: "8px 12px", marginBottom: 6, border: `1.5px solid ${hrs <= 24 ? C.green : C.red}` }}>
-              <div style={{ flex: 1, color: C.text, fontSize: 13 }}>{x.m}</div>
-              <div style={{ fontFamily: "monospace", fontSize: 12.5, color: hrs <= 24 ? C.green : C.red }}>{hrs < 1 ? `${(hrs * 60).toFixed(0)} min` : `${hrs.toFixed(1)} h`} of work/day</div>
-              <div style={{ fontFamily: "monospace", fontSize: 12, color: C.muted, minWidth: 120, textAlign: "right" }}>{hrs <= 24 ? "✓ 1 machine" : `needs ${n.toLocaleString("en-IN")} machines`}</div>
+      <Frame>Six jobs in the queue. Decide CPU or GPU for each, then see the model's timing and the reason. (Approximate model, explained in Build in Steps.)</Frame>
+      {JOBS.map((j) => {
+        const p = picks[j.id], t = times(j);
+        return (
+          <div key={j.id} style={{ background: C.card, border: `1.5px solid ${p ? (p === j.ans ? C.green : C.red) : C.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 220, color: C.text, fontSize: 13, fontWeight: 600 }}>{j.t}</div>
+              {[["cpu", "🧠 CPU", C.orange], ["gpu", "⚡ GPU", C.green]].map(([k, l, c]) => (
+                <button key={k} onClick={() => !p && setPicks((s) => ({ ...s, [j.id]: k }))} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${c}`, background: p === k ? c + "33" : "transparent", color: C.text, fontSize: 12, cursor: p ? "default" : "pointer" }}>{l}</button>
+              ))}
             </div>
-          );
-        })}
-      </div>
-      <Stat label="T4 CLOUD COST PER DAY (FP16)" value={`₹${Math.round(perDay / (6.5e13 * util / 100) / 3600 * rate).toLocaleString("en-IN")}`} color={C.green} />
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Speeds are approximate published peaks; the price is an assumption, so check current rates. Unit 6.3 shows why chatbot answers often run slower than this FLOPs estimate (memory speed becomes the limit).</div>
-      <Insight color={C.green} title="The laptop CPU can't keep up with even a small college; a single GPU usually can.">
-        Same arithmetic, same model. The difference is entirely how many operations the machine does per second. Module 3 opens up that
-        difference: CPU vs GPU.
-      </Insight>
+            {p && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontFamily: "monospace", fontSize: 12 }}>
+                  <span style={{ color: C.orange }}>CPU ≈ {tfmt(t.cpu)}</span>
+                  <span style={{ color: C.green }}>GPU ≈ {tfmt(t.gpu)}{t.copy ? ` (incl. ${tfmt(t.copy)} copying)` : ""}</span>
+                </div>
+                <div style={{ color: p === j.ans ? C.green : C.red, fontSize: 12.5, marginTop: 4, lineHeight: 1.6 }}>{p === j.ans ? "✓ " : "✗ "}{j.why}</div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {Object.keys(picks).length === JOBS.length && (
+        <Insight color={C.purple} title={`You scored ${right} / ${JOBS.length}. GPU = big + parallel + data already there (or worth the copy).`}>
+          Small jobs, branchy serial code and copy-dominated jobs belong on the CPU. Big matrix maths, especially with data kept on the GPU,
+          belongs on the GPU.
+        </Insight>
+      )}
     </div>
   );
 }
@@ -214,60 +218,62 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete estimator, runnable in any Python. In Lab 2 Part D you'll replace the guessed "laptop CPU" speed with one you measure yourself.</Frame>
-      <Code color={C.green} title="🧾 compute_bill.py">{`params            = 7e9      # model size
-students          = 5000
-questions_each    = 4
-words_per_answer  = 200
-utilisation       = 0.3
-rupees_per_hour   = 35       # assumption: check current cloud prices
+      <Frame>The complete decision tool. In Lab 2 Part E you'll test its predictions against real timings on Colab's T4.</Frame>
+      <Code color={C.green} title="🧭 cpu_or_gpu.py">{`CPU_FLOPS, CPU_BW = 0.2e12, 20e9     # effective speed, memory bandwidth (approx.)
+GPU_FLOPS, GPU_BW = 4e12, 300e9
+LAUNCH, PCIE = 20e-6, 12e9
 
-tokens_per_answer = words_per_answer / 0.75
-flops_per_day = 2 * params * tokens_per_answer * students * questions_each
-print(f"Work per day: {flops_per_day:.2e} FLOPs")
+def cpu_time(flops, nbytes):
+    return max(flops / CPU_FLOPS, nbytes / CPU_BW)
 
-machines = {"laptop CPU": 0.2e12, "T4 FP32": 8.1e12, "T4 FP16": 65e12, "A100 FP16": 312e12}
-for name, peak in machines.items():
-    hours = flops_per_day / (peak * utilisation) / 3600
-    fits = "fits in a day" if hours <= 24 else f"needs {int(hours // 24) + 1} machines"
-    print(f"{name:10s} {hours:10.1f} h/day   {fits}")
+def gpu_time(flops, nbytes, data_on_gpu=False):
+    copy = 0 if data_on_gpu else nbytes / PCIE
+    return LAUNCH + copy + max(flops / GPU_FLOPS, nbytes / GPU_BW)
 
-t4 = flops_per_day / (65e12 * utilisation) / 3600
-print(f"T4 cloud cost: about ₹{t4 * rupees_per_hour:,.0f} per day")`}</Code>
+def decide(name, flops, nbytes, serial_s=0.0, data_on_gpu=False):
+    c = serial_s + cpu_time(flops, nbytes)
+    g = serial_s + gpu_time(flops, nbytes, data_on_gpu)
+    print(f"{name:32s} CPU {c*1e3:9.3f} ms   GPU {g*1e3:9.3f} ms   → {'GPU' if g < c else 'CPU'}")
+
+decide("add 100 numbers", 100, 1200)
+decide("4096 x 4096 matmul", 2 * 4096**3, 3 * 4096**2 * 4)
+decide("ReLU 5 crore, data on CPU", 5e7, 4e8)
+decide("ReLU 5 crore, data on GPU", 5e7, 4e8, data_on_gpu=True)`}</Code>
       <div style={{ marginTop: 12, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) add a peak hour, when 40% of the day's questions arrive in one hour: how many GPUs do you need then?
-        (2) Add a one-time training cost using 6 × parameters × tokens (Unit 2.2).
+        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) find the matrix size where the decision flips from CPU to GPU; (2) add a
+        "number of times the job repeats" parameter: copying once and computing 100 times changes the answer.
       </div>
-      <LabCard part="D" title="Measure your own CPU's speed"
-        what="Time matrix multiplication in plain Python and in NumPy for growing sizes, plot time against n, and compute your machine's real GFLOPS = 2n³ ÷ time. Then put that number into the estimator."
-        expect="plain Python reaching only tens of MFLOPS, NumPy reaching tens to hundreds of GFLOPS, and time growing about 8× when n doubles." />
-      <Insight color={C.orange} title="Module 2 complete: you can now put a number on AI's hunger.">
-        Next you'll meet the machine built to feed it.
+      <LabCard part="E" title="The real race: CPU vs GPU matrix multiply"
+        what="Time NumPy (CPU) against PyTorch on the T4 for matrix sizes from 64 to 4096, plot both, find the crossover, and measure the copy cost separately."
+        expect="the CPU wins for small sizes; somewhere in the low hundreds the GPU takes over, and at 4096 it is many times faster." />
+      <Insight color={C.orange} title="Module 2 complete: you know when and why the GPU wins.">
+        Next: open the GPU up and look inside: multiprocessors, warps, and its special memory.
       </Insight>
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "A 7-billion-parameter model writes a 300-token answer. About how many FLOPs is that?", options: ["2.1 × 10⁹", "4.2 × 10¹²", "2.1 × 10¹²", "7 × 10⁹"], answer: 1, explain: "2 × 7 × 10⁹ × 300 = 4.2 × 10¹² FLOPs." },
-  { q: "A machine's peak is 10 TFLOPS but your program reaches 30% of it. What speed should you use in the estimate?", options: ["10 TFLOPS", "3 TFLOPS", "30 TFLOPS", "0.3 TFLOPS"], answer: 1, explain: "Effective speed = peak × utilisation = 10 × 0.3 = 3 TFLOPS." },
-  { q: "The bot needs 48 GPU-hours of work every day. How many GPUs must run round the clock?", options: ["1", "2", "24", "48"], answer: 1, explain: "Each GPU gives 24 hours a day: 48 ÷ 24 = 2 GPUs. This only works because different students' questions are independent and can run in parallel." },
-  { q: "Why doesn't the helpdesk estimate include a backward pass?", options: ["It's too small to matter", "Answering questions is inference; the backward pass is only needed for training", "GPUs skip it automatically", "Chatbots have no layers"], answer: 1, explain: "Using a trained model is forward-only (Unit 2.2). Backward passes and updates belong to training." },
+  { q: "Why can a GPU lose to a CPU on a very small job?", options: ["GPUs can't add", "The fixed launch and copy costs are larger than the work itself", "GPU cores are broken for small numbers", "The CPU has more cores"], answer: 1, explain: "Tens of microseconds to start, plus copying, swamp a job that takes nanoseconds on the CPU." },
+  { q: "ReLU on 5 crore numbers: the GPU loses when the data starts in CPU memory but wins when it's already in GPU memory. Why?", options: ["ReLU is different on each", "The PCIe copy dominates when data must be moved", "The GPU is faster at night", "CPU memory is faster than GPU memory"], answer: 1, explain: "Simple work per byte + an expensive copy = CPU wins. Remove the copy and the GPU's fast memory wins." },
+  { q: "Which job belongs on the CPU?", options: ["A 8192 × 8192 matrix multiply", "Training a neural network on images", "Branch-heavy Python code that processes text one line at a time", "Running a large chatbot"], answer: 2, explain: "Serial, branchy work has p ≈ 0: there's nothing for thousands of cores to share." },
+  { q: "The best habit for GPU programs is to…", options: ["Copy data to the GPU before every operation", "Copy data once, do many operations on it on the GPU, then copy results back", "Avoid the GPU for matrix work", "Use the CPU for all multiply-adds"], answer: 1, explain: "Copies are expensive. Keep data on the GPU across many operations; Module 4 is built around this idea." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can size an AI deployment like an engineer.",
-  good: "Good. Replay 'Play It' and push the sliders to extremes.",
-  low: "Revisit 'Build in Steps': one answer → one day → machines.",
-  done: "Module 2 Complete! 🍔",
-  body: "You can count AI's work, separate training from inference, spot the parallelism, and estimate time and cost on real machines.",
-  next: "Next up: Module 3 — CPU vs GPU.",
-  teaser: "Why does a chip with thousands of 'slow' cores beat a CPU with a few fast ones? Time to race them.",
+  perfect: "Perfect! You'd make an excellent AI lab coordinator.",
+  good: "Good. Replay 'Play It' and read each reason carefully.",
+  low: "Revisit 'Build in Steps': launch and copy costs plus Amdahl decide everything.",
+  done: "Module 2 Complete! ⚔️",
+  body: "You can explain why GPUs exist, how SIMD/SIMT work, apply Amdahl's law, and decide where any job should run.",
+  next: "Next up: Module 3 — Inside a GPU.",
+  teaser: "Streaming multiprocessors, Tensor Cores, warps and their secret weapon for hiding slow memory.",
 };
 
 const UNIT_WORDS = [
-  ["FLOPS", "FLoating-point Operations Per Second", "A machine's speed.", "from Unit 2.1"],
-  ["A100", "NVIDIA A100", "A data-centre GPU, much bigger than Colab's T4.", "new here"],
-  ["GPU-hour", "one GPU used for one hour", "How cloud companies charge for GPUs.", "new here"],
+  ["PCIe", "Peripheral Component Interconnect Express", "The bus the GPU card plugs into, about 12 GB/s in practice for the T4. Hamacher Ch 7.", "from COA"],
+  ["GB/s", "gigabytes per second", "How fast data moves.", "new here"],
+  ["µs", "microsecond", "One millionth of a second.", "new here"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A machine's arithmetic speed.", "from Unit 1.1"],
 ];
 
 // ── Quiz ──
@@ -371,10 +377,10 @@ export default function Unit2_C({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — the College Helpdesk Bot</h3><MissionWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — one answer → one day → money</h3><BuildWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — your compute estimator</h3><PlayWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and measure your own CPU</h3><CodeWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — coordinator of the AI lab</h3><MissionWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — a CPU-or-GPU decision tool</h3><BuildWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — the job queue</h3><PlayWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and the real race</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.C.</p>
@@ -388,7 +394,7 @@ export default function Unit2_C({ student, onUnitComplete }) {
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.C</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: The Compute Bill</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: CPU or GPU?</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

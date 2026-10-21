@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const C = {
   bg: "#0D1117", surface: "#161B22", card: "#1C2333",
@@ -8,21 +8,25 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab01_AI_Basics.ipynb";
-
-// Study hours per day vs exam result — one deliberately "messy" pair at 3.0 h
-const STUDENTS = [
-  { n: "SNEHA", h: 0.5, p: 0 }, { n: "ARUN", h: 1.0, p: 0 }, { n: "ARJUN", h: 1.5, p: 0 },
-  { n: "DIVYA", h: 2.0, p: 0 }, { n: "RAHUL", h: 2.5, p: 0 }, { n: "VIJAY", h: 3.0, p: 0 },
-  { n: "NISHA", h: 3.0, p: 1 }, { n: "KARTHIK", h: 3.5, p: 1 }, { n: "MEENA", h: 4.0, p: 1 },
-  { n: "ANU", h: 4.5, p: 1 }, { n: "PRIYA", h: 5.5, p: 1 }, { n: "LAKSHMI", h: 6.0, p: 1 },
-];
-const correctFor = (t) => STUDENTS.filter((s) => (s.h >= t ? 1 : 0) === s.p).length;
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab1_AI_Is_Hungry.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
     <div style={{ marginTop: 16, background: color + "18", border: `1px solid ${color}44`, borderRadius: 8, padding: "12px 16px", fontSize: 13, color: C.muted, lineHeight: 1.7 }}>
       🔑 <strong style={{ color }}>{title}</strong> {children}
+    </div>
+  );
+}
+
+function Frame({ children }) {
+  return <p style={{ color: C.muted, fontSize: 13, marginBottom: 14, lineHeight: 1.7 }}>{children}</p>;
+}
+
+function Code({ children, color = C.border, title }) {
+  return (
+    <div style={{ background: C.card, border: `1.5px solid ${color}`, borderRadius: 10, padding: 14 }}>
+      {title && <div style={{ color, fontWeight: 700, fontSize: 12, marginBottom: 8 }}>{title}</div>}
+      <pre style={{ fontFamily: "monospace", fontSize: 12, color: C.text, margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{children}</pre>
     </div>
   );
 }
@@ -40,251 +44,230 @@ function LabCard({ part, title, what, expect }) {
   );
 }
 
-// ── Section 1: Need — try to write rules for "is it a cat?" ──
-const CAT_RULES = [
-  { rule: "if it has pointy ears → cat", fail: "🦊", why: "A fox has pointy ears. Your program just called it a cat." },
-  { rule: "if it has whiskers → cat", fail: "🦭", why: "A seal has whiskers too. Another wrong answer." },
-  { rule: "if it has four legs and fur → cat", fail: "🐕", why: "Every dog in the world just became a cat." },
-  { rule: "if it is orange and striped → cat", fail: "🐈‍⬛", why: "Now a black cat is NOT a cat. You've fixed one bug and made another." },
-];
-function NeedWidget() {
-  const [tried, setTried] = useState([]);
-  const allTried = tried.length === CAT_RULES.length;
+function Btn({ onClick, children, color = C.accentGlow, ghost, disabled }) {
   return (
-    <div>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 16, lineHeight: 1.7 }}>
-        Programs you've written so far follow <b style={{ color: C.text }}>rules you typed in</b>. That works well for an auto fare
-        (₹15 per km — one rule, always right). Now try a harder job: write rules that decide whether a photo shows a cat.
-        Click each rule to test it.
-      </p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <div style={{ background: C.card, border: `1.5px solid ${C.green}44`, borderRadius: 10, padding: 16 }}>
-          <div style={{ color: C.green, fontWeight: 700, fontSize: 12, marginBottom: 10 }}>✅ EASY: AUTO FARE</div>
-          <pre style={{ fontFamily: "monospace", fontSize: 12, color: C.text, margin: 0, whiteSpace: "pre-wrap" }}>{`def fare(km):
-    return 15 * km
+    <button onClick={onClick} disabled={disabled} style={{ padding: "8px 16px", borderRadius: 8, background: ghost ? C.card : color, border: ghost ? `1px solid ${C.border}` : "none", color: ghost ? C.muted : "#fff", fontWeight: 600, cursor: disabled ? "default" : "pointer", fontSize: 13, opacity: disabled ? 0.5 : 1 }}>{children}</button>
+  );
+}
 
-fare(4)   # ₹60 — always right`}</pre>
-          <div style={{ color: C.muted, fontSize: 12, marginTop: 10 }}>You know the rule exactly, so you just write it down.</div>
-        </div>
-        <div style={{ background: C.card, border: `1.5px solid ${C.red}44`, borderRadius: 10, padding: 16 }}>
-          <div style={{ color: C.red, fontWeight: 700, fontSize: 12, marginBottom: 10 }}>❌ HARD: IS IT A CAT? 🐈</div>
-          {CAT_RULES.map((r, i) => {
-            const on = tried.includes(i);
-            return (
-              <button key={i} onClick={() => !on && setTried((t) => [...t, i])} style={{ display: "block", width: "100%", textAlign: "left", marginBottom: 6, padding: "7px 10px", borderRadius: 7, background: on ? C.red + "18" : C.surface, border: `1px solid ${on ? C.red : C.border}`, color: C.text, fontFamily: "monospace", fontSize: 11.5, cursor: on ? "default" : "pointer" }}>
-                {r.rule}
-                {on && <div style={{ fontFamily: "'Segoe UI', sans-serif", color: C.red, fontSize: 12, marginTop: 4 }}><span style={{ fontSize: 18 }}>{r.fail}</span> {r.why}</div>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      {allTried && (
-        <Insight color={C.purple} title="Some things are easy for you and impossible to write as rules.">
-          You recognise a cat instantly, but you can't explain how in <code>if</code> statements. Nobody can. AI takes a different
-          route: instead of writing the rules, show the computer thousands of labelled photos and let it <b>find the rules itself</b>.
-        </Insight>
-      )}
-      {!allTried && <div style={{ color: C.muted, fontSize: 12, marginTop: 12 }}>Rules tested: {tried.length} / {CAT_RULES.length}</div>}
+function Slider({ label, value, min, max, step = 1, onChange, color = C.accent }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ color: C.muted, fontSize: 12 }}>{label}</label>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ width: "100%", accentColor: color }} />
     </div>
   );
 }
 
-// ── Section 2: Concept — flip the arrows ──
-const PARTS = {
-  data: { label: "Examples (data)", color: C.teal, text: "The inputs the computer learns from: photos, sensor readings, study hours. Each measurable property (hours, attendance, pixel brightness) is called a feature." },
-  labels: { label: "Answers (labels)", color: C.green, text: "The correct answer for each example: 'cat' or 'not cat', PASS or FAIL. A human usually provides these, and they're what the machine learns to reproduce." },
-  model: { label: "Model", color: C.accent, text: "The rule the machine builds, stored as numbers. For now, think of it as a formula with some adjustable knobs." },
-  training: { label: "Training", color: C.purple, text: "Turning the knobs until the model's answers match the labels as closely as possible. This is the 'learning' in machine learning." },
-  predict: { label: "Prediction", color: C.orange, text: "Using the trained model on a NEW example it has never seen, such as a new student or a new photo." },
-};
-function ConceptWidget() {
-  const [mode, setMode] = useState("ml");
-  const [part, setPart] = useState("model");
-  const Box = ({ k, children }) => (
-    <span onClick={() => setPart(k)} style={{ display: "inline-block", padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${PARTS[k].color}`, background: part === k ? PARTS[k].color + "22" : C.card, color: C.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>{children}</span>
+function Stat({ label, value, color = C.teal }) {
+  return (
+    <div style={{ background: C.card, border: `1.5px solid ${color}`, borderRadius: 8, padding: "8px 12px", flex: 1, minWidth: 120 }}>
+      <div style={{ color: C.muted, fontSize: 11, letterSpacing: 0.5 }}>{label}</div>
+      <div style={{ color, fontFamily: "monospace", fontSize: 15, fontWeight: 700 }}>{value}</div>
+    </div>
   );
-  const Arrow = () => <span style={{ color: C.muted, margin: "0 8px", fontSize: 16 }}>→</span>;
+}
+
+const TEXTBOOK = "Hamacher Ch 1 (Performance) · Stallings §2.4 (Basic measures of computer performance)";
+const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+
+
+const fmt = (x) => {
+  if (x < 1e3) return x.toFixed(0);
+  const u = [["", 1], ["thousand", 1e3], ["million", 1e6], ["billion", 1e9], ["trillion", 1e12], ["quadrillion", 1e15], ["quintillion", 1e18], ["sextillion", 1e21]];
+  let k = 0; while (k < u.length - 1 && x >= u[k + 1][1]) k++;
+  return `${(x / u[k][1]).toFixed(x / u[k][1] < 10 ? 1 : 0)} ${u[k][0]}`;
+};
+
+// ── Section 1: Need — guess the work ──
+const TASKS = [
+  { t: "Read ONE handwritten digit (your Lab 0 network)", macs: 1.0e5, note: "784×128 + 128×10 ≈ 1 lakh MACs." },
+  { t: "Recognise ONE photo with ResNet-50 (a classic image model)", macs: 4.1e9, note: "About 4 billion MACs for a single 224 × 224 photo (approximate published figure)." },
+  { t: "Generate ONE word (token) with a GPT-3-sized chatbot (175 billion parameters)", macs: 1.75e11, note: "Roughly one MAC per parameter for every token: about 175 billion." },
+  { t: "TRAIN GPT-3 once, from scratch", macs: 1.6e23, note: "About 3 × 10²³ arithmetic operations (≈ 1.6 × 10²³ MACs), a published estimate." },
+];
+const GUESSES = [1e3, 1e6, 1e9, 1e12, 1e15, 1e18, 1e21, 1e24];
+function NeedWidget() {
+  const [g, setG] = useState({});
   return (
     <div>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 16, lineHeight: 1.7 }}>
-        Machine learning turns ordinary programming around. Switch between the two pictures, then click each box in the
-        machine-learning picture to see what it means.
-      </p>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        {[["rules", "⚙️ Traditional programming"], ["ml", "🧠 Machine learning"]].map(([k, l]) => (
-          <button key={k} onClick={() => setMode(k)} style={{ flex: 1, padding: "8px", borderRadius: 7, border: `1px solid ${mode === k ? C.accent : C.border}`, background: mode === k ? C.accentGlow : C.card, color: "#fff", fontSize: 12.5, cursor: "pointer" }}>{l}</button>
-        ))}
-      </div>
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 18, textAlign: "center", lineHeight: 2.4 }}>
-        {mode === "rules" ? (
-          <div>
-            <span style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${C.orange}`, color: C.text, fontSize: 12.5, fontWeight: 600 }}>Rules (you write)</span>
-            <span style={{ color: C.muted, margin: "0 6px" }}>+</span>
-            <span style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${C.teal}`, color: C.text, fontSize: 12.5, fontWeight: 600 }}>Data</span>
-            <Arrow />
-            <span style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${C.green}`, color: C.text, fontSize: 12.5, fontWeight: 600 }}>Answers</span>
+      <Frame>
+        Every AI answer is multiply-adds (MACs, from Unit 0.3). But how many? Guess the order of magnitude for each job, then check.
+        Most people are off by a factor of a million.
+      </Frame>
+      {TASKS.map((x, i) => {
+        const pick = g[i];
+        const closest = GUESSES.reduce((a, b) => (Math.abs(Math.log10(b / x.macs)) < Math.abs(Math.log10(a / x.macs)) ? b : a));
+        return (
+          <div key={i} style={{ background: C.card, border: `1px solid ${pick ? (pick === closest ? C.green : C.yellow) : C.border}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div style={{ color: C.text, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{x.t}</div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {GUESSES.map((v) => (
+                <button key={v} onClick={() => !pick && setG((s) => ({ ...s, [i]: v }))} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11.5, fontFamily: "monospace", cursor: pick ? "default" : "pointer", border: `1px solid ${pick && v === closest ? C.green : pick === v ? C.yellow : C.border}`, background: pick && v === closest ? C.green + "22" : pick === v ? C.yellow + "22" : C.surface, color: C.text }}>10^{Math.log10(v)}</button>
+              ))}
+            </div>
+            {pick && <div style={{ marginTop: 8, fontSize: 12.5, color: C.muted }}><b style={{ color: C.green }}>≈ {fmt(x.macs)} MACs.</b> {x.note} {pick !== closest && <span style={{ color: C.yellow }}>You were off by about 10^{Math.abs(Math.round(Math.log10(pick / x.macs)))}.</span>}</div>}
           </div>
-        ) : (
-          <div>
-            <Box k="data">Examples</Box><span style={{ color: C.muted, margin: "0 6px" }}>+</span><Box k="labels">Answers</Box><Arrow /><Box k="training">Training</Box><Arrow /><Box k="model">Model (rules)</Box>
-            <div style={{ marginTop: 6 }}><span style={{ color: C.muted, fontSize: 12 }}>later, on new data:</span> <Box k="model">Model</Box><Arrow /><Box k="predict">Prediction</Box></div>
-          </div>
-        )}
-      </div>
-      {mode === "ml" && (
-        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: PARTS[part].color + "14", border: `1px solid ${PARTS[part].color}55` }}>
-          <div style={{ color: PARTS[part].color, fontWeight: 700, fontSize: 13 }}>{PARTS[part].label}</div>
-          <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 4 }}>{PARTS[part].text}</div>
-        </div>
+        );
+      })}
+      {Object.keys(g).length === TASKS.length && (
+        <Insight color={C.orange} title="From 1 lakh to 10²³: AI's appetite spans 18 powers of ten.">
+          A digit is easy for anything. A chatbot word needs hundreds of billions of operations, and training one needs more operations than
+          there are grains of sand on Earth (about 10¹⁹). This unit gives you the tools to count it yourself.
+        </Insight>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
-        <div style={{ background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 14 }}>
-          <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, marginBottom: 8 }}>⚙️ YOU WRITE THE RULE</div>
-          <pre style={{ fontFamily: "monospace", fontSize: 11.5, color: C.text, margin: 0 }}>{`if hours >= 3:
-    result = "PASS"
-else:
-    result = "FAIL"`}</pre>
-          <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Where did "3" come from? You guessed it.</div>
-        </div>
-        <div style={{ background: C.card, border: `1.5px solid ${C.accent}66`, borderRadius: 10, padding: 14 }}>
-          <div style={{ color: C.accent, fontWeight: 700, fontSize: 12, marginBottom: 8 }}>🧠 THE MACHINE FINDS IT</div>
-          <pre style={{ fontFamily: "monospace", fontSize: 11.5, color: C.text, margin: 0 }}>{`model.fit(hours, results)
-# the model works out: cut-off = 3
+    </div>
+  );
+}
 
-model.predict([4.5])
-# → "PASS"`}</pre>
-          <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Nobody types the cut-off: the machine finds the same 3 hours from past students' data (watch it happen in the next section).</div>
+// ── Section 2: FLOPs vs FLOPS ──
+const PREFIX = [["kilo (K)", 3, "thousand"], ["mega (M)", 6, "million / 10 lakh"], ["giga (G)", 9, "billion / 100 crore"], ["tera (T)", 12, "trillion / 1 lakh crore"], ["peta (P)", 15, "quadrillion"], ["exa (E)", 18, "quintillion"]];
+function FlopsWidget() {
+  const [which, setWhich] = useState("ops");
+  const [p, setP] = useState(3);
+  return (
+    <div>
+      <Frame>
+        Engineers count AI work in <b style={{ color: C.text }}>floating-point operations</b>: one multiply OR one add on decimal numbers.
+        One MAC = <b style={{ color: C.accent }}>2 FLOPs</b>. Watch out for two words that look almost the same:
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        <Btn ghost={which !== "ops"} onClick={() => setWhich("ops")}>FLOPs (small s)</Btn>
+        <Btn ghost={which !== "rate"} onClick={() => setWhich("rate")} color={C.purple}>FLOPS (capital S)</Btn>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${which === "ops" ? C.accent : C.border}`, opacity: which === "ops" ? 1 : 0.5 }}>
+          <div style={{ color: C.accent, fontWeight: 700, fontSize: 13 }}>FLOPs = an amount of WORK</div>
+          <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginTop: 4 }}>"This model needs 8 GFLOPs per photo." Like a distance: <b>how far</b> you must travel. It's a property of the job.</div>
+        </div>
+        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${which === "rate" ? C.purple : C.border}`, opacity: which === "rate" ? 1 : 0.5 }}>
+          <div style={{ color: C.purple, fontWeight: 700, fontSize: 13 }}>FLOPS = FLOPs per SECOND, a SPEED</div>
+          <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginTop: 4 }}>"This GPU does 65 TFLOPS." Like km/h: <b>how fast</b> you can travel. It's a property of the hardware.</div>
         </div>
       </div>
-      <Insight title="Traditional code turns rules into answers. Machine learning turns answers into rules.">
-        You supply examples together with their correct answers, and training produces the model.
+      <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: C.yellow + "14", border: `1px solid ${C.yellow}55`, fontFamily: "monospace", fontSize: 13, color: C.text }}>
+        time (seconds) = work (FLOPs) ÷ speed (FLOPS)     ← like  time = distance ÷ speed
+      </div>
+      <div style={{ marginTop: 16, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
+        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>The prefixes you'll meet</div>
+        <Slider label={<>prefix: <b style={{ color: C.accent }}>{PREFIX[p][0]}</b></>} value={p} min={0} max={5} onChange={setP} />
+        <div style={{ fontFamily: "monospace", fontSize: 14, color: C.teal }}>1 {PREFIX[p][0].split(" ")[0]}FLOP = 10^{PREFIX[p][1]} = 1{"0".repeat(PREFIX[p][1])}</div>
+        <div style={{ color: C.muted, fontSize: 12.5, marginTop: 4 }}>= one {PREFIX[p][2]}</div>
+      </div>
+      <Insight title="Work ÷ speed = time. Every 'how long will it take?' question in this course is this one division.">
+        Count the FLOPs of the job, look up the FLOPS of the chip, divide. The rest of the course is about making that division come out small.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Trace — the machine searches for the best threshold ──
-const THRESHOLDS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
-function TraceWidget() {
-  const [mine, setMine] = useState(5);
-  const [step, setStep] = useState(-1);
-  const t = step >= 0 ? THRESHOLDS[step] : null;
-  const scores = THRESHOLDS.map(correctFor);
-  const bestSoFar = step >= 0 ? Math.max(...scores.slice(0, step + 1)) : null;
-  const bestT = step >= 0 ? THRESHOLDS[scores.slice(0, step + 1).indexOf(bestSoFar)] : null;
-  const shownT = t !== null ? t : mine;
-  const X = (h) => 20 + (h / 6.5) * 640;
+// ── Section 3: Count a model's work ──
+function CountWidget() {
+  const [params, setParams] = useState(7);
+  const [words, setWords] = useState(500);
+  const P = params * 1e9;
+  const perTok = 2 * P;
+  const tokens = Math.round(words * 1.3);
   return (
     <div>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 12, lineHeight: 1.7 }}>
-        Here are last year's 12 students: daily study hours and whether they passed. First, drag the slider and find the
-        cut-off that gets the most students right. Then press <b>Step</b> to watch the machine search.
-      </p>
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ color: C.muted, fontSize: 12 }}>Your rule: PASS if hours ≥ <strong style={{ color: C.yellow }}>{mine}</strong> → gets <strong style={{ color: C.yellow }}>{correctFor(mine)} / 12</strong> right</label>
-        <input type="range" min={0.5} max={6} step={0.5} value={mine} onChange={(e) => { setMine(Number(e.target.value)); setStep(-1); }} style={{ width: "100%", accentColor: C.yellow }} />
+      <Frame>
+        For a chatbot (a language model) there is a handy rule: generating <b style={{ color: C.text }}>one token costs about 2 FLOPs per parameter</b>,
+        because every weight is used in one multiply-add. A token is roughly ¾ of a word. Pick a model size and an answer length.
+      </Frame>
+      <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} billion</b> parameters {params === 7 ? "(a small open model you can run yourself)" : params >= 175 ? "(GPT-3 class)" : ""}</>} value={params} min={1} max={400} onChange={setParams} />
+      <Slider label={<>Answer length = <b style={{ color: C.purple }}>{words}</b> words ≈ {tokens} tokens</>} value={words} min={10} max={3000} step={10} onChange={setWords} color={C.purple} />
+      <div style={{ fontFamily: "monospace", fontSize: 13, color: C.text, lineHeight: 2, background: C.card, borderRadius: 10, padding: 12, border: `1px solid ${C.border}` }}>
+        <div>FLOPs per token = 2 × {params} billion = <b style={{ color: C.accent }}>{fmt(perTok)}</b></div>
+        <div>FLOPs for the answer = {fmt(perTok)} × {tokens} = <b style={{ color: C.orange }}>{fmt(perTok * tokens)}</b></div>
       </div>
-      <svg viewBox="0 0 680 150" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-        <line x1="20" y1="100" x2="660" y2="100" stroke={C.border} strokeWidth="2" />
-        {[0, 1, 2, 3, 4, 5, 6].map((h) => <text key={h} x={X(h)} y="120" fill={C.muted} fontSize="11" textAnchor="middle">{h} h</text>)}
-        <line x1={X(shownT)} y1="20" x2={X(shownT)} y2="108" stroke={t !== null ? C.accent : C.yellow} strokeWidth="2" strokeDasharray="5 4" />
-        <text x={X(shownT) + 5} y="30" fill={t !== null ? C.accent : C.yellow} fontSize="11">cut-off {shownT}</text>
-        {STUDENTS.map((s, i) => {
-          const pred = s.h >= shownT ? 1 : 0, ok = pred === s.p;
-          const y = s.h === 3.0 ? (s.p ? 62 : 84) : 80;
-          return (
-            <g key={i}>
-              <circle cx={X(s.h)} cy={y} r="9" fill={s.p ? C.green : C.red} opacity="0.85" />
-              {!ok && <circle cx={X(s.h)} cy={y} r="13" fill="none" stroke={C.yellow} strokeWidth="2" />}
-            </g>
-          );
-        })}
-        <text x="20" y="143" fill={C.muted} fontSize="11">● green = passed, ● red = failed, yellow ring = the rule got this student wrong</text>
-      </svg>
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <button onClick={() => setStep((s) => Math.min(THRESHOLDS.length - 1, s + 1))} style={{ padding: "8px 16px", borderRadius: 8, background: C.accentGlow, border: "none", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Step ▶ ({step + 1} / {THRESHOLDS.length})</button>
-        <button onClick={() => setStep(-1)} style={{ padding: "8px 16px", borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.muted, cursor: "pointer" }}>↺ Reset</button>
-      </div>
-      {step >= 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-          <div style={{ background: C.card, border: `1.5px solid ${C.teal}`, borderRadius: 8, padding: 10 }}>
-            <div style={{ color: C.muted, fontSize: 11 }}>TRYING NOW</div>
-            <div style={{ color: C.text, fontFamily: "monospace", fontSize: 14 }}>cut-off = {t} → {scores[step]} / 12</div>
-          </div>
-          <div style={{ background: C.card, border: `1.5px solid ${C.green}`, borderRadius: 8, padding: 10 }}>
-            <div style={{ color: C.muted, fontSize: 11 }}>BEST SO FAR</div>
-            <div style={{ color: C.green, fontFamily: "monospace", fontSize: 14 }}>cut-off = {bestT} → {bestSoFar} / 12</div>
-          </div>
-        </div>
-      )}
-      {step === THRESHOLDS.length - 1 && (
-        <Insight color={C.green} title="That search through the data IS learning, in its simplest form.">
-          The machine tried every candidate rule, scored each against the real answers, and kept the best: PASS if hours ≥ 3,
-          11 out of 12 right (3.5 ties, but the search keeps the first best it finds). No rule gets 12 out of 12, because VIJAY and NISHA both studied 3 hours and got different results.
-          Real data is messy, so a good model is the one that's right most often, not always.
-        </Insight>
-      )}
+      <Insight color={C.orange} title="One chatbot answer can easily be 10¹⁵ FLOPs, a quadrillion operations.">
+        And a popular chatbot answers crores of questions a day. That's why AI companies buy chips by the lakh.
+      </Insight>
     </div>
   );
 }
 
-// ── Section 4: Sort the jobs — rules or learning? ──
-const JOBS = [
-  { job: "Calculate income tax from salary using the government's slabs", ans: "rules", why: "The slabs are written down exactly. Just code them." },
-  { job: "Unlock a phone by recognising the owner's face", ans: "learn", why: "No one can write rules for a face. The phone learns it from photos." },
-  { job: "Convert a temperature from °C to °F", ans: "rules", why: "F = 9/5 × C + 32. A known formula needs no learning." },
-  { job: "Predict tomorrow's rainfall in Chennai", ans: "learn", why: "There are too many factors interacting. Models learn the pattern from years of weather data." },
-  { job: "Check that a password has at least 8 characters", ans: "rules", why: "len(password) >= 8. That's one exact rule." },
-  { job: "Translate a sentence from Tamil to English", ans: "learn", why: "Languages have far too many exceptions. Translators learn from millions of example sentences." },
-  { job: "Flag spam SMS messages", ans: "learn", why: "Spammers keep changing their words. A model trained on labelled messages keeps up better than fixed rules." },
-  { job: "Award grades from marks using fixed cut-offs (90+ = O, 80+ = A+ …)", ans: "rules", why: "The cut-offs are fixed and known. An if/elif chain is perfect." },
+// ── Section 4: How long on which machine? ──
+const DEVICES = [
+  { d: "You, with pen and paper", f: 0.1, tag: "1 operation every 10 s" },
+  { d: "A single CPU core, plain Python loops", f: 3e7, tag: "≈ 30 MFLOPS (measured in Lab 1)" },
+  { d: "A laptop CPU, all cores, NumPy", f: 2e11, tag: "≈ 0.2 TFLOPS (approx.)" },
+  { d: "NVIDIA T4 GPU (free Colab), FP32", f: 8.1e12, tag: "8.1 TFLOPS peak" },
+  { d: "NVIDIA T4 GPU, FP16 Tensor Cores", f: 6.5e13, tag: "65 TFLOPS peak" },
+  { d: "NVIDIA H100 GPU, FP16 Tensor Cores", f: 9.9e14, tag: "≈ 990 TFLOPS peak" },
 ];
-function SortWidget() {
-  const [picks, setPicks] = useState({});
-  const right = JOBS.filter((j, i) => picks[i] === j.ans).length;
-  const done = Object.keys(picks).length === JOBS.length;
+const JOBS = [
+  { j: "Classify 10,000 digits (Lab 0 network)", f: 2 * 1e5 * 1e4 },
+  { j: "Recognise 1,000 photos (ResNet-50)", f: 2 * 4.1e9 * 1e3 },
+  { j: "A 500-word chatbot answer (7 B model)", f: 2 * 7e9 * 650 },
+  { j: "Train GPT-3 once", f: 3.14e23 },
+];
+const human = (s) => s < 1e-3 ? `${(s * 1e6).toFixed(0)} µs` : s < 1 ? `${(s * 1e3).toFixed(0)} ms` : s < 120 ? `${s.toFixed(1)} s` : s < 7200 ? `${(s / 60).toFixed(0)} min` : s < 172800 ? `${(s / 3600).toFixed(0)} hours` : s < 3.15e7 * 2 ? `${(s / 86400).toFixed(0)} days` : `${fmt(s / 3.15e7)} years`;
+function DeviceWidget() {
+  const [j, setJ] = useState(2);
   return (
     <div>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 14, lineHeight: 1.7 }}>
-        AI isn't the answer to everything. For each job, decide: would you <b style={{ color: C.orange }}>write the rules</b> yourself,
-        or <b style={{ color: C.accent }}>learn from data</b>?
-      </p>
-      {JOBS.map((j, i) => {
-        const p = picks[i];
+      <Frame>
+        Now do the division: <b style={{ color: C.text }}>time = FLOPs ÷ FLOPS</b>. Pick a job and compare machines. Speeds are approximate
+        peak figures; real programs usually reach only a fraction of the peak.
+      </Frame>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+        {JOBS.map((x, i) => <Btn key={i} ghost={i !== j} onClick={() => setJ(i)} color={C.orange}>{x.j}</Btn>)}
+      </div>
+      <div style={{ color: C.muted, fontSize: 12.5, marginBottom: 8 }}>Work: <b style={{ color: C.orange }}>{fmt(JOBS[j].f)} FLOPs</b></div>
+      {DEVICES.map((d) => {
+        const t = JOBS[j].f / d.f;
+        const w = Math.max(2, Math.min(100, (Math.log10(t) + 6) * 6));
         return (
-          <div key={i} style={{ background: C.card, border: `1px solid ${p ? (p === j.ans ? C.green : C.red) : C.border}`, borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 220, color: C.text, fontSize: 13 }}>{j.job}</div>
-              {[["rules", "⚙️ Rules", C.orange], ["learn", "🧠 Learn", C.accent]].map(([k, l, col]) => (
-                <button key={k} onClick={() => p === undefined && setPicks((s) => ({ ...s, [i]: k }))} style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${col}`, background: p === k ? col + "33" : "transparent", color: C.text, fontSize: 12, cursor: p === undefined ? "pointer" : "default" }}>{l}</button>
-              ))}
+          <div key={d.d} style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+              <span style={{ color: C.text }}>{d.d} <span style={{ color: C.muted }}>({d.tag})</span></span>
+              <span style={{ color: t > 3600 ? C.red : t > 1 ? C.yellow : C.green, fontFamily: "monospace", fontWeight: 700 }}>{human(t)}</span>
             </div>
-            {p && <div style={{ marginTop: 6, fontSize: 12, color: p === j.ans ? C.green : C.red }}>{p === j.ans ? "✓ " : "✗ "}{j.why}</div>}
+            <div style={{ height: 8, background: C.card, borderRadius: 4 }}><div style={{ width: `${w}%`, height: "100%", borderRadius: 4, background: t > 3600 ? C.red : t > 1 ? C.yellow : C.green }} /></div>
           </div>
         );
       })}
-      {done && (
-        <Insight color={C.purple} title={`You got ${right} / ${JOBS.length}.`}>
-          Use learning when the rule is unknown, too complex to write, or keeps changing. Use plain rules when you know them exactly:
-          they're faster, cheaper and easier to trust.
-        </Insight>
-      )}
-      <LabCard part="A" title="Let Python find the cut-off"
-        what="Type in the same 12 students, write your own rule, then write a loop that tries every cut-off and keeps the best one: the same search you just watched."
-        expect="best cut-off = 3.0, correct = 11 / 12 (3.5 ties)." />
+      <div style={{ color: C.muted, fontSize: 11.5 }}>Bar length is on a log scale: each step right = 10× longer.</div>
+      <Insight color={C.green} title="Same job, same maths, from days to milliseconds, purely by changing the machine.">
+        Notice the jumps: plain Python → NumPy → GPU → GPU Tensor Cores. Each is a different way of doing many multiply-adds at once.
+        Modules 2–5 explain each jump.
+      </Insight>
+      <LabCard part="A" title="Count parameters and FLOPs of real models"
+        what="Count the parameters of your Lab 0 network and of ResNet-18 using PyTorch, then estimate FLOPs per input with the 2 × MACs rule and the time it needs at your measured speed."
+        expect="about 1 lakh parameters for the Lab 0 network and about 1.17 crore (11.7 million) for ResNet-18." />
     </div>
   );
 }
 
+const QUESTIONS = [
+  { q: "A layer does 5 million multiply-accumulates (MACs). How many FLOPs is that?", options: ["2.5 million", "5 million", "10 million", "25 million"], answer: 2, explain: "Each MAC is one multiply plus one add, so 2 FLOPs. 5 million MACs = 10 million FLOPs." },
+  { q: "'This GPU reaches 65 TFLOPS.' What does that number describe?", options: ["How much memory it has", "How much work a model needs", "How many floating-point operations it can do per second", "How many cores it has"], answer: 2, explain: "FLOPS with a capital S is a speed: operations per second. FLOPs (small s) is an amount of work." },
+  { q: "A job needs 10¹² FLOPs. A machine delivers 10¹¹ FLOPS. Roughly how long does it take?", options: ["0.1 s", "1 s", "10 s", "100 s"], answer: 2, explain: "time = work ÷ speed = 10¹² ÷ 10¹¹ = 10 seconds." },
+  { q: "Using '2 FLOPs per parameter per token', a 10-billion-parameter model generating 100 tokens needs about…", options: ["2 × 10¹⁰ FLOPs", "2 × 10¹² FLOPs", "10¹¹ FLOPs", "2 × 10⁹ FLOPs"], answer: 1, explain: "2 × 10¹⁰ FLOPs per token × 100 tokens = 2 × 10¹² FLOPs." },
+];
+const RESULT = {
+  perfect: "Perfect! You can estimate the cost of any AI job.",
+  good: "Good. Replay 'FLOPs vs FLOPS'; the s matters.",
+  low: "Revisit 'FLOPs vs FLOPS' and 'How Long?': work ÷ speed = time is the key tool.",
+  done: "Unit 1.1 Complete!",
+  body: "You can count multiply-adds, convert to FLOPs, and estimate run time on any machine.",
+  next: "Next up: Unit 1.2 — Training vs Inference, Epochs & Batches.",
+  teaser: "Using a model is cheap. Teaching it is a lot more expensive. Find out exactly why.",
+};
+
+const UNIT_WORDS = [
+  ["MAC", "Multiply-Accumulate", "One multiply + one add = 2 FLOPs.", "from Unit 0.3"],
+  ["FLOP", "FLoating-point OPeration", "One add or one multiply on decimal (floating-point) numbers. FLOPs = an amount of work.", "new here"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A speed: how many FLOPs a chip can do each second.", "new here"],
+  ["TFLOPS", "tera-FLOPS", "10¹² FLOPs per second, a lakh crore every second.", "new here"],
+  ["GPT", "Generative Pre-trained Transformer", "The family of language models behind ChatGPT.", "new here"],
+  ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats with more or fewer bits (IEEE 754, from COA). Unit 5.2 explains why fewer bits run faster.", "from COA"],
+];
+
 // ── Quiz ──
 function Quiz({ onComplete }) {
-  const questions = [
-    { q: "In machine learning, what does the programmer supply, and what does the computer produce?", options: ["Rules in → answers out", "Examples with correct answers in → a model (the rules) out", "Answers in → examples out", "Code in → hardware out"], answer: 1, explain: "Traditional programming turns rules into answers. Machine learning takes examples plus their answers and produces the rules, called the model." },
-    { q: "Which job is the BEST fit for a hand-written rule rather than machine learning?", options: ["Recognising handwritten digits", "Detecting spam SMS", "Converting kilometres to miles", "Recognising a friend's voice"], answer: 2, explain: "miles = km × 0.621 is an exact, known formula. The others have no rule anyone can write down." },
-    { q: "The machine's best rule got 11 / 12 students right, not 12 / 12. Why?", options: ["The machine made a calculation mistake", "Two students studied the same hours but got different results, so no single cut-off can be right for both", "It needed more steps", "Cut-offs only work on even numbers"], answer: 1, explain: "VIJAY and NISHA both studied 3.0 hours, but one failed and one passed. Real data is messy, so the best model is the one that's right most often." },
-    { q: "A trained model is used on a student who was NOT in the training data. This step is called…", options: ["Labelling", "Training", "Prediction", "Debugging"], answer: 2, explain: "Training builds the model from known examples. Prediction uses it on new, unseen examples. That's the whole point of learning." },
-  ];
+  const questions = QUESTIONS;
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
   const [score, setScore] = useState(0);
@@ -296,24 +279,23 @@ function Quiz({ onComplete }) {
       <div style={{ textAlign: "center", padding: 20 }}>
         <div style={{ fontSize: 52 }}>{score >= 3 ? "🎉" : "👍"}</div>
         <div style={{ fontSize: 24, fontWeight: 700, color: C.text, marginTop: 10 }}>You scored {score} / {questions.length}</div>
-        <div style={{ color: C.muted, marginTop: 8, marginBottom: 20 }}>
-          {score === 4 ? "Perfect! You know what 'learning' means for a machine." : score >= 2 ? "Good. Replay 'Watch It Learn' to see the search once more." : "Revisit 'Flip It Around'. The reversed picture is the key idea of this unit."}
-        </div>
+        <div style={{ color: C.muted, marginTop: 8, marginBottom: 20 }}>{score === 4 ? RESULT.perfect : score >= 2 ? RESULT.good : RESULT.low}</div>
         <div style={{ padding: 20, borderRadius: 12, background: `linear-gradient(135deg, ${C.accentGlow}22, ${C.purple}22)`, border: `1px solid ${C.accent}55` }}>
-          <div style={{ color: C.accent, fontWeight: 700, fontSize: 16, marginBottom: 8 }}>🎓 Unit 1.1 Complete!</div>
+          <div style={{ color: C.accent, fontWeight: 700, fontSize: 16, marginBottom: 8 }}>🎓 {RESULT.done}</div>
           <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-            You can tell a rules job from a learning job, and you've seen a machine learn a cut-off from data.<br /><br />
-            <strong style={{ color: C.accent }}>Next up: Unit 1.2 — Everything Is Numbers.</strong> The machine only understands numbers, so how does it "see" a cat photo or "read" a sentence?
+            {RESULT.body}<br /><br />
+            <strong style={{ color: C.accent }}>{RESULT.next}</strong> {RESULT.teaser}
           </div>
         </div>
       </div>
     );
   }
   const q = questions[current];
+  const codey = q.q.includes("\n");
   return (
     <div>
       <div style={{ color: C.muted, fontSize: 12, marginBottom: 8 }}>Question {current + 1} of {questions.length}</div>
-      <div style={{ color: C.text, fontWeight: 600, fontSize: 15, marginBottom: 16 }}>{q.q}</div>
+      <div style={{ color: C.text, fontWeight: 600, fontSize: 15, marginBottom: 16, whiteSpace: "pre-wrap", fontFamily: codey ? "monospace" : "inherit" }}>{q.q}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {q.options.map((opt, i) => {
           let bg = C.card, border = C.border, col = C.text;
@@ -334,13 +316,10 @@ function Quiz({ onComplete }) {
   );
 }
 
-// ── Word bank ──
-const UNIT_WORDS = [
-  ["AI", "Artificial Intelligence", "Computers doing tasks we'd normally say need human intelligence: seeing, reading, deciding.", "new here"],
-  ["ML", "Machine Learning", "The part of AI where the computer learns its rules from examples instead of being told them.", "new here"],
-];
+// ── Word bank: every short name used in this unit, spelled out ──
 function UnitWordBank() {
   const [open, setOpen] = useState(false);
+  if (!UNIT_WORDS.length) return null;
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
@@ -360,10 +339,6 @@ function UnitWordBank() {
   );
 }
 
-
-const TEXTBOOK = "D2L Ch 1 (Introduction: the key parts of machine learning)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
-
 function TextbookNote() {
   const [open, setOpen] = useState(false);
   return (
@@ -378,36 +353,37 @@ function TextbookNote() {
 
 export default function Unit1_1({ student, onUnitComplete }) {
   const sections = [
-    { id: "need", label: "Write the Rules?" },
-    { id: "concept", label: "Flip It Around" },
-    { id: "trace", label: "Watch It Learn" },
-    { id: "sort", label: "Rules or Learning?" },
+    { id: "s0", label: "Guess the Work" },
+    { id: "s1", label: "FLOPs vs FLOPS" },
+    { id: "s2", label: "Count a Chatbot" },
+    { id: "s3", label: "How Long?" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
   const [completed, setCompleted] = useState([]);
   const markComplete = (idx) => { if (!completed.includes(idx)) setCompleted((p) => [...p, idx]); };
   const goNext = () => { markComplete(activeSection); setActiveSection((s) => Math.min(sections.length - 1, s + 1)); };
+  const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🐈 Write the Rules? — where ordinary programs get stuck</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔄 Flip It Around — what machine learning really is</h3><ConceptWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔍 Watch It Learn — the machine searches for the best rule</h3><TraceWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚖️ Rules or Learning? — pick the right tool</h3><SortWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🤔 Guess the Work — how many multiply-adds?</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📏 FLOPs vs FLOPS — work vs speed</h3><FlopsWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>💬 Count a Chatbot — 2 FLOPs per parameter per token</h3><CountWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏱️ How Long? — time = work ÷ speed</h3><DeviceWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 1.1.</p>
-      <Quiz onComplete={() => { markComplete(4); onUnitComplete && onUnitComplete(); }} />
+      <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧠</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧮</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 1 › UNIT 1.1</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Rules vs Learning</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Counting the Multiply-Adds</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

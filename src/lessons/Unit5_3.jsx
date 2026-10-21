@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab05_CPU_GPU_Teamwork.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5A_Why_GPUs_Make_AI_Fast.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5A · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5A in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,199 +68,189 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 2–3 (Kernel functions and threading; multidimensional grids)";
+const TEXTBOOK = "H&P Ch 4 (The roofline performance model) · Kirk & Hwu Ch 5 (Arithmetic intensity)";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-// ── Section 1: Need — a million threads need an address system ──
+const PEAK32 = 8.1e12, PEAK16 = 65e12, BW = 320e9;
+
+// ── Section 1: Need — same GPU, wildly different speeds ──
 function NeedWidget() {
-  const [n, setN] = useState(100000);
-  const hall = 256;
-  const halls = Math.ceil(n / hall);
+  const [shown, setShown] = useState(false);
   return (
     <div>
       <Frame>
-        The university exam has <b style={{ color: C.text }}>{n.toLocaleString("en-IN")} students</b>, but each exam hall seats only 256. So students are split into halls;
-        each has a <b style={{ color: C.purple }}>hall number</b> and a <b style={{ color: C.teal }}>seat number</b> inside the hall. A GPU launch works exactly the same way:
-        a hardware block can hold at most 1,024 threads, so threads come in <b style={{ color: C.purple }}>blocks</b>, and all the blocks together form the <b style={{ color: C.accent }}>grid</b>.
+        Two operations measured on the same T4. Both are "running at full speed", yet one reaches 50% of the GPU's peak FLOPS and the other
+        about 0.4%. Is the second one broken? Predict, then reveal.
       </Frame>
-      <Slider label={<>Students (= elements = threads) = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={n} min={1000} max={1000000} step={1000} onChange={setN} />
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Stat label="SEATS PER HALL (blockDim)" value={hall} color={C.teal} />
-        <Stat label="HALLS NEEDED (grid size)" value={halls.toLocaleString("en-IN")} color={C.purple} />
-        <Stat label="EMPTY SEATS IN LAST HALL" value={halls * hall - n} color={C.yellow} />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-        {[["🏫 Exam hall", "🧱 Thread block", "a team of up to 1,024 threads that runs on ONE SM"], ["💺 Seat number in the hall", "🔢 threadIdx.x", "0 … blockDim.x − 1"], ["🏛️ Hall number", "🔢 blockIdx.x", "0 … gridDim.x − 1"], ["🎫 University roll number", "🌍 global index i", "unique for every thread"]].map(([a, b, c]) => (
-          <div key={a} style={{ background: C.card, borderRadius: 8, padding: 8, border: `1px solid ${C.border}` }}>
-            <div style={{ color: C.muted, fontSize: 12 }}>{a}</div>
-            <div style={{ color: C.text, fontSize: 13, fontWeight: 600 }}>{b}</div>
-            <div style={{ color: C.muted, fontSize: 11.5 }}>{c}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {[["ReLU on 10 crore numbers", "≈ 3.1 ms", "≈ 32 GFLOPS", "≈ 260 GB/s", C.orange], ["4096 × 4096 matrix multiply", "≈ 34 ms", "≈ 4,000 GFLOPS", "≈ 6 GB/s", C.green]].map(([t, ms, fl, bw, c]) => (
+          <div key={t} style={{ background: C.card, borderRadius: 10, padding: 12, border: `1.5px solid ${c}` }}>
+            <div style={{ color: c, fontWeight: 700, fontSize: 13 }}>{t}</div>
+            <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.8, marginTop: 4 }}>time {ms}<br />FLOPS {fl}<br />{shown && <>memory traffic {bw}</>}</div>
           </div>
         ))}
       </div>
-      <Insight color={C.purple} title="Grid of blocks, block of threads: a two-level address system.">
-        Blocks are the unit the GPU hands to SMs (each block runs entirely on one SM); threads in a block can share 'shared memory' (Unit 4.4).
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 2: The index formula ──
-function IndexWidget() {
-  const [bd, setBd] = useState(4);
-  const [n, setN] = useState(10);
-  const [guard, setGuard] = useState(true);
-  const blocks = Math.ceil(n / bd);
-  const [pick, setPick] = useState([1, 2]);
-  const i = pick[0] * bd + pick[1];
-  const overflow = blocks * bd > n;
-  return (
-    <div>
-      <Frame>
-        Every thread computes its own element with <code style={{ color: C.accent }}>i = blockIdx.x × blockDim.x + threadIdx.x</code> (hall × seats per hall + seat). Click any
-        thread. Then make n not a multiple of the block size, and switch off the safety check.
-      </Frame>
-      <Slider label={<>Threads per block (blockDim.x) = <b style={{ color: C.teal }}>{bd}</b></>} value={bd} min={2} max={8} onChange={(v) => { setBd(v); setPick([0, 0]); }} color={C.teal} />
-      <Slider label={<>Array length n = <b style={{ color: C.accent }}>{n}</b></>} value={n} min={4} max={30} onChange={(v) => { setN(v); setPick([0, 0]); }} />
-      <label style={{ color: C.muted, fontSize: 12.5, cursor: "pointer" }}><input type="checkbox" checked={guard} onChange={(e) => setGuard(e.target.checked)} /> Include the safety check <code>if (i &lt; n)</code></label>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-        {Array.from({ length: blocks }, (_, b) => (
-          <div key={b} style={{ border: `1.5px dashed ${C.purple}`, borderRadius: 8, padding: 5 }}>
-            <div style={{ color: C.purple, fontSize: 10, marginBottom: 3 }}>block {b}</div>
-            <div style={{ display: "flex", gap: 3 }}>
-              {Array.from({ length: bd }, (_, t) => {
-                const gi = b * bd + t, out = gi >= n, sel = pick[0] === b && pick[1] === t;
-                return <div key={t} onClick={() => setPick([b, t])} style={{ width: 26, height: 26, borderRadius: 4, cursor: "pointer", background: out ? (guard ? C.card : C.red + "55") : C.green + "44", border: `1.5px solid ${sel ? C.yellow : out ? (guard ? C.border : C.red) : C.green}`, fontSize: 9.5, color: C.text, display: "flex", alignItems: "center", justifyContent: "center" }}>{gi}</div>;
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontFamily: "monospace", fontSize: 13, color: C.yellow, marginTop: 10 }}>
-        i = blockIdx.x × blockDim.x + threadIdx.x = {pick[0]} × {bd} + {pick[1]} = <b>{i}</b> {i >= n ? (guard ? "→ i ≥ n, so this thread does nothing ✓" : "→ writes PAST THE END of the array ✗") : `→ handles element ${i}`}
-      </div>
-      {!guard && overflow && (
-        <pre style={{ marginTop: 8, background: "#2a1214", border: `1px solid ${C.red}`, borderRadius: 8, padding: 10, color: C.red, fontFamily: "monospace", fontSize: 11.5, whiteSpace: "pre-wrap" }}>
-{`CUDA error: an illegal memory access was encountered
-(or worse: no error at all, just silently corrupted data)`}
-        </pre>
+      <div style={{ marginTop: 10 }}><Btn onClick={() => setShown(true)} color={C.purple}>Reveal the memory traffic</Btn></div>
+      {shown && (
+        <Insight color={C.purple} title="ReLU isn't broken: it's using almost all of the memory bandwidth. Its limit is bytes, not FLOPs.">
+          ReLU does one tiny operation per 8 bytes moved, so memory is its ceiling. The matrix multiply does thousands of operations per byte, so the
+          arithmetic units are its ceiling. To know which limit applies, you need one number: arithmetic intensity. (Illustrative T4 figures.)
+        </Insight>
       )}
-      <Code color={C.accent} title="⚡ THE STANDARD KERNEL PATTERN">{`__global__ void relu(const float *x, float *y, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n)                         // the safety check
-        y[i] = fmaxf(x[i], 0.0f);
+    </div>
+  );
 }
-// launch: enough blocks to cover n, rounding UP
-relu<<<(n + 255) / 256, 256>>>(x, y, n);`}</Code>
-      <Insight color={C.yellow} title="Round the number of blocks UP, then let the extra threads do nothing with if (i < n).">
-        Forgetting the check is the classic beginner bug: the last block's extra threads write past the end of the array.
+
+// ── Section 2: Arithmetic intensity ──
+const OPS = {
+  add: { t: "Vector add  c = a + b", flops: (n) => n, bytes: (n) => 12 * n, note: "1 add per 12 bytes (read 2 floats, write 1)." },
+  relu: { t: "ReLU  y = max(x, 0)", flops: (n) => n, bytes: (n) => 8 * n, note: "1 operation per 8 bytes." },
+  layerB1: { t: "Layer, batch 1  (1 × n) @ (n × n)", flops: (n) => 2 * n * n, bytes: (n) => 4 * (n * n + 2 * n), note: "Each weight is used once: about 2 FLOPs per 4 bytes." },
+  matmul: { t: "Matrix multiply  (n × n) @ (n × n)", flops: (n) => 2 * n ** 3, bytes: (n) => 12 * n * n, note: "Each number is reused n times: intensity grows with n." },
+};
+function IntensityWidget() {
+  const [k, setK] = useState("matmul");
+  const [n, setN] = useState(1024);
+  const o = OPS[k];
+  const I = o.flops(n) / o.bytes(n);
+  return (
+    <div>
+      <Frame>
+        <b style={{ color: C.text }}>Arithmetic intensity = FLOPs ÷ bytes moved to and from memory.</b> It says how much maths an operation does for each byte it
+        has to fetch. Pick an operation and a size.
+      </Frame>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+        {Object.entries(OPS).map(([key, v]) => <Btn key={key} ghost={key !== k} onClick={() => setK(key)}>{v.t}</Btn>)}
+      </div>
+      <Slider label={<>n = <b style={{ color: C.accent }}>{n}</b></>} value={n} min={64} max={8192} step={64} onChange={setN} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="FLOPs" value={o.flops(n).toExponential(2)} color={C.green} />
+        <Stat label="BYTES" value={o.bytes(n).toExponential(2)} color={C.teal} />
+        <Stat label="INTENSITY (FLOPs/BYTE)" value={I < 10 ? I.toFixed(3) : I.toFixed(0)} color={C.purple} />
+      </div>
+      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>{o.note}</div>
+      <Insight color={C.purple} title="Element-wise operations: far below 1 FLOP per byte. Big matrix multiplies: hundreds or thousands.">
+        Intensity depends on reuse, the same idea as Unit 3.4 and tiling in Unit 5.1. Note that a layer with batch size 1 is as poor as ReLU: every weight
+        is fetched for just one multiply-add.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Choosing the block size ──
-function BlockSizeWidget() {
-  const [bs, setBs] = useState(256);
-  const warpsPerBlock = Math.ceil(bs / 32);
-  const blocksPerSM = Math.min(16, Math.floor(32 / warpsPerBlock));    // T4: ≤ 16 blocks and ≤ 32 warps per SM
-  const warps = blocksPerSM * warpsPerBlock;
-  const wasted = warpsPerBlock * 32 - bs;
+// ── Section 3: The roofline ──
+function RooflineWidget() {
+  const [fp16, setFp16] = useState(false);
+  const [n, setN] = useState(1024);
+  const peak = fp16 ? PEAK16 : PEAK32, bpe = fp16 ? 2 : 4;
+  const ridge = peak / BW;
+  const pts = [
+    { t: "vector add", I: 1 / (3 * bpe), c: C.orange },
+    { t: "ReLU", I: 1 / (2 * bpe), c: C.yellow },
+    { t: "layer, batch 1", I: (2 * n * n) / (bpe * (n * n + 2 * n)), c: C.red },
+    { t: `matmul n=${n}`, I: (2 * n ** 3) / (3 * bpe * n * n), c: C.green },
+  ];
+  const X = (I) => 40 + ((Math.log10(I) + 2) / 6) * 450, Y = (p) => 190 - ((Math.log10(p) - 9) / 5.2) * 175;
+  const perf = (I) => Math.min(peak, BW * I);
   return (
     <div>
       <Frame>
-        How many threads per block? Rules for the T4: at most <b style={{ color: C.text }}>1,024</b> threads per block, at most <b style={{ color: C.text }}>16 blocks</b> and
-        <b style={{ color: C.text }}> 32 warps</b> per SM. Blocks are made of whole warps, so a block of 100 threads still uses 4 warps (128 lanes). Try different sizes.
+        The <b style={{ color: C.text }}>roofline</b> (Hennessy & Patterson Ch 4) puts it in one picture: x = intensity, y = achievable FLOPS. The slanted part is the memory
+        limit (bandwidth × intensity); the flat part is the compute limit (peak). An operation can never rise above the roof. Drag n, and switch on FP16.
       </Frame>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-        {[32, 64, 100, 128, 256, 512, 1024].map((v) => <Btn key={v} ghost={v !== bs} onClick={() => setBs(v)}>{v}</Btn>)}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+        <label style={{ color: C.text, fontSize: 12.5, cursor: "pointer" }}><input type="checkbox" checked={fp16} onChange={(e) => setFp16(e.target.checked)} /> FP16 Tensor Cores (65 TFLOPS, 2 bytes per number)</label>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 2 }}>
-        {Array.from({ length: 32 }, (_, w) => <div key={w} style={{ height: 20, borderRadius: 2, background: w < warps ? C.purple : C.card, border: `1px solid ${C.border}`, opacity: w < warps ? 0.5 + 0.5 * ((Math.floor(w / warpsPerBlock)) % 2) : 1 }} />)}
+      <Slider label={<>Matrix size n = <b style={{ color: C.accent }}>{n}</b></>} value={n} min={16} max={8192} step={16} onChange={setN} />
+      <svg viewBox="0 0 520 215" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
+        {[1e9, 1e10, 1e11, 1e12, 1e13, 1e14].map((p) => <g key={p}><line x1="40" x2="500" y1={Y(p)} y2={Y(p)} stroke={C.border} /><text x="4" y={Y(p) + 3} fill={C.muted} fontSize="9">{p >= 1e12 ? `${p / 1e12}T` : `${p / 1e9}G`}</text></g>)}
+        {[0.01, 0.1, 1, 10, 100, 1000, 10000].map((I) => <text key={I} x={X(I)} y="210" fill={C.muted} fontSize="9" textAnchor="middle">{I}</text>)}
+        <polyline fill="none" stroke={C.text} strokeWidth="2.5" points={`${X(0.01)},${Y(BW * 0.01)} ${X(ridge)},${Y(peak)} ${X(10000)},${Y(peak)}`} />
+        <text x={X(ridge) + 6} y={Y(peak) - 6} fill={C.text} fontSize="10">ridge ≈ {ridge.toFixed(0)} FLOPs/byte</text>
+        <text x={X(0.03)} y={Y(BW * 0.03) - 8} fill={C.teal} fontSize="10" transform={`rotate(-33 ${X(0.03)} ${Y(BW * 0.03) - 8})`}>memory roof: 320 GB/s × intensity</text>
+        {pts.map((p, k) => <g key={p.t}><circle cx={X(p.I)} cy={Y(perf(p.I))} r="6" fill={p.c} /><text x={X(p.I) + 8} y={Y(perf(p.I)) + (k === 1 ? -8 : 14)} fill={p.c} fontSize="10">{p.t}</text></g>)}
+        <text x="44" y="14" fill={C.muted} fontSize="9">y: achievable FLOPS (log) · x: intensity, FLOPs per byte (log)</text>
+      </svg>
+      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+        {pts.map((p) => <Stat key={p.t} label={p.t.toUpperCase()} value={p.I < ridge ? "memory-bound" : "compute-bound"} color={p.c} />)}
       </div>
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>The 32 warp slots of one SM; alternating shades = different blocks.</div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="WARPS PER BLOCK" value={warpsPerBlock} color={C.purple} />
-        <Stat label="BLOCKS PER SM" value={blocksPerSM} color={C.teal} />
-        <Stat label="OCCUPANCY" value={`${Math.round((warps / 32) * 100)}%`} color={warps === 32 ? C.green : C.yellow} />
-        <Stat label="IDLE LANES PER BLOCK" value={wasted} color={wasted ? C.red : C.green} />
-      </div>
-      <Insight color={C.green} title="Use a multiple of 32, typically 128–512. 256 is the common default.">
-        Too small (32) hits the 16-blocks-per-SM limit, so half the warp slots stay empty. A non-multiple of 32 (100) wastes lanes in every
-        block. (Real kernels can be limited by registers too, Unit 4.3.)
+      <Insight title="Left of the ridge: memory-bound, so more FLOPS won't help. Right of the ridge: compute-bound, so more bandwidth won't help.">
+        Notice that switching to FP16 raises the roof AND moves every point right (fewer bytes), but it also moves the ridge right, so more operations
+        end up memory-bound. Small matrices (drag n down) slide left into memory-bound territory.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: 2-D grids for images and matrices ──
-function Grid2DWidget() {
-  const [b, setB] = useState([1, 2]);
-  const [t, setT] = useState([2, 1]);
-  const BD = 4, W = 16, H = 12;
-  const col = b[0] * BD + t[0], row = b[1] * BD + t[1];
+// ── Section 4: What to do about it ──
+function ActWidget() {
+  const [params, setParams] = useState(1);
+  const bytes = params * 1e9 * 2;
+  const msPerToken = (bytes / BW) * 1000;
   return (
     <div>
-      <Frame>
-        Images and matrices are 2-D, so CUDA lets blocks and grids be 2-D too: each thread gets an <b style={{ color: C.teal }}>x</b> and a <b style={{ color: C.purple }}>y</b>.
-        Here a 16 × 12 image is covered by 4 × 4 blocks. Click any pixel to see which block and thread own it.
-      </Frame>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${W}, 1fr)`, gap: 1, maxWidth: 480 }}>
-        {Array.from({ length: W * H }, (_, k) => {
-          const x = k % W, y = Math.floor(k / W);
-          const bx = Math.floor(x / BD), by = Math.floor(y / BD);
-          const inBlock = bx === b[0] && by === b[1];
-          const sel = x === col && y === row;
-          return <div key={k} onClick={() => { setB([bx, by]); setT([x % BD, y % BD]); }} style={{ aspectRatio: "1", cursor: "pointer", background: sel ? C.yellow : inBlock ? C.accent + "66" : (bx + by) % 2 ? C.card : C.surface, border: `1px solid ${C.border}` }} />;
-        })}
+      <Frame>The roofline tells you which fix will work. Then a real example: a chatbot writing one word at a time.</Frame>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ background: C.card, borderRadius: 10, padding: 12, border: `1.5px solid ${C.teal}` }}>
+          <b style={{ color: C.teal, fontSize: 13 }}>If memory-bound</b>
+          <ul style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, margin: "6px 0 0", paddingLeft: 18 }}>
+            <li><b style={{ color: C.text }}>Fuse operations</b>: do matmul + bias + ReLU in one kernel, so the intermediate never goes to memory (torch.compile does this)</li>
+            <li><b style={{ color: C.text }}>Fewer bytes</b>: FP16 / INT8 (Unit 5.2)</li>
+            <li><b style={{ color: C.text }}>More reuse</b>: bigger batches, tiling</li>
+          </ul>
+        </div>
+        <div style={{ background: C.card, borderRadius: 10, padding: 12, border: `1.5px solid ${C.green}` }}>
+          <b style={{ color: C.green, fontSize: 13 }}>If compute-bound</b>
+          <ul style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, margin: "6px 0 0", paddingLeft: 18 }}>
+            <li><b style={{ color: C.text }}>Tensor Cores</b>: FP16 / BF16 matmuls</li>
+            <li><b style={{ color: C.text }}>A bigger GPU</b> or several (Unit 5.9)</li>
+            <li><b style={{ color: C.text }}>Fewer FLOPs</b>: a smaller or smarter model</li>
+          </ul>
+        </div>
       </div>
-      <div style={{ fontFamily: "monospace", fontSize: 12.5, color: C.text, marginTop: 10, lineHeight: 1.8 }}>
-        blockIdx = ({b[0]}, {b[1]}) · threadIdx = ({t[0]}, {t[1]}) · blockDim = (4, 4)<br />
-        <span style={{ color: C.teal }}>col = blockIdx.x × 4 + threadIdx.x = {col}</span> · <span style={{ color: C.purple }}>row = blockIdx.y × 4 + threadIdx.y = {row}</span>
+      <div style={{ marginTop: 14, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
+        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Case study: chatbot word generation (batch 1, FP16)</div>
+        <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginBottom: 8 }}>To produce each new token, the model multiplies a single vector by every weight matrix: that's "layer, batch 1", deep in memory-bound
+          territory. So every token must read ALL the weights from memory once.</div>
+        <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} B</b> parameters (FP16 = {(params * 2).toFixed(0)} GB)</>} value={params} min={0.5} max={7} step={0.5} onChange={setParams} />
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Stat label="TIME PER TOKEN ≥ BYTES ÷ 320 GB/s" value={`${msPerToken.toFixed(1)} ms`} color={C.teal} />
+          <Stat label="MAX TOKENS PER SECOND" value={(1000 / msPerToken).toFixed(0)} color={C.green} />
+        </div>
       </div>
-      <Code color={C.accent} title="⚡ A 2-D KERNEL: BRIGHTEN EVERY PIXEL">{`__global__ void brighten(float *img, int width, int height, float amount) {
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    if (col < width && row < height)
-        img[row * width + col] += amount;     // row-major, like COA's memory layout
-}
-dim3 block(16, 16);
-dim3 grid((width + 15) / 16, (height + 15) / 16);
-brighten<<<grid, block>>>(img, width, height, 0.2f);`}</Code>
-      <Insight title="One thread per pixel, organised in 2-D tiles.">
-        The same idea scales to a 4K photo (about 83 lakh pixels → 83 lakh threads) and to matrix multiplies, where each thread computes one output
-        cell. Unit 6.1 tiles a matrix multiply exactly like this.
+      <Insight color={C.teal} title="Chatbot speed is set by memory bandwidth, not FLOPS. That's why INT8/INT4 quantisation makes chatbots faster.">
+        Halve the bytes per weight and you double the tokens per second. This is also why Unit 1.C's FLOPs-only estimate was too optimistic, as
+        promised.
       </Insight>
-      <LabCard part="C" title="Write and launch your first kernel"
-        what="Write the ReLU kernel above in CuPy, launch it with block sizes 32, 100, 256 and 1024, check the answer against NumPy, and time each. Then remove the if (i < n) check on an array that isn't a multiple of the block size and see what happens."
-        expect="correct results for every block size, similar times for 128–1024 with 32 slower, and trouble without the check." />
+      <LabCard part="C" title="Plot your own roofline"
+        what="Measure vector add, ReLU, a batch-1 layer and matrix multiplies of several sizes on the T4, compute each one's intensity and achieved FLOPS, and plot them under the T4's roofline."
+        expect="element-wise operations hugging the slanted memory roof, and large matrix multiplies close to the flat compute roof." />
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "blockDim.x = 256, blockIdx.x = 3, threadIdx.x = 10. What is the thread's global index i?", options: ["269", "778", "2,570", "13"], answer: 1, explain: "i = 3 × 256 + 10 = 778." },
-  { q: "n = 1,000 elements, 256 threads per block. How many blocks should you launch?", options: ["3", "4", "1,000", "256"], answer: 1, explain: "(1000 + 255) / 256 = 4 (round up). 1,024 threads, of which 24 do nothing thanks to if (i < n)." },
-  { q: "Why is a block size of 100 a poor choice?", options: ["It's above the maximum", "Blocks use whole warps of 32, so 100 threads occupy 128 lanes and waste 28", "Blocks must be powers of 10", "It causes divergence"], answer: 1, explain: "4 warps × 32 = 128 lanes for 100 threads, wasting 28 lanes in every block. Use multiples of 32." },
-  { q: "In a 2-D kernel, which line gives the pixel's row?", options: ["row = threadIdx.x", "row = blockIdx.y * blockDim.y + threadIdx.y", "row = blockIdx.x + blockIdx.y", "row = gridDim.y"], answer: 1, explain: "Same formula as 1-D, in the y direction: block number × block height + position inside the block." },
+  { q: "An operation does 2 FLOPs for every 8 bytes it moves. What is its arithmetic intensity?", options: ["0.25 FLOPs/byte", "4 FLOPs/byte", "16 FLOPs/byte", "2 FLOPs/byte"], answer: 0, explain: "Intensity = FLOPs ÷ bytes = 2 ÷ 8 = 0.25. Far left of the T4's ridge (≈ 25), so memory-bound." },
+  { q: "The T4 has 8.1 TFLOPS (FP32) and 320 GB/s. Where is its ridge point?", options: ["≈ 2.5 FLOPs/byte", "≈ 25 FLOPs/byte", "≈ 250 FLOPs/byte", "≈ 2,600 FLOPs/byte"], answer: 1, explain: "Ridge = peak ÷ bandwidth = 8.1 × 10¹² ÷ 320 × 10⁹ ≈ 25 FLOPs per byte." },
+  { q: "An operation is memory-bound. Which change will NOT speed it up?", options: ["Using FP16 instead of FP32", "Fusing it with the next operation", "A GPU with more FLOPS but the same bandwidth", "Increasing data reuse"], answer: 2, explain: "Memory-bound means the bytes are the limit. More FLOPS can't help; fewer or reused bytes can." },
+  { q: "A 7-billion-parameter chatbot in FP16 on a 320 GB/s GPU can generate at most about how many tokens per second (batch 1)?", options: ["≈ 2", "≈ 23", "≈ 230", "≈ 2,300"], answer: 1, explain: "Each token reads all 14 GB of weights: 14 GB ÷ 320 GB/s ≈ 44 ms per token, so about 23 tokens per second at most." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can organise millions of GPU threads.",
-  good: "Good. Replay 'The Index Formula' and switch off the safety check.",
-  low: "Revisit 'Exam Halls': hall number × seats + seat = roll number.",
+  perfect: "Perfect! You can predict any operation's speed limit.",
+  good: "Good. Replay 'The Roofline' and toggle FP16.",
+  low: "Revisit 'Arithmetic Intensity': FLOPs per byte decides everything.",
   done: "Unit 5.3 Complete!",
-  body: "You can compute global thread indices, launch enough blocks safely, choose good block sizes, and write 2-D kernels.",
-  next: "Next up: Unit 5.4 — Async Launch & Synchronization.",
-  teaser: "Your GPU timing says 0.02 ms for a huge matrix multiply. Too good to be true? It is. Find out why.",
+  body: "You can compute arithmetic intensity, read a roofline, classify operations as compute- or memory-bound, and pick the right fix.",
+  next: "Next up: Unit 5.4 — Batch Size & Training on GPU.",
+  teaser: "Put it all together in real training: batch size, throughput, memory, and mixed precision.",
 };
 
 const UNIT_WORDS = [
-  ["threadIdx", "thread index", "A thread's position inside its block (like a seat number).", "new here"],
-  ["blockIdx", "block index", "The block's position in the grid (like a hall number).", "new here"],
-  ["blockDim / gridDim", "block / grid dimensions", "How many threads per block / blocks per grid.", "new here"],
-  ["<<<grid, block>>>", "CUDA launch syntax", "How many blocks, and how many threads in each.", "new here"],
-  ["dim3", "a 3-number size in CUDA", "Used for 2-D and 3-D block and grid shapes.", "new here"],
+  ["intensity", "arithmetic intensity", "FLOPs done per byte moved to or from memory.", "new here"],
+  ["roofline", "the roofline model", "A chart of the speed limit: min(peak FLOPS, bandwidth × intensity).", "new here"],
+  ["ridge point", "where the two roofs meet", "peak ÷ bandwidth; about 25 FLOPs/byte for the T4 in FP32.", "new here"],
+  ["kernel fusion", "combining operations into one kernel", "Avoids writing intermediate results to memory.", "new here"],
+  ["torch.compile", "PyTorch's compiler", "Can fuse operations automatically to cut memory traffic.", "new here"],
 ];
 
 // ── Quiz ──
@@ -351,10 +341,10 @@ function TextbookNote() {
 
 export default function Unit5_3({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "Exam Halls" },
-    { id: "s1", label: "The Index Formula" },
-    { id: "s2", label: "Block Size" },
-    { id: "s3", label: "2-D Grids" },
+    { id: "s0", label: "Broken or Not?" },
+    { id: "s1", label: "Arithmetic Intensity" },
+    { id: "s2", label: "The Roofline" },
+    { id: "s3", label: "What To Do" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -364,10 +354,10 @@ export default function Unit5_3({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🏟️ Exam Halls — grids, blocks and threads</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔢 The Index Formula — and the if (i &lt; n) check</h3><IndexWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📏 Choosing the Block Size</h3><BlockSizeWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🖼️ 2-D Grids — one thread per pixel</h3><Grid2DWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🤔 Broken or Not? — 50% vs 0.4% of peak</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚖️ Arithmetic Intensity — FLOPs per byte</h3><IntensityWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🏠 The Roofline — the speed limit of any operation</h3><RooflineWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🛠️ What To Do — and why chatbots are memory-bound</h3><ActWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.3.</p>
@@ -378,10 +368,10 @@ export default function Unit5_3({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏟️</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏠</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.3</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Kernels, Grids, Blocks, Threads</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Compute-bound vs Memory-bound</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

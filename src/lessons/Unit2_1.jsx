@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab02_AI_Is_Hungry.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2_CPU_vs_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -39,7 +39,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
       <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2 in Colab ↗</a>
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
 }
@@ -68,201 +68,200 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Hamacher Ch 1 (Performance) · Stallings §2.4 (Basic measures of computer performance)";
+const TEXTBOOK = "Stallings §2.2 (Multicore, MICs and GPGPUs) · H&P §4.4 (Graphics processing units) · Kirk & Hwu Ch 1";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-const fmt = (x) => {
-  if (x < 1e3) return x.toFixed(0);
-  const u = [["", 1], ["thousand", 1e3], ["million", 1e6], ["billion", 1e9], ["trillion", 1e12], ["quadrillion", 1e15], ["quintillion", 1e18], ["sextillion", 1e21]];
-  let k = 0; while (k < u.length - 1 && x >= u[k + 1][1]) k++;
-  return `${(x / u[k][1]).toFixed(x / u[k][1] < 10 ? 1 : 0)} ${u[k][0]}`;
-};
-
-// ── Section 1: Need — guess the work ──
-const TASKS = [
-  { t: "Read ONE handwritten digit (your Lab 1 network)", macs: 1.0e5, note: "784×128 + 128×10 ≈ 1 lakh MACs." },
-  { t: "Recognise ONE photo with ResNet-50 (a classic image model)", macs: 4.1e9, note: "About 4 billion MACs for a single 224 × 224 photo (approximate published figure)." },
-  { t: "Generate ONE word (token) with a GPT-3-sized chatbot (175 billion parameters)", macs: 1.75e11, note: "Roughly one MAC per parameter for every token: about 175 billion." },
-  { t: "TRAIN GPT-3 once, from scratch", macs: 1.6e23, note: "About 3 × 10²³ arithmetic operations (≈ 1.6 × 10²³ MACs), a published estimate." },
-];
-const GUESSES = [1e3, 1e6, 1e9, 1e12, 1e15, 1e18, 1e21, 1e24];
+// ── Section 1: Need — one professor or 1000 students? ──
 function NeedWidget() {
-  const [g, setG] = useState({});
+  const [n, setN] = useState(10);
+  const prof = n * 0.5;                       // 30 s per script, one after another
+  const studs = Math.ceil(n / 1000) * 5;      // 5 min per script, 1000 in parallel
+  const winner = prof < studs ? "prof" : prof > studs ? "studs" : "tie";
+  const show = (m) => (m < 60 ? `${m.toFixed(1)} min` : `${(m / 60).toFixed(1)} hours`);
   return (
     <div>
       <Frame>
-        Every AI answer is multiply-adds (MACs, from Unit 1.3). But how many? Guess the order of magnitude for each job, then check.
-        Most people are off by a factor of a million.
+        Answer scripts must be marked. Option A: <b style={{ color: C.orange }}>one expert professor</b>, very fast at 30 seconds a script, but
+        one at a time. Option B: <b style={{ color: C.green }}>1000 students</b>, slow at 5 minutes a script, but all marking together. Who
+        finishes first? Drag the number of scripts.
       </Frame>
-      {TASKS.map((x, i) => {
-        const pick = g[i];
-        const closest = GUESSES.reduce((a, b) => (Math.abs(Math.log10(b / x.macs)) < Math.abs(Math.log10(a / x.macs)) ? b : a));
-        return (
-          <div key={i} style={{ background: C.card, border: `1px solid ${pick ? (pick === closest ? C.green : C.yellow) : C.border}`, borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div style={{ color: C.text, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{x.t}</div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {GUESSES.map((v) => (
-                <button key={v} onClick={() => !pick && setG((s) => ({ ...s, [i]: v }))} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 11.5, fontFamily: "monospace", cursor: pick ? "default" : "pointer", border: `1px solid ${pick && v === closest ? C.green : pick === v ? C.yellow : C.border}`, background: pick && v === closest ? C.green + "22" : pick === v ? C.yellow + "22" : C.surface, color: C.text }}>10^{Math.log10(v)}</button>
-              ))}
-            </div>
-            {pick && <div style={{ marginTop: 8, fontSize: 12.5, color: C.muted }}><b style={{ color: C.green }}>≈ {fmt(x.macs)} MACs.</b> {x.note} {pick !== closest && <span style={{ color: C.yellow }}>You were off by about 10^{Math.abs(Math.round(Math.log10(pick / x.macs)))}.</span>}</div>}
-          </div>
-        );
-      })}
-      {Object.keys(g).length === TASKS.length && (
-        <Insight color={C.orange} title="From 1 lakh to 10²³: AI's appetite spans 18 powers of ten.">
-          A digit is easy for anything. A chatbot word needs hundreds of billions of operations, and training one needs more operations than
-          there are grains of sand on Earth (about 10¹⁹). This unit gives you the tools to count it yourself.
-        </Insight>
-      )}
-    </div>
-  );
-}
-
-// ── Section 2: FLOPs vs FLOPS ──
-const PREFIX = [["kilo (K)", 3, "thousand"], ["mega (M)", 6, "million / 10 lakh"], ["giga (G)", 9, "billion / 100 crore"], ["tera (T)", 12, "trillion / 1 lakh crore"], ["peta (P)", 15, "quadrillion"], ["exa (E)", 18, "quintillion"]];
-function FlopsWidget() {
-  const [which, setWhich] = useState("ops");
-  const [p, setP] = useState(3);
-  return (
-    <div>
-      <Frame>
-        Engineers count AI work in <b style={{ color: C.text }}>floating-point operations</b>: one multiply OR one add on decimal numbers.
-        One MAC = <b style={{ color: C.accent }}>2 FLOPs</b>. Watch out for two words that look almost the same:
-      </Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        <Btn ghost={which !== "ops"} onClick={() => setWhich("ops")}>FLOPs (small s)</Btn>
-        <Btn ghost={which !== "rate"} onClick={() => setWhich("rate")} color={C.purple}>FLOPS (capital S)</Btn>
-      </div>
+      <Slider label={<>Answer scripts = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={n} min={1} max={5000} onChange={setN} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${which === "ops" ? C.accent : C.border}`, opacity: which === "ops" ? 1 : 0.5 }}>
-          <div style={{ color: C.accent, fontWeight: 700, fontSize: 13 }}>FLOPs = an amount of WORK</div>
-          <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginTop: 4 }}>"This model needs 8 GFLOPs per photo." Like a distance: <b>how far</b> you must travel. It's a property of the job.</div>
+        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `2px solid ${winner === "prof" ? C.green : C.border}` }}>
+          <div style={{ fontSize: 30 }}>👩‍🏫</div>
+          <div style={{ color: C.orange, fontWeight: 700, fontSize: 13 }}>ONE PROFESSOR (like a CPU core)</div>
+          <div style={{ color: C.text, fontFamily: "monospace", fontSize: 18, marginTop: 6 }}>{show(prof)}</div>
+          <div style={{ color: C.muted, fontSize: 12 }}>finishes ONE script in 30 s</div>
         </div>
-        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${which === "rate" ? C.purple : C.border}`, opacity: which === "rate" ? 1 : 0.5 }}>
-          <div style={{ color: C.purple, fontWeight: 700, fontSize: 13 }}>FLOPS = FLOPs per SECOND, a SPEED</div>
-          <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginTop: 4 }}>"This GPU does 65 TFLOPS." Like km/h: <b>how fast</b> you can travel. It's a property of the hardware.</div>
+        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `2px solid ${winner === "studs" ? C.green : C.border}` }}>
+          <div style={{ fontSize: 30 }}>🧑‍🎓🧑‍🎓🧑‍🎓</div>
+          <div style={{ color: C.green, fontWeight: 700, fontSize: 13 }}>1000 STUDENTS (like GPU cores)</div>
+          <div style={{ color: C.text, fontFamily: "monospace", fontSize: 18, marginTop: 6 }}>{show(studs)}</div>
+          <div style={{ color: C.muted, fontSize: 12 }}>each takes 5 min for ONE script</div>
         </div>
       </div>
-      <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: C.yellow + "14", border: `1px solid ${C.yellow}55`, fontFamily: "monospace", fontSize: 13, color: C.text }}>
-        time (seconds) = work (FLOPs) ÷ speed (FLOPS)     ← like  time = distance ÷ speed
+      <div style={{ marginTop: 10, color: winner === "prof" ? C.orange : C.green, fontWeight: 700, fontSize: 13 }}>
+        {winner === "prof" ? "🏆 The professor wins: too few scripts to keep 1000 students busy." : winner === "studs" ? "🏆 The students win: sheer numbers beat individual speed." : "🤝 A tie!"}
       </div>
-      <div style={{ marginTop: 16, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
-        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>The prefixes you'll meet</div>
-        <Slider label={<>prefix: <b style={{ color: C.accent }}>{PREFIX[p][0]}</b></>} value={p} min={0} max={5} onChange={setP} />
-        <div style={{ fontFamily: "monospace", fontSize: 14, color: C.teal }}>1 {PREFIX[p][0].split(" ")[0]}FLOP = 10^{PREFIX[p][1]} = 1{"0".repeat(PREFIX[p][1])}</div>
-        <div style={{ color: C.muted, fontSize: 12.5, marginTop: 4 }}>= one {PREFIX[p][2]}</div>
-      </div>
-      <Insight title="Work ÷ speed = time. Every 'how long will it take?' question in this course is this one division.">
-        Count the FLOPs of the job, look up the FLOPS of the chip, divide. The rest of the course is about making that division come out small.
+      <Insight title="Fast at one job, or fast at many jobs: two different kinds of 'fast'.">
+        The professor is the better choice for a single urgent script. The crowd is the better choice for a mountain of them. Find the crossover
+        on the slider (about 10 scripts). AI is always a mountain.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Count a model's work ──
-function CountWidget() {
-  const [params, setParams] = useState(7);
-  const [words, setWords] = useState(500);
-  const P = params * 1e9;
-  const perTok = 2 * P;
-  const tokens = Math.round(words * 1.3);
+// ── Section 2: Latency vs throughput, defined ──
+function DefineWidget() {
+  const [people, setPeople] = useState(4);
+  const carTrips = Math.ceil(people / 4), busTrips = Math.ceil(people / 50);
+  const carTime = carTrips * 3 * 2 - 3, busTime = busTrips * 4 * 2 - 4; // return trips except last
   return (
     <div>
       <Frame>
-        For a chatbot (a language model) there is a handy rule: generating <b style={{ color: C.text }}>one token costs about 2 FLOPs per parameter</b>,
-        because every weight is used in one multiply-add. A token is roughly ¾ of a word. Pick a model size and an answer length.
+        Two words architects use. <b style={{ color: C.orange }}>Latency</b> is how long ONE job takes from start to finish.
+        <b style={{ color: C.green }}> Throughput</b> is how many jobs finish per hour. Taking people from Chennai to Pondicherry: a car (4 seats,
+        3 h) or a bus (50 seats, 4 h)? Choose how many people must travel.
       </Frame>
-      <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} billion</b> parameters {params === 7 ? "(a small open model you can run yourself)" : params >= 175 ? "(GPT-3 class)" : ""}</>} value={params} min={1} max={400} onChange={setParams} />
-      <Slider label={<>Answer length = <b style={{ color: C.purple }}>{words}</b> words ≈ {tokens} tokens</>} value={words} min={10} max={3000} step={10} onChange={setWords} color={C.purple} />
-      <div style={{ fontFamily: "monospace", fontSize: 13, color: C.text, lineHeight: 2, background: C.card, borderRadius: 10, padding: 12, border: `1px solid ${C.border}` }}>
-        <div>FLOPs per token = 2 × {params} billion = <b style={{ color: C.accent }}>{fmt(perTok)}</b></div>
-        <div>FLOPs for the answer = {fmt(perTok)} × {tokens} = <b style={{ color: C.orange }}>{fmt(perTok * tokens)}</b></div>
-      </div>
-      <Insight color={C.orange} title="One chatbot answer can easily be 10¹⁵ FLOPs, a quadrillion operations.">
-        And a popular chatbot answers crores of questions a day. That's why AI companies buy chips by the lakh.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 4: How long on which machine? ──
-const DEVICES = [
-  { d: "You, with pen and paper", f: 0.1, tag: "1 operation every 10 s" },
-  { d: "A single CPU core, plain Python loops", f: 3e7, tag: "≈ 30 MFLOPS (measured in Lab 2)" },
-  { d: "A laptop CPU, all cores, NumPy", f: 2e11, tag: "≈ 0.2 TFLOPS (approx.)" },
-  { d: "NVIDIA T4 GPU (free Colab), FP32", f: 8.1e12, tag: "8.1 TFLOPS peak" },
-  { d: "NVIDIA T4 GPU, FP16 Tensor Cores", f: 6.5e13, tag: "65 TFLOPS peak" },
-  { d: "NVIDIA H100 GPU, FP16 Tensor Cores", f: 9.9e14, tag: "≈ 990 TFLOPS peak" },
-];
-const JOBS = [
-  { j: "Classify 10,000 digits (Lab 1 network)", f: 2 * 1e5 * 1e4 },
-  { j: "Recognise 1,000 photos (ResNet-50)", f: 2 * 4.1e9 * 1e3 },
-  { j: "A 500-word chatbot answer (7 B model)", f: 2 * 7e9 * 650 },
-  { j: "Train GPT-3 once", f: 3.14e23 },
-];
-const human = (s) => s < 1e-3 ? `${(s * 1e6).toFixed(0)} µs` : s < 1 ? `${(s * 1e3).toFixed(0)} ms` : s < 120 ? `${s.toFixed(1)} s` : s < 7200 ? `${(s / 60).toFixed(0)} min` : s < 172800 ? `${(s / 3600).toFixed(0)} hours` : s < 3.15e7 * 2 ? `${(s / 86400).toFixed(0)} days` : `${fmt(s / 3.15e7)} years`;
-function DeviceWidget() {
-  const [j, setJ] = useState(2);
-  return (
-    <div>
-      <Frame>
-        Now do the division: <b style={{ color: C.text }}>time = FLOPs ÷ FLOPS</b>. Pick a job and compare machines. Speeds are approximate
-        peak figures; real programs usually reach only a fraction of the peak.
-      </Frame>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-        {JOBS.map((x, i) => <Btn key={i} ghost={i !== j} onClick={() => setJ(i)} color={C.orange}>{x.j}</Btn>)}
-      </div>
-      <div style={{ color: C.muted, fontSize: 12.5, marginBottom: 8 }}>Work: <b style={{ color: C.orange }}>{fmt(JOBS[j].f)} FLOPs</b></div>
-      {DEVICES.map((d) => {
-        const t = JOBS[j].f / d.f;
-        const w = Math.max(2, Math.min(100, (Math.log10(t) + 6) * 6));
-        return (
-          <div key={d.d} style={{ marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-              <span style={{ color: C.text }}>{d.d} <span style={{ color: C.muted }}>({d.tag})</span></span>
-              <span style={{ color: t > 3600 ? C.red : t > 1 ? C.yellow : C.green, fontFamily: "monospace", fontWeight: 700 }}>{human(t)}</span>
+      <Slider label={<>People to move = <b style={{ color: C.accent }}>{people}</b></>} value={people} min={1} max={200} onChange={setPeople} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {[["🚗 Car", C.orange, 3, 4 / 3, carTrips, carTime], ["🚌 Bus", C.green, 4, 50 / 4, busTrips, busTime]].map(([t, c, lat, thr, trips, total]) => (
+          <div key={t} style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${c}` }}>
+            <div style={{ color: c, fontWeight: 700 }}>{t}</div>
+            <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.8, marginTop: 4 }}>
+              Latency: <b style={{ color: C.text }}>{lat} h</b> per person<br />
+              Throughput: <b style={{ color: C.text }}>{thr.toFixed(1)} people / hour</b><br />
+              Trips needed: <b style={{ color: C.text }}>{trips}</b> → everyone there in <b style={{ color: c }}>{total} h</b>
             </div>
-            <div style={{ height: 8, background: C.card, borderRadius: 4 }}><div style={{ width: `${w}%`, height: "100%", borderRadius: 4, background: t > 3600 ? C.red : t > 1 ? C.yellow : C.green }} /></div>
           </div>
-        );
-      })}
-      <div style={{ color: C.muted, fontSize: 11.5 }}>Bar length is on a log scale: each step right = 10× longer.</div>
-      <Insight color={C.green} title="Same job, same maths, from days to milliseconds, purely by changing the machine.">
-        Notice the jumps: plain Python → NumPy → GPU → GPU Tensor Cores. Each is a different way of doing many multiply-adds at once.
-        Modules 3–6 explain each jump.
+        ))}
+      </div>
+      <Insight color={C.purple} title="A CPU is built for low latency. A GPU is built for high throughput.">
+        The car wins for one person, the bus for a crowd. A CPU core finishes your single task as fast as possible. A GPU accepts that each task is
+        slower and finishes a huge number of them per second.
       </Insight>
-      <LabCard part="A" title="Count parameters and FLOPs of real models"
-        what="Count the parameters of your Lab 1 network and of ResNet-18 using PyTorch, then estimate FLOPs per input with the 2 × MACs rule and the time it needs at your measured speed."
-        expect="about 1 lakh parameters for the Lab 1 network and about 1.17 crore (11.7 million) for ResNet-18." />
+    </div>
+  );
+}
+
+// ── Section 3: Where the transistors go ──
+const AREAS = {
+  cpu: [
+    { k: "ctrl", x: 10, y: 10, w: 160, h: 70, label: "Control: branch prediction, out-of-order", c: C.purple },
+    { k: "alu", x: 180, y: 10, w: 70, h: 70, label: "ALUs", c: C.green },
+    { k: "cache", x: 10, y: 90, w: 240, h: 90, label: "Big caches (L1, L2, L3)", c: C.teal },
+  ],
+  gpu: [
+    { k: "ctrl", x: 10, y: 10, w: 240, h: 18, label: "Control (small)", c: C.purple },
+    { k: "alu", x: 10, y: 34, w: 240, h: 120, label: "Thousands of simple ALUs", c: C.green },
+    { k: "cache", x: 10, y: 160, w: 240, h: 20, label: "Small caches", c: C.teal },
+  ],
+};
+const WHY = {
+  ctrl: "Control logic makes ONE instruction stream run fast: predicting branches, running instructions out of order, all the pipeline tricks from COA. Great for latency, but it takes a lot of chip area.",
+  alu: "ALUs (arithmetic logic units) do the actual multiply-adds. More ALUs means more arithmetic per second, which is throughput.",
+  cache: "Caches keep data close so ONE core rarely waits for slow memory (COA Unit 4). A GPU keeps caches small and hides memory waits a different way (Unit 3.3).",
+};
+function DieWidget() {
+  const [k, setK] = useState("alu");
+  const Die = ({ which, title }) => (
+    <div style={{ flex: 1, minWidth: 240 }}>
+      <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{title}</div>
+      <svg viewBox="0 0 260 190" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
+        {AREAS[which].map((a) => (
+          <g key={a.k} onClick={() => setK(a.k)} style={{ cursor: "pointer" }}>
+            <rect x={a.x} y={a.y} width={a.w} height={a.h} rx="6" fill={a.c + (k === a.k ? "55" : "22")} stroke={a.c} strokeWidth={k === a.k ? 2.5 : 1} />
+            {which === "gpu" && a.k === "alu" && Array.from({ length: 96 }, (_, i) => <rect key={i} x={16 + (i % 16) * 14.6} y={40 + Math.floor(i / 16) * 18.5} width="10" height="13" rx="2" fill={C.green} opacity="0.7" />)}
+            <text x={a.x + a.w / 2} y={a.y + a.h / 2 + 4} fill={C.text} fontSize="10.5" textAnchor="middle" style={{ pointerEvents: "none" }}>{which === "gpu" && a.k === "alu" ? "" : a.label}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+  return (
+    <div>
+      <Frame>
+        A chip has a fixed budget of transistors. A CPU and a GPU spend that budget very differently. Click the coloured regions of these
+        simplified chip floor plans.
+      </Frame>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+        <Die which="cpu" title="CPU: a few powerful cores (one shown)" />
+        <Die which="gpu" title="GPU: many simple cores" />
+      </div>
+      <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{WHY[k]}</div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="TYPICAL LAPTOP CPU" value="8–16 cores" color={C.orange} />
+        <Stat label="NVIDIA T4 (COLAB)" value="2,560 CUDA cores" color={C.green} />
+      </div>
+      <Insight color={C.green} title="The CPU spends transistors on making one thread fast; the GPU spends them on doing many things at once.">
+        Neither is "better". They're tuned for different jobs, and that's why every AI computer has both.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 4: The race ──
+function RaceWidget() {
+  const [e, setE] = useState(3);
+  const n = Math.round(10 ** e);
+  const cpu = Math.ceil(n / 8) * 1;              // 8 fast cores, 1 time unit per item
+  const gpu = 200 + Math.ceil(n / 2560) * 20;    // launch/transfer overhead, then 2560 slow cores (20 units per item)
+  const pts = Array.from({ length: 41 }, (_, i) => 1 + i * 0.15);
+  const X = (v) => 30 + ((v - 1) / 6) * 480, Y = (t) => 160 - Math.log10(Math.max(1, t)) / 6 * 150;
+  return (
+    <div>
+      <Frame>
+        A toy model of the race. The CPU has <b style={{ color: C.orange }}>8 fast cores</b> (1 time unit per item). The GPU has
+        <b style={{ color: C.green }}> 2,560 slower cores</b> (20 units per item) and a fixed <b style={{ color: C.yellow }}>start-up cost of 200</b> to send work
+        and data over. Drag the number of independent items.
+      </Frame>
+      <Slider label={<>Items = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={e} min={0} max={7} step={0.05} onChange={setE} />
+      <svg viewBox="0 0 520 180" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
+        <polyline fill="none" stroke={C.orange} strokeWidth="2.5" points={pts.map((v) => `${X(v)},${Y(Math.ceil(10 ** v / 8))}`).join(" ")} />
+        <polyline fill="none" stroke={C.green} strokeWidth="2.5" points={pts.map((v) => `${X(v)},${Y(200 + Math.ceil(10 ** v / 2560) * 20)}`).join(" ")} />
+        <line x1={X(Math.max(1, e))} y1="10" x2={X(Math.max(1, e))} y2="165" stroke={C.accent} strokeDasharray="4 3" />
+        <text x="36" y="22" fill={C.orange} fontSize="11">CPU</text><text x="36" y="36" fill={C.green} fontSize="11">GPU</text>
+        <text x="440" y="176" fill={C.muted} fontSize="10">items (log) →</text>
+      </svg>
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="CPU TIME" value={cpu.toLocaleString("en-IN")} color={C.orange} />
+        <Stat label="GPU TIME" value={gpu.toLocaleString("en-IN")} color={C.green} />
+        <Stat label="WINNER" value={cpu < gpu ? "CPU" : `GPU, ${(cpu / gpu).toFixed(1)}× faster`} color={cpu < gpu ? C.orange : C.green} />
+      </div>
+      <Insight color={C.yellow} title="Small jobs: the CPU wins. Big parallel jobs: the GPU wins by miles.">
+        The GPU's start-up cost (sending data and work across, Module 4) means tiny jobs aren't worth it. In Lab 2 you'll find the real
+        crossover on Colab's T4.
+      </Insight>
+      <LabCard part="A" title="Meet your GPU"
+        what="Switch Colab to a T4 GPU, check that PyTorch can see it, read its name, memory and number of streaming multiprocessors, and run nvidia-smi, the GPU's 'task manager'."
+        expect="'Tesla T4', about 15 GB of memory, 40 multiprocessors, and an nvidia-smi table." />
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "A layer does 5 million multiply-accumulates (MACs). How many FLOPs is that?", options: ["2.5 million", "5 million", "10 million", "25 million"], answer: 2, explain: "Each MAC is one multiply plus one add, so 2 FLOPs. 5 million MACs = 10 million FLOPs." },
-  { q: "'This GPU reaches 65 TFLOPS.' What does that number describe?", options: ["How much memory it has", "How much work a model needs", "How many floating-point operations it can do per second", "How many cores it has"], answer: 2, explain: "FLOPS with a capital S is a speed: operations per second. FLOPs (small s) is an amount of work." },
-  { q: "A job needs 10¹² FLOPs. A machine delivers 10¹¹ FLOPS. Roughly how long does it take?", options: ["0.1 s", "1 s", "10 s", "100 s"], answer: 2, explain: "time = work ÷ speed = 10¹² ÷ 10¹¹ = 10 seconds." },
-  { q: "Using '2 FLOPs per parameter per token', a 10-billion-parameter model generating 100 tokens needs about…", options: ["2 × 10¹⁰ FLOPs", "2 × 10¹² FLOPs", "10¹¹ FLOPs", "2 × 10⁹ FLOPs"], answer: 1, explain: "2 × 10¹⁰ FLOPs per token × 100 tokens = 2 × 10¹² FLOPs." },
+  { q: "'Latency' means…", options: ["How many jobs finish per second", "How long one job takes from start to finish", "How much memory a job uses", "How many cores a chip has"], answer: 1, explain: "Latency = time for one job. Throughput = jobs completed per unit time." },
+  { q: "A CPU devotes much of its chip area to…", options: ["Thousands of simple ALUs", "Control logic and large caches that make one thread fast", "Only memory", "Graphics output"], answer: 1, explain: "Branch prediction, out-of-order execution and big caches make one thread fast (low latency). That takes area away from raw ALUs." },
+  { q: "For which job would a CPU likely beat a GPU?", options: ["Multiplying two 4000 × 4000 matrices", "Applying ReLU to 10 crore numbers", "Adding two numbers once", "Training an image model"], answer: 2, explain: "One tiny task can't use thousands of cores, and the GPU's start-up cost (sending the work over) dominates. The CPU finishes first." },
+  { q: "Colab's T4 GPU has 2,560 CUDA cores; a laptop CPU has about 8. Yet each GPU core is…", options: ["Faster than a CPU core", "Slower and simpler than a CPU core", "Identical to a CPU core", "Not able to do arithmetic"], answer: 1, explain: "GPU cores are simple and individually slow. Their strength is numbers: high throughput, not low latency." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can estimate the cost of any AI job.",
-  good: "Good. Replay 'FLOPs vs FLOPS'; the s matters.",
-  low: "Revisit 'FLOPs vs FLOPS' and 'How Long?': work ÷ speed = time is the key tool.",
+  perfect: "Perfect! You know the two kinds of 'fast'.",
+  good: "Good. Replay 'The Race' and find the crossover point.",
+  low: "Revisit 'Latency vs Throughput': car vs bus is the key picture.",
   done: "Unit 2.1 Complete!",
-  body: "You can count multiply-adds, convert to FLOPs, and estimate run time on any machine.",
-  next: "Next up: Unit 2.2 — Training vs Inference, Epochs & Batches.",
-  teaser: "Using a model is cheap. Teaching it is a lot more expensive. Find out exactly why.",
+  body: "You can explain latency vs throughput and why CPUs and GPUs spend their transistors so differently.",
+  next: "Next up: Unit 2.2 — Why Clocks Stopped Getting Faster.",
+  teaser: "Why not just make the CPU core faster and faster? Physics said no, around 2005.",
 };
 
 const UNIT_WORDS = [
-  ["MAC", "Multiply-Accumulate", "One multiply + one add = 2 FLOPs.", "from Unit 1.3"],
-  ["FLOP", "FLoating-point OPeration", "One add or one multiply on decimal (floating-point) numbers. FLOPs = an amount of work.", "new here"],
-  ["FLOPS", "FLoating-point Operations Per Second", "A speed: how many FLOPs a chip can do each second.", "new here"],
-  ["TFLOPS", "tera-FLOPS", "10¹² FLOPs per second, a lakh crore every second.", "new here"],
-  ["GPT", "Generative Pre-trained Transformer", "The family of language models behind ChatGPT.", "new here"],
-  ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats with more or fewer bits (IEEE 754, from COA). Unit 6.2 explains why fewer bits run faster.", "from COA"],
+  ["CPU", "Central Processing Unit", "The main processor: a few powerful cores, built for low latency.", "from COA"],
+  ["GPU", "Graphics Processing Unit", "Built for graphics, now for AI: thousands of simple cores, built for throughput.", "new here"],
+  ["ALU", "Arithmetic Logic Unit", "The part that actually does arithmetic.", "from COA"],
+  ["CUDA core", "an NVIDIA GPU's basic arithmetic unit", "NVIDIA's name for one simple ALU lane. CUDA = Compute Unified Device Architecture.", "new here"],
+  ["L1/L2/L3", "cache levels 1, 2, 3", "Small, fast memories near the core (COA Unit 4).", "from COA"],
 ];
 
 // ── Quiz ──
@@ -353,10 +352,10 @@ function TextbookNote() {
 
 export default function Unit2_1({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "Guess the Work" },
-    { id: "s1", label: "FLOPs vs FLOPS" },
-    { id: "s2", label: "Count a Chatbot" },
-    { id: "s3", label: "How Long?" },
+    { id: "s0", label: "One Expert or 1000?" },
+    { id: "s1", label: "Latency vs Throughput" },
+    { id: "s2", label: "Where Transistors Go" },
+    { id: "s3", label: "The Race" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -366,10 +365,10 @@ export default function Unit2_1({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🤔 Guess the Work — how many multiply-adds?</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📏 FLOPs vs FLOPS — work vs speed</h3><FlopsWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>💬 Count a Chatbot — 2 FLOPs per parameter per token</h3><CountWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏱️ How Long? — time = work ÷ speed</h3><DeviceWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>👩‍🏫 One Expert or a Thousand Students?</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🚗🚌 Latency vs Throughput — car or bus?</h3><DefineWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔬 Where the Transistors Go — CPU vs GPU chips</h3><DieWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🏁 The Race — when does the GPU win?</h3><RaceWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.1.</p>
@@ -380,10 +379,10 @@ export default function Unit2_1({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧮</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⚔️</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.1</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Counting the Multiply-Adds</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Latency vs Throughput</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

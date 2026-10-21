@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab03_CPU_vs_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab3_Inside_a_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -68,53 +68,40 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Hamacher §12.2.1 (GPUs) · H&P §4.4";
+const TEXTBOOK = "Kirk & Hwu Ch 4–5 · H&P §4.4";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-// Simple, labelled timing model (all figures approximate):
-// CPU 0.2 TFLOPS effective, 20 GB/s memory · GPU 4 TFLOPS effective FP32, 300 GB/s memory,
-// 20 µs to launch work, PCIe copies at 12 GB/s
-const CPU_F = 2e11, CPU_BW = 2e10, GPU_F = 4e12, GPU_BW = 3e11, LAUNCH = 2e-5, PCIE = 1.2e10;
-const tfmt = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : s < 1 ? `${(s * 1e3).toFixed(1)} ms` : `${s.toFixed(2)} s`);
-
-const JOBS = [
-  { id: "tiny", t: "Add two lists of 100 numbers", parallel: true, flops: 100, bytes: 1200, serial: 0, ans: "cpu",
-    why: "The GPU's 20 µs launch cost is thousands of times longer than the work itself. Tiny jobs stay on the CPU (Unit 3.1)." },
-  { id: "matmul", t: "Multiply two 4096 × 4096 matrices", parallel: true, flops: 2 * 4096 ** 3, bytes: 3 * 4096 * 4096 * 4, serial: 0, ans: "gpu",
-    why: "1.4 × 10¹¹ FLOPs of perfectly independent work (Unit 2.3). Even after copying 200 MB over PCIe, the GPU wins clearly." },
-  { id: "csv", t: "Parse 10,000 lines of a messy CSV with lots of if/else in Python", parallel: false, flops: 0, bytes: 0, serial: 0.08, ans: "cpu",
-    why: "Branchy, one-line-at-a-time Python string work isn't SIMD work at all. p ≈ 0, so Amdahl gives no speed-up (Unit 3.4). This is the CPU's home ground." },
-  { id: "relu_cpu", t: "Apply ReLU to 5 crore numbers that are in CPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: true, ans: "cpu",
-    why: "A trap! Only one comparison per number, but 400 MB must cross PCIe and come back. Copying takes longer than the CPU needs to just do it. Where the data lives matters (Module 5)." },
-  { id: "relu_gpu", t: "Apply ReLU to 5 crore numbers already in GPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: false, ans: "gpu",
-    why: "Same job, but the data is already on the GPU, so there's no copy. The GPU's fast memory makes it about 15× quicker. Keep data on the GPU between steps!" },
-  { id: "chat", t: "A 7-billion-parameter chatbot writes one 200-word answer", parallel: true, flops: 3.7e12, bytes: 0, serial: 0, ans: "gpu",
-    why: "3.7 × 10¹² FLOPs of matrix multiplies: about 18 s of arithmetic on the CPU, under a second on the GPU (even faster with FP16, Unit 6.2). This is exactly why AI runs on GPUs." },
-];
-function times(j) {
-  if (!j.parallel) return { cpu: j.serial, gpu: j.serial + LAUNCH, note: "no parallel work to offload" };
-  const cpu = Math.max(j.flops / CPU_F, j.bytes / CPU_BW);
-  const copy = j.copy === false ? 0 : j.bytes / PCIE;
-  const gpu = LAUNCH + copy + Math.max(j.flops / GPU_F, j.bytes / GPU_BW);
-  return { cpu, gpu, copy };
+const T4 = { sms: 40, warpsPerSM: 32, peak: 8.1e12, bw: 320e9 };
+function plan(job, B, N) {
+  const outputs = job === "relu" ? B * N : B * N;          // one thread per output element
+  const flops = job === "relu" ? B * N : 2 * B * N * N;
+  const bytes = job === "relu" ? 2 * B * N * 4 : (B * N + N * N + B * N) * 4;
+  const warps = Math.ceil(outputs / 32);
+  const resident = T4.sms * T4.warpsPerSM;
+  const waves = Math.ceil(warps / resident);
+  const tCompute = flops / T4.peak, tMemory = bytes / T4.bw;
+  return { outputs, flops, bytes, warps, resident, waves, tCompute, tMemory, bound: tCompute > tMemory ? "compute" : "memory" };
 }
+const tf = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : `${(s * 1e3).toFixed(2)} ms`);
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Latency vs throughput, and the GPU's start-up cost", "Unit 3.1"],
-  ["time = work ÷ speed", "Unit 2.1"],
-  ["Is the work independent (SIMD/SIMT-friendly)?", "Units 2.3, 3.3"],
-  ["Amdahl: the serial part sets the ceiling", "Unit 3.4"],
-  ["Data must be copied to the GPU before it can work on it", "preview of Module 5"],
+  ["One thread per output element (SIMT)", "Unit 2.3"],
+  ["Threads are grouped into warps of 32", "Units 2.3, 3.2"],
+  ["The T4 has 40 SMs, each holding up to 32 warps at once", "Units 3.1, 3.3"],
+  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Units 1.1, 3.1"],
+  ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Unit 3.4"],
+  ["Keep warps from diverging", "Unit 3.2"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
   return (
     <div>
       <Frame>
-        You're the student coordinator of the college's new AI lab, with one GPU server. Teams bring you jobs and ask: <i>"Should this run on the
-        CPU or the GPU?"</i> A wrong call wastes GPU time that other teams need. Your tools:
+        The AI lab's T4 will run one layer of a model: a <b style={{ color: C.accent }}>matrix multiply</b> (B inputs × a 4096 × 4096 weight matrix) followed
+        by a <b style={{ color: C.green }}>ReLU</b>. Before anyone writes code, your team lead wants a plan: how many threads and warps, how they fill the 40 SMs,
+        how many bytes and FLOPs, the expected time, and what limits it.
       </Frame>
       {TOOLS.map(([t, u], i) => {
         const on = ticks.includes(i);
@@ -126,9 +113,8 @@ function MissionWidget() {
           </div>
         );
       })}
-      <Insight color={C.green} title="'Use the GPU for everything' is wrong. So is 'the GPU is just for graphics'.">
-        The right answer depends on the size of the work, how parallel it is, and where the data lives. By the end of this capstone you'll decide in
-        seconds.
+      <Insight color={C.green} title="This is how GPU engineers think before writing a single line: threads, warps, bytes, FLOPs.">
+        The plan tells you what speed is even possible, and which limit (compute or memory) you're fighting.
       </Insight>
     </div>
   );
@@ -136,31 +122,27 @@ function MissionWidget() {
 
 // ── Section 2: Build in Steps ──
 const VERSIONS = [
-  { tag: "v1", title: "Compute time only", color: C.teal, why: "First guess: time = FLOPs ÷ speed on each machine. But this ignores two GPU costs, so it says 'GPU' for everything, even tiny jobs.", code: `CPU_FLOPS, GPU_FLOPS = 0.2e12, 4e12        # effective speeds (approx.)
-
-def cpu_time(flops): return flops / CPU_FLOPS
-def gpu_time(flops): return flops / GPU_FLOPS` },
-  { tag: "v2", title: "+ launch and copy costs", color: C.yellow, why: "A GPU job has a fixed launch cost (~20 µs), and its data must cross PCIe (~12 GB/s) unless it's already there. Now tiny jobs and copy-heavy jobs correctly go to the CPU.", code: `LAUNCH = 20e-6          # seconds to start GPU work
-PCIE   = 12e9           # bytes per second over the PCIe bus
-
-def gpu_time(flops, nbytes, data_on_gpu=False):
-    copy = 0 if data_on_gpu else nbytes / PCIE
-    return LAUNCH + copy + flops / GPU_FLOPS` },
-  { tag: "v3", title: "+ Amdahl's serial part", color: C.green, why: "Real programs have a serial part that no GPU can speed up. Add it to both sides, then decide.", code: `def decide(flops, nbytes, serial_s=0.0, data_on_gpu=False):
-    cpu = serial_s + cpu_time(flops)
-    gpu = serial_s + gpu_time(flops, nbytes, data_on_gpu)
-    winner = "GPU" if gpu < cpu else "CPU"
-    return winner, cpu, gpu
-
-print(decide(2 * 4096**3, 3 * 4096**2 * 4))   # ('GPU', 0.69, 0.05)
-print(decide(100, 1200))                      # ('CPU', ...)` },
+  { tag: "v1", title: "Threads and warps", color: C.teal, why: "Start with SIMT thinking: one thread per output number. The matmul with B = 64 and N = 4096 has 64 × 4096 outputs.", code: `B, N = 64, 4096
+threads = B * N                 # one per output element
+warps = -(-threads // 32)       # ceiling division
+print(threads, "threads in", warps, "warps")    # 262,144 threads, 8,192 warps` },
+  { tag: "v2", title: "+ fit onto the SMs", color: C.yellow, why: "The T4 holds 40 SMs × 32 warps = 1,280 warps at once. More warps than that run in 'waves', as earlier ones finish.", code: `SMS, WARPS_PER_SM = 40, 32
+resident = SMS * WARPS_PER_SM               # 1,280 warps on the chip at once
+waves = -(-warps // resident)
+print(f"{warps} warps → {waves} waves of up to {resident}")` },
+  { tag: "v3", title: "+ time and the limit", color: C.green, why: "Time is at least the compute time AND at least the memory time. The bigger one is the real limit.", code: `PEAK, BW = 8.1e12, 320e9                    # T4 FP32 FLOPS, bytes per second
+flops = 2 * B * N * N                       # matmul: 2 FLOPs per MAC
+nbytes = (B*N + N*N + B*N) * 4              # read X and W, write Y (float32)
+t_compute, t_memory = flops / PEAK, nbytes / BW
+limit = "compute" if t_compute > t_memory else "memory"
+print(f"compute {t_compute*1e3:.2f} ms, memory {t_memory*1e3:.2f} ms → {limit}-bound")` },
 ];
 function BuildWidget() {
   const [v, setV] = useState(0);
   const cur = VERSIONS[v];
   return (
     <div>
-      <Frame>Grow a "CPU or GPU?" decision function, one idea per version.</Frame>
+      <Frame>Grow the planner one idea at a time.</Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {VERSIONS.map((x, i) => <Btn key={x.tag} ghost={i !== v} onClick={() => setV(i)} color={x.color}>{x.tag}: {x.title}</Btn>)}
       </div>
@@ -168,48 +150,48 @@ function BuildWidget() {
         <b style={{ color: cur.color }}>{cur.tag}: </b>{cur.why}
       </div>
       <Code color={cur.color}>{cur.code}</Code>
-      <Insight title="Each version fixes the previous one's wrong answers.">
-        v1 sends everything to the GPU; v2 learns about launch and copy costs; v3 respects Amdahl. That's how engineering models improve.
+      <Insight title="Two lower bounds, compute and memory. The larger one wins.">
+        You'll meet this "whichever is slower" idea again as the roofline model in Unit 5.3.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Play It — the job queue ──
+// ── Section 3: Play It — the planner ──
 function PlayWidget() {
-  const [picks, setPicks] = useState({});
-  const right = JOBS.filter((j) => picks[j.id] === j.ans).length;
+  const [job, setJob] = useState("matmul");
+  const [B, setB] = useState(64);
+  const [N, setN] = useState(4096);
+  const p = plan(job, B, N);
+  const firstWave = Math.min(p.warps, p.resident);
+  const smFill = Array.from({ length: 40 }, (_, s) => Math.min(32, Math.max(0, firstWave - s * 32)));
   return (
     <div>
-      <Frame>Six jobs in the queue. Decide CPU or GPU for each, then see the model's timing and the reason. (Approximate model, explained in Build in Steps.)</Frame>
-      {JOBS.map((j) => {
-        const p = picks[j.id], t = times(j);
-        return (
-          <div key={j.id} style={{ background: C.card, border: `1.5px solid ${p ? (p === j.ans ? C.green : C.red) : C.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 220, color: C.text, fontSize: 13, fontWeight: 600 }}>{j.t}</div>
-              {[["cpu", "🧠 CPU", C.orange], ["gpu", "⚡ GPU", C.green]].map(([k, l, c]) => (
-                <button key={k} onClick={() => !p && setPicks((s) => ({ ...s, [j.id]: k }))} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${c}`, background: p === k ? c + "33" : "transparent", color: C.text, fontSize: 12, cursor: p ? "default" : "pointer" }}>{l}</button>
-              ))}
-            </div>
-            {p && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontFamily: "monospace", fontSize: 12 }}>
-                  <span style={{ color: C.orange }}>CPU ≈ {tfmt(t.cpu)}</span>
-                  <span style={{ color: C.green }}>GPU ≈ {tfmt(t.gpu)}{t.copy ? ` (incl. ${tfmt(t.copy)} copying)` : ""}</span>
-                </div>
-                <div style={{ color: p === j.ans ? C.green : C.red, fontSize: 12.5, marginTop: 4, lineHeight: 1.6 }}>{p === j.ans ? "✓ " : "✗ "}{j.why}</div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {Object.keys(picks).length === JOBS.length && (
-        <Insight color={C.purple} title={`You scored ${right} / ${JOBS.length}. GPU = big + parallel + data already there (or worth the copy).`}>
-          Small jobs, branchy serial code and copy-dominated jobs belong on the CPU. Big matrix maths, especially with data kept on the GPU,
-          belongs on the GPU.
-        </Insight>
-      )}
+      <Frame>Your planner, live. Pick the operation and its size; the 40 squares are the T4's SMs, shaded by how many of their 32 warp slots the first wave fills.</Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <Btn ghost={job !== "matmul"} onClick={() => setJob("matmul")}>Matrix multiply layer</Btn>
+        <Btn ghost={job !== "relu"} onClick={() => setJob("relu")} color={C.green}>ReLU</Btn>
+      </div>
+      <Slider label={<>Batch size B = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={2048} onChange={setB} color={C.orange} />
+      <Slider label={<>Layer width N = <b style={{ color: C.accent }}>{N}</b></>} value={N} min={256} max={8192} step={256} onChange={setN} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4 }}>
+        {smFill.map((w, s) => <div key={s} style={{ height: 26, borderRadius: 4, background: C.green, opacity: 0.12 + 0.88 * (w / 32), border: `1px solid ${C.border}`, fontSize: 9, color: w > 16 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>{w}</div>)}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="THREADS" value={p.outputs.toLocaleString("en-IN")} color={C.accent} />
+        <Stat label="WARPS" value={p.warps.toLocaleString("en-IN")} color={C.purple} />
+        <Stat label="WAVES" value={p.waves} color={C.purple} />
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+        <Stat label="COMPUTE TIME ≥" value={tf(p.tCompute)} color={p.bound === "compute" ? C.red : C.green} />
+        <Stat label="MEMORY TIME ≥" value={tf(p.tMemory)} color={p.bound === "memory" ? C.red : C.green} />
+        <Stat label="LIMITED BY" value={p.bound.toUpperCase()} color={C.yellow} />
+      </div>
+      <div style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{p.warps < 1280 ? "⚠️ Fewer warps than slots: some SMs are idle or can't hide latency well (Unit 3.3). Bigger batches help." : "✓ Enough warps to fill every SM and hide memory latency."}</div>
+      <Insight color={C.yellow} title="Try the matmul at B = 1, then B = 1024: the same layer switches from memory-bound to compute-bound.">
+        With one input, the whole 64 MB weight matrix is read to do very little maths per byte. With a big batch, each weight is reused many
+        times (Unit 3.4's reuse). ReLU is always memory-bound. Module 5 builds on exactly this.
+      </Insight>
     </div>
   );
 }
@@ -218,62 +200,56 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete decision tool. In Lab 3 Part E you'll test its predictions against real timings on Colab's T4.</Frame>
-      <Code color={C.green} title="🧭 cpu_or_gpu.py">{`CPU_FLOPS, CPU_BW = 0.2e12, 20e9     # effective speed, memory bandwidth (approx.)
-GPU_FLOPS, GPU_BW = 4e12, 300e9
-LAUNCH, PCIE = 20e-6, 12e9
+      <Frame>The complete planner. In Lab 3 Part E you'll time these exact jobs on the T4 and see how close the plan comes.</Frame>
+      <Code color={C.green} title="🗺️ gpu_planner.py">{`SMS, WARPS_PER_SM = 40, 32
+PEAK, BW = 8.1e12, 320e9          # T4: FP32 FLOPS, bytes/s
 
-def cpu_time(flops, nbytes):
-    return max(flops / CPU_FLOPS, nbytes / CPU_BW)
+def plan(name, outputs, flops, nbytes):
+    warps = -(-outputs // 32)
+    waves = -(-warps // (SMS * WARPS_PER_SM))
+    tc, tm = flops / PEAK, nbytes / BW
+    print(f"{name:22s} {outputs:>10,d} threads {warps:>8,d} warps {waves:>3d} waves  "
+          f"compute {tc*1e3:7.3f} ms  memory {tm*1e3:7.3f} ms  → {'compute' if tc > tm else 'memory'}-bound")
 
-def gpu_time(flops, nbytes, data_on_gpu=False):
-    copy = 0 if data_on_gpu else nbytes / PCIE
-    return LAUNCH + copy + max(flops / GPU_FLOPS, nbytes / GPU_BW)
-
-def decide(name, flops, nbytes, serial_s=0.0, data_on_gpu=False):
-    c = serial_s + cpu_time(flops, nbytes)
-    g = serial_s + gpu_time(flops, nbytes, data_on_gpu)
-    print(f"{name:32s} CPU {c*1e3:9.3f} ms   GPU {g*1e3:9.3f} ms   → {'GPU' if g < c else 'CPU'}")
-
-decide("add 100 numbers", 100, 1200)
-decide("4096 x 4096 matmul", 2 * 4096**3, 3 * 4096**2 * 4)
-decide("ReLU 5 crore, data on CPU", 5e7, 4e8)
-decide("ReLU 5 crore, data on GPU", 5e7, 4e8, data_on_gpu=True)`}</Code>
+N = 4096
+for B in [1, 64, 1024]:
+    plan(f"matmul  B={B}", B*N, 2*B*N*N, (B*N + N*N + B*N) * 4)
+    plan(f"ReLU    B={B}", B*N, B*N, 2*B*N*4)`}</Code>
       <div style={{ marginTop: 12, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) find the matrix size where the decision flips from CPU to GPU; (2) add a
-        "number of times the job repeats" parameter: copying once and computing 100 times changes the answer.
+        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) switch the matmul to FP16 Tensor Cores (peak 65 TFLOPS, 2 bytes per number): which jobs change
+        their limit? (2) Fuse the ReLU into the matmul so Y is written only once: how much memory time does that save?
       </div>
-      <LabCard part="E" title="The real race: CPU vs GPU matrix multiply"
-        what="Time NumPy (CPU) against PyTorch on the T4 for matrix sizes from 64 to 4096, plot both, find the crossover, and measure the copy cost separately."
-        expect="the CPU wins for small sizes; somewhere in the low hundreds the GPU takes over, and at 4096 it is many times faster." />
-      <Insight color={C.orange} title="Module 3 complete: you know when and why the GPU wins.">
-        Next: open the GPU up and look inside: multiprocessors, warps, and its special memory.
+      <LabCard part="E" title="Plan vs reality on the T4"
+        what="Time the matmul and the ReLU on the GPU for B = 1, 64 and 1024, compute the TFLOPS and GB/s you actually achieved, and compare with the planner."
+        expect="ReLU reaching a good fraction of the bandwidth; the B = 1 matmul limited by memory; the B = 1024 matmul reaching several TFLOPS." />
+      <Insight color={C.orange} title="Module 3 complete: you can see inside the GPU.">
+        Next, the other half of the story: how the CPU actually hands this work to the GPU, step by step, across PCIe.
       </Insight>
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "Why can a GPU lose to a CPU on a very small job?", options: ["GPUs can't add", "The fixed launch and copy costs are larger than the work itself", "GPU cores are broken for small numbers", "The CPU has more cores"], answer: 1, explain: "Tens of microseconds to start, plus copying, swamp a job that takes nanoseconds on the CPU." },
-  { q: "ReLU on 5 crore numbers: the GPU loses when the data starts in CPU memory but wins when it's already in GPU memory. Why?", options: ["ReLU is different on each", "The PCIe copy dominates when data must be moved", "The GPU is faster at night", "CPU memory is faster than GPU memory"], answer: 1, explain: "Simple work per byte + an expensive copy = CPU wins. Remove the copy and the GPU's fast memory wins." },
-  { q: "Which job belongs on the CPU?", options: ["A 8192 × 8192 matrix multiply", "Training a neural network on images", "Branch-heavy Python code that processes text one line at a time", "Running a large chatbot"], answer: 2, explain: "Serial, branchy work has p ≈ 0: there's nothing for thousands of cores to share." },
-  { q: "The best habit for GPU programs is to…", options: ["Copy data to the GPU before every operation", "Copy data once, do many operations on it on the GPU, then copy results back", "Avoid the GPU for matrix work", "Use the CPU for all multiply-adds"], answer: 1, explain: "Copies are expensive. Keep data on the GPU across many operations; Module 5 is built around this idea." },
+  { q: "A job has 100,000 output elements, one thread each. How many warps is that?", options: ["3,125", "3,200", "100,000", "32"], answer: 0, explain: "100,000 ÷ 32 = 3,125 warps." },
+  { q: "The T4 holds 40 SMs × 32 warps = 1,280 warps at once. A job with 3,000 warps runs in how many waves?", options: ["1", "2", "3", "40"], answer: 2, explain: "3,000 ÷ 1,280 = 2.3, rounded up to 3 waves." },
+  { q: "A job needs 1 ms of compute time and 5 ms of memory time (at peak). It is…", options: ["compute-bound, about 1 ms", "memory-bound, at least 5 ms", "6 ms exactly", "impossible"], answer: 1, explain: "Time is at least the larger lower bound: memory, 5 ms. Faster arithmetic wouldn't help." },
+  { q: "Why does a bigger batch make a matmul layer compute-bound?", options: ["Bigger batches use less memory", "Each weight read from memory is reused for more inputs, so FLOPs grow faster than bytes", "The GPU clocks up", "Warps diverge less"], answer: 1, explain: "The weights are read once but used B times: more maths per byte (Unit 3.4's reuse)." },
 ];
 const RESULT = {
-  perfect: "Perfect! You'd make an excellent AI lab coordinator.",
-  good: "Good. Replay 'Play It' and read each reason carefully.",
-  low: "Revisit 'Build in Steps': launch and copy costs plus Amdahl decide everything.",
-  done: "Module 3 Complete! ⚔️",
-  body: "You can explain why GPUs exist, how SIMD/SIMT work, apply Amdahl's law, and decide where any job should run.",
-  next: "Next up: Module 4 — Inside a GPU.",
-  teaser: "Streaming multiprocessors, Tensor Cores, warps and their secret weapon for hiding slow memory.",
+  perfect: "Perfect! You can plan GPU work like an engineer.",
+  good: "Good. Replay 'Play It' and move the batch slider from 1 to 2048.",
+  low: "Revisit 'Build in Steps': threads → warps → waves → compute vs memory.",
+  done: "Module 3 Complete! 🔬",
+  body: "You can describe SMs, warps, divergence, latency hiding, the memory hierarchy, and plan a job's threads, waves and limits.",
+  next: "Next up: Module 4 — CPU–GPU Teamwork.",
+  teaser: "How does the CPU actually hand a job to the GPU? Allocate, copy, launch, copy back, free: you'll do every step yourself.",
 };
 
 const UNIT_WORDS = [
-  ["PCIe", "Peripheral Component Interconnect Express", "The bus the GPU card plugs into, about 12 GB/s in practice for the T4. Hamacher Ch 7.", "from COA"],
-  ["GB/s", "gigabytes per second", "How fast data moves.", "new here"],
-  ["µs", "microsecond", "One millionth of a second.", "new here"],
-  ["FLOPS", "FLoating-point Operations Per Second", "A machine's arithmetic speed.", "from Unit 2.1"],
+  ["SM", "Streaming Multiprocessor", "The T4 has 40, each holding up to 32 warps.", "from Unit 3.1"],
+  ["wave", "one round of work", "As many warps as the chip can hold at once; big jobs need several waves.", "new here"],
+  ["compute-bound", "limited by arithmetic", "FLOPs ÷ peak is the bigger time.", "new here"],
+  ["memory-bound", "limited by memory", "Bytes ÷ bandwidth is the bigger time.", "new here"],
 ];
 
 // ── Quiz ──
@@ -377,10 +353,10 @@ export default function Unit3_C({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — coordinator of the AI lab</h3><MissionWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — a CPU-or-GPU decision tool</h3><BuildWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — the job queue</h3><PlayWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and the real race</h3><CodeWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — plan a layer on the T4</h3><MissionWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — threads → waves → time</h3><BuildWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — the GPU planner</h3><PlayWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and plan vs reality</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 3.C.</p>
@@ -394,7 +370,7 @@ export default function Unit3_C({ student, onUnitComplete }) {
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 3 › UNIT 3.C</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: CPU or GPU?</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: Map a Job onto a GPU</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab04_Inside_a_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab4_CPU_GPU_Teamwork.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -68,42 +68,43 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 4–5 · H&P §4.4";
+const TEXTBOOK = "Kirk & Hwu Ch 2 · Hamacher §12.2.1";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-const T4 = { sms: 40, warpsPerSM: 32, peak: 8.1e12, bw: 320e9 };
-function plan(job, B, N) {
-  const outputs = job === "relu" ? B * N : B * N;          // one thread per output element
-  const flops = job === "relu" ? B * N : 2 * B * N * N;
-  const bytes = job === "relu" ? 2 * B * N * 4 : (B * N + N * N + B * N) * 4;
-  const warps = Math.ceil(outputs / 32);
-  const resident = T4.sms * T4.warpsPerSM;
-  const waves = Math.ceil(warps / resident);
-  const tCompute = flops / T4.peak, tMemory = bytes / T4.bw;
-  return { outputs, flops, bytes, warps, resident, waves, tCompute, tMemory, bound: tCompute > tMemory ? "compute" : "memory" };
+// Illustrative per-epoch model for a small image classifier on a T4 (50,000 small colour images).
+function epochModel(f) {
+  const N = 50000, B = f.bigBatch ? 256 : 16;
+  const iters = Math.ceil(N / B);
+  const prep = f.onGpu ? 0.02 : 0.1 * B;                         // ms of CPU work to prepare a batch
+  const prepEff = f.onGpu ? prep : f.workers ? prep / 2 : prep;  // 2 background workers on Colab
+  const copy = f.onGpu ? 0 : (B * 12288) / (f.pinned ? 12e6 : 6e6); // ms over PCIe (bytes ÷ bytes-per-ms)
+  const metric = f.metricsGpu ? 0 : 1.0;                         // ms: .cpu().numpy() + scikit-learn accuracy every step
+  const gpu = 0.3 + 0.02 * B;                                    // ms: launch overheads + real work
+  const canOverlap = f.workers && !f.itemEveryStep && f.metricsGpu && !f.onGpu ? true : false;
+  const gpuSide = gpu + (f.pinned && canOverlap ? 0 : copy);
+  const step = canOverlap ? Math.max(prepEff, gpuSide) : prepEff + copy + metric + gpu + (f.itemEveryStep ? 0.05 : 0);
+  const total = (iters * step) / 1000;
+  return { B, iters, step, total, util: (iters * gpu) / 1000 / total, prep: prepEff, copy, metric, gpu };
 }
-const tf = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : `${(s * 1e3).toFixed(2)} ms`);
 
 // ── Section 1: The Mission ──
-const TOOLS = [
-  ["One thread per output element (SIMT)", "Unit 3.3"],
-  ["Threads are grouped into warps of 32", "Units 3.3, 4.2"],
-  ["The T4 has 40 SMs, each holding up to 32 warps at once", "Units 4.1, 4.3"],
-  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Units 2.1, 4.1"],
-  ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Unit 4.4"],
-  ["Keep warps from diverging", "Unit 4.2"],
+const CLUES = [
+  ["The five steps: copies cross the slow PCIe bus", "Units 4.1, 4.2"],
+  ["Small jobs waste time on launch overhead", "Units 2.1, 3.C"],
+  ["Overlap CPU prep with GPU work; avoid sync points", "Unit 4.4"],
+  ["The slowest part sets the ceiling (Amdahl)", "Unit 2.4"],
+  ["Measure with synchronisation, or with a profiler", "Unit 4.4"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
   return (
     <div>
       <Frame>
-        The AI lab's T4 will run one layer of a model: a <b style={{ color: C.accent }}>matrix multiply</b> (B inputs × a 4096 × 4096 weight matrix) followed
-        by a <b style={{ color: C.green }}>ReLU</b>. Before anyone writes code, your team lead wants a plan: how many threads and warps, how they fill the 40 SMs,
-        how many bytes and FLOPs, the expected time, and what limits it.
+        A final-year team trains an image classifier on Colab's T4. "The GPU is useless," they say. "nvidia-smi shows it busy only about a fifth
+        of the time." You're the GPU detective. Your clues:
       </Frame>
-      {TOOLS.map(([t, u], i) => {
+      {CLUES.map(([t, u], i) => {
         const on = ticks.includes(i);
         return (
           <div key={i} onClick={() => setTicks((s) => (on ? s.filter((x) => x !== i) : [...s, i]))} style={{ display: "flex", gap: 10, alignItems: "center", background: C.card, border: `1.5px solid ${on ? C.green : C.border}`, borderRadius: 8, padding: "9px 12px", marginBottom: 7, cursor: "pointer" }}>
@@ -113,36 +114,48 @@ function MissionWidget() {
           </div>
         );
       })}
-      <Insight color={C.green} title="This is how GPU engineers think before writing a single line: threads, warps, bytes, FLOPs.">
-        The plan tells you what speed is even possible, and which limit (compute or memory) you're fighting.
+      <Code color={C.red} title="🐌 THE TEAM'S TRAINING LOOP">{`loader = DataLoader(train_data, batch_size=16, shuffle=True)   # num_workers=0
+for images, labels in loader:
+    images, labels = images.to("cuda"), labels.to("cuda")
+    scores = model(images)
+    loss = loss_fn(scores, labels)
+    opt.zero_grad(); loss.backward(); opt.step()
+    acc = accuracy_score(labels.cpu().numpy(),             # copy out + sync,
+                         scores.argmax(1).cpu().numpy())   # every step
+    print("loss:", loss.item(), "acc:", acc)               # sync, every step`}</Code>
+      <Insight color={C.yellow} title="A GPU that's busy only a fifth of the time isn't slow. It's starving.">
+        The GPU is waiting on the CPU, the PCIe bus and Python. Find every culprit in this loop before reading on.
       </Insight>
     </div>
   );
 }
 
-// ── Section 2: Build in Steps ──
+// ── Section 2: Build in Steps — how to measure ──
 const VERSIONS = [
-  { tag: "v1", title: "Threads and warps", color: C.teal, why: "Start with SIMT thinking: one thread per output number. The matmul with B = 64 and N = 4096 has 64 × 4096 outputs.", code: `B, N = 64, 4096
-threads = B * N                 # one per output element
-warps = -(-threads // 32)       # ceiling division
-print(threads, "threads in", warps, "warps")    # 262,144 threads, 8,192 warps` },
-  { tag: "v2", title: "+ fit onto the SMs", color: C.yellow, why: "The T4 holds 40 SMs × 32 warps = 1,280 warps at once. More warps than that run in 'waves', as earlier ones finish.", code: `SMS, WARPS_PER_SM = 40, 32
-resident = SMS * WARPS_PER_SM               # 1,280 warps on the chip at once
-waves = -(-warps // resident)
-print(f"{warps} warps → {waves} waves of up to {resident}")` },
-  { tag: "v3", title: "+ time and the limit", color: C.green, why: "Time is at least the compute time AND at least the memory time. The bigger one is the real limit.", code: `PEAK, BW = 8.1e12, 320e9                    # T4 FP32 FLOPS, bytes per second
-flops = 2 * B * N * N                       # matmul: 2 FLOPs per MAC
-nbytes = (B*N + N*N + B*N) * 4              # read X and W, write Y (float32)
-t_compute, t_memory = flops / PEAK, nbytes / BW
-limit = "compute" if t_compute > t_memory else "memory"
-print(f"compute {t_compute*1e3:.2f} ms, memory {t_memory*1e3:.2f} ms → {limit}-bound")` },
+  { tag: "v1", title: "Time the epoch (correctly)", color: C.teal, why: "First get one honest number. Synchronise before stopping the clock, otherwise queued GPU work is missed (Unit 4.4).", code: `torch.cuda.synchronize(); t0 = time.perf_counter()
+train_one_epoch()
+torch.cuda.synchronize(); print(f"epoch: {time.perf_counter() - t0:.1f} s")` },
+  { tag: "v2", title: "+ time each phase", color: C.yellow, why: "Split the step into waiting for data, copying, and computing. Synchronising after each phase makes the split honest (though a little slower overall).", code: `phase = {"data": 0, "copy": 0, "compute": 0}
+t = time.perf_counter()
+for images, labels in loader:
+    now = time.perf_counter(); phase["data"] += now - t; t = now
+    images, labels = images.to("cuda"), labels.to("cuda"); torch.cuda.synchronize()
+    now = time.perf_counter(); phase["copy"] += now - t; t = now
+    loss = loss_fn(model(images), labels); opt.zero_grad(); loss.backward(); opt.step()
+    torch.cuda.synchronize()
+    now = time.perf_counter(); phase["compute"] += now - t; t = now
+print(phase)` },
+  { tag: "v3", title: "+ the PyTorch profiler", color: C.green, why: "The profiler records every CPU operation and GPU kernel with exact timings. It's the professional tool.", code: `from torch.profiler import profile, ProfilerActivity
+with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
+    train_some_steps(20)
+print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))` },
 ];
 function BuildWidget() {
   const [v, setV] = useState(0);
   const cur = VERSIONS[v];
   return (
     <div>
-      <Frame>Grow the planner one idea at a time.</Frame>
+      <Frame>A detective needs evidence. Grow your measurement tools one idea at a time.</Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {VERSIONS.map((x, i) => <Btn key={x.tag} ghost={i !== v} onClick={() => setV(i)} color={x.color}>{x.tag}: {x.title}</Btn>)}
       </div>
@@ -150,47 +163,49 @@ function BuildWidget() {
         <b style={{ color: cur.color }}>{cur.tag}: </b>{cur.why}
       </div>
       <Code color={cur.color}>{cur.code}</Code>
-      <Insight title="Two lower bounds, compute and memory. The larger one wins.">
-        You'll meet this "whichever is slower" idea again as the roofline model in Unit 6.3.
+      <Insight title="Measure first, then fix. Guessing at performance problems usually fixes the wrong thing.">
+        Every fix in the next section comes from a measurement like these.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Play It — the planner ──
+// ── Section 3: Play It — fix the pipeline ──
+const FIXES = [
+  ["metricsGpu", "Compute accuracy on the GPU: (scores.argmax(1) == labels).sum()", "Instead of .cpu().numpy() + scikit-learn every step: no copy out, no sync, no slow Python."],
+  ["itemEveryStep", "Call loss.item() every step", "A sync point each step blocks all overlap (keep it ticked to see the damage)."],
+  ["workers", "DataLoader(num_workers=2)", "Two CPU worker processes prepare batches in the background."],
+  ["pinned", "pin_memory=True + .to('cuda', non_blocking=True)", "Faster copies that can overlap with GPU work."],
+  ["bigBatch", "Batch size 256 instead of 16", "Fewer, bigger kernels: less launch overhead per image."],
+  ["onGpu", "Keep the whole (small) dataset on the GPU", "Load it once (600 MB fits in 16 GB); no per-step loading or copying."],
+];
 function PlayWidget() {
-  const [job, setJob] = useState("matmul");
-  const [B, setB] = useState(64);
-  const [N, setN] = useState(4096);
-  const p = plan(job, B, N);
-  const firstWave = Math.min(p.warps, p.resident);
-  const smFill = Array.from({ length: 40 }, (_, s) => Math.min(32, Math.max(0, firstWave - s * 32)));
+  const [f, setF] = useState({ metricsGpu: false, itemEveryStep: true, workers: false, pinned: false, bigBatch: false, onGpu: false });
+  const m = epochModel(f);
+  const base = epochModel({ metricsGpu: false, itemEveryStep: true, workers: false, pinned: false, bigBatch: false, onGpu: false });
+  const parts = [["CPU prep", m.prep, C.orange], ["copy batch", m.copy, C.yellow], ["CPU metrics", m.metric, C.red], ["GPU compute", m.gpu, C.green]];
+  const sum = parts.reduce((s, p) => s + p[1], 0);
   return (
     <div>
-      <Frame>Your planner, live. Pick the operation and its size; the 40 squares are the T4's SMs, shaded by how many of their 32 warp slots the first wave fills.</Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        <Btn ghost={job !== "matmul"} onClick={() => setJob("matmul")}>Matrix multiply layer</Btn>
-        <Btn ghost={job !== "relu"} onClick={() => setJob("relu")} color={C.green}>ReLU</Btn>
-      </div>
-      <Slider label={<>Batch size B = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={2048} onChange={setB} color={C.orange} />
-      <Slider label={<>Layer width N = <b style={{ color: C.accent }}>{N}</b></>} value={N} min={256} max={8192} step={256} onChange={setN} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4 }}>
-        {smFill.map((w, s) => <div key={s} style={{ height: 26, borderRadius: 4, background: C.green, opacity: 0.12 + 0.88 * (w / 32), border: `1px solid ${C.border}`, fontSize: 9, color: w > 16 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>{w}</div>)}
+      <Frame>Switch fixes on and off and watch the epoch time and the GPU's busy share. (Illustrative model with T4-like numbers.) Can you get the GPU above 90% busy?</Frame>
+      {FIXES.map(([k, t, d]) => (
+        <label key={k} style={{ display: "block", background: C.card, border: `1px solid ${f[k] ? (k === "itemEveryStep" ? C.red : C.green) : C.border}`, borderRadius: 8, padding: "7px 10px", marginBottom: 5, cursor: "pointer" }}>
+          <input type="checkbox" checked={f[k]} onChange={(e) => setF((s) => ({ ...s, [k]: e.target.checked }))} /> <span style={{ color: C.text, fontSize: 13, fontFamily: "monospace" }}>{t}</span>
+          <div style={{ color: C.muted, fontSize: 11.5, marginLeft: 20 }}>{d}</div>
+        </label>
+      ))}
+      <div style={{ color: C.muted, fontSize: 12, margin: "10px 0 4px" }}>One step, broken into its parts (ms):</div>
+      <div style={{ display: "flex", height: 28, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
+        {parts.map(([t, v, c]) => <div key={t} title={`${t}: ${v.toFixed(2)} ms`} style={{ width: `${(v / sum) * 100}%`, background: c, fontSize: 10, color: "#0D1117", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", whiteSpace: "nowrap" }}>{v / sum > 0.14 ? t : ""}</div>)}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="THREADS" value={p.outputs.toLocaleString("en-IN")} color={C.accent} />
-        <Stat label="WARPS" value={p.warps.toLocaleString("en-IN")} color={C.purple} />
-        <Stat label="WAVES" value={p.waves} color={C.purple} />
+        <Stat label="EPOCH TIME" value={`${m.total.toFixed(1)} s`} color={m.total < base.total / 5 ? C.green : C.yellow} />
+        <Stat label="SPEED-UP vs THE TEAM'S CODE" value={`${(base.total / m.total).toFixed(1)}×`} color={C.purple} />
+        <Stat label="GPU BUSY" value={`${Math.min(100, m.util * 100).toFixed(0)}%`} color={m.util > 0.9 ? C.green : m.util > 0.4 ? C.yellow : C.red} />
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-        <Stat label="COMPUTE TIME ≥" value={tf(p.tCompute)} color={p.bound === "compute" ? C.red : C.green} />
-        <Stat label="MEMORY TIME ≥" value={tf(p.tMemory)} color={p.bound === "memory" ? C.red : C.green} />
-        <Stat label="LIMITED BY" value={p.bound.toUpperCase()} color={C.yellow} />
-      </div>
-      <div style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{p.warps < 1280 ? "⚠️ Fewer warps than slots: some SMs are idle or can't hide latency well (Unit 4.3). Bigger batches help." : "✓ Enough warps to fill every SM and hide memory latency."}</div>
-      <Insight color={C.yellow} title="Try the matmul at B = 1, then B = 1024: the same layer switches from memory-bound to compute-bound.">
-        With one input, the whole 64 MB weight matrix is read to do very little maths per byte. With a big batch, each weight is reused many
-        times (Unit 4.4's reuse). ReLU is always memory-bound. Module 6 builds on exactly this.
+      <Insight color={C.green} title="The GPU's computing hardly changed. Everything around it did.">
+        The biggest wins are usually not about the GPU at all: stop needless copies out, overlap the CPU's work, remove sync points, and
+        keep the data close. That's the real skill of GPU engineering for AI.
       </Insight>
     </div>
   );
@@ -200,56 +215,59 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete planner. In Lab 4 Part E you'll time these exact jobs on the T4 and see how close the plan comes.</Frame>
-      <Code color={C.green} title="🗺️ gpu_planner.py">{`SMS, WARPS_PER_SM = 40, 32
-PEAK, BW = 8.1e12, 320e9          # T4: FP32 FLOPS, bytes/s
+      <Frame>The fixed training loop, every lesson of Module 4 applied. In Lab 4 Part E you'll profile the slow and fast versions for real on the T4.</Frame>
+      <Code color={C.green} title="🚀 fast_training_loop.py">{`loader = DataLoader(train_data, batch_size=256, shuffle=True,
+                    num_workers=2, pin_memory=True)        # overlap + fast copies
+model = model.to("cuda")
 
-def plan(name, outputs, flops, nbytes):
-    warps = -(-outputs // 32)
-    waves = -(-warps // (SMS * WARPS_PER_SM))
-    tc, tm = flops / PEAK, nbytes / BW
-    print(f"{name:22s} {outputs:>10,d} threads {warps:>8,d} warps {waves:>3d} waves  "
-          f"compute {tc*1e3:7.3f} ms  memory {tm*1e3:7.3f} ms  → {'compute' if tc > tm else 'memory'}-bound")
-
-N = 4096
-for B in [1, 64, 1024]:
-    plan(f"matmul  B={B}", B*N, 2*B*N*N, (B*N + N*N + B*N) * 4)
-    plan(f"ReLU    B={B}", B*N, B*N, 2*B*N*4)`}</Code>
+for epoch in range(epochs):
+    running = torch.zeros((), device="cuda")               # accumulate ON the GPU
+    correct = torch.zeros((), device="cuda")
+    for images, labels in loader:
+        images = images.to("cuda", non_blocking=True)
+        labels = labels.to("cuda", non_blocking=True)
+        scores = model(images)
+        loss = loss_fn(scores, labels)
+        opt.zero_grad(set_to_none=True); loss.backward(); opt.step()
+        running += loss.detach()                           # no sync here
+        correct += (scores.argmax(1) == labels).sum()      # accuracy on the GPU
+    print(f"epoch {epoch}: loss {running.item() / len(loader):.3f}, "
+          f"acc {correct.item() / len(train_data):.1%}")    # syncs once per epoch`}</Code>
       <div style={{ marginTop: 12, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) switch the matmul to FP16 Tensor Cores (peak 65 TFLOPS, 2 bytes per number): which jobs change
-        their limit? (2) Fuse the ReLU into the matmul so Y is written only once: how much memory time does that save?
+        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) load the whole dataset onto the GPU as one tensor and slice batches from it; (2) watch
+        <code> !nvidia-smi</code> in a second cell while training to see the GPU's busy % rise.
       </div>
-      <LabCard part="E" title="Plan vs reality on the T4"
-        what="Time the matmul and the ReLU on the GPU for B = 1, 64 and 1024, compute the TFLOPS and GB/s you actually achieved, and compare with the planner."
-        expect="ReLU reaching a good fraction of the bandwidth; the B = 1 matmul limited by memory; the B = 1024 matmul reaching several TFLOPS." />
-      <Insight color={C.orange} title="Module 4 complete: you can see inside the GPU.">
-        Next, the other half of the story: how the CPU actually hands this work to the GPU, step by step, across PCIe.
+      <LabCard part="E" title="Profile the slow loop and the fast loop"
+        what="Run the team's slow loop and the fixed loop on MNIST for one epoch each, time them correctly, and print the PyTorch profiler table for 20 steps of each."
+        expect="the fixed loop several times faster, with the profiler showing far fewer memory copies and much less time where the CPU waits." />
+      <Insight color={C.orange} title="Module 4 complete: you understand the whole CPU–GPU partnership.">
+        Next: why GPUs are so astonishingly good at AI specifically. Tiling, Tensor Cores, low precision and the roofline.
       </Insight>
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "A job has 100,000 output elements, one thread each. How many warps is that?", options: ["3,125", "3,200", "100,000", "32"], answer: 0, explain: "100,000 ÷ 32 = 3,125 warps." },
-  { q: "The T4 holds 40 SMs × 32 warps = 1,280 warps at once. A job with 3,000 warps runs in how many waves?", options: ["1", "2", "3", "40"], answer: 2, explain: "3,000 ÷ 1,280 = 2.3, rounded up to 3 waves." },
-  { q: "A job needs 1 ms of compute time and 5 ms of memory time (at peak). It is…", options: ["compute-bound, about 1 ms", "memory-bound, at least 5 ms", "6 ms exactly", "impossible"], answer: 1, explain: "Time is at least the larger lower bound: memory, 5 ms. Faster arithmetic wouldn't help." },
-  { q: "Why does a bigger batch make a matmul layer compute-bound?", options: ["Bigger batches use less memory", "Each weight read from memory is reused for more inputs, so FLOPs grow faster than bytes", "The GPU clocks up", "Warps diverge less"], answer: 1, explain: "The weights are read once but used B times: more maths per byte (Unit 4.4's reuse)." },
+  { q: "Why is computing accuracy with labels.cpu().numpy() and scikit-learn at every step slow?", options: ["scikit-learn gives wrong answers", "It copies data out of the GPU and forces a sync every step, then runs slow Python code", "It deletes the gradients", "It's not slow"], answer: 1, explain: "Each step: copy out + wait for the GPU + Python work. Computing (scores.argmax(1) == labels).sum() on the GPU and reading it once per epoch avoids all three." },
+  { q: "nvidia-smi shows the GPU only 10% busy during training. The most likely problem is…", options: ["The GPU is too slow", "The GPU is starved: data loading, copies or sync points keep it waiting", "Too many SMs", "The learning rate"], answer: 1, explain: "Low utilisation means the GPU is waiting. Feed it better: workers, pinned memory, bigger batches, fewer sync points." },
+  { q: "Which change lets CPU data preparation overlap with GPU training?", options: ["batch_size=1", "DataLoader(num_workers=2) with no per-step .item()", "Calling torch.cuda.synchronize() every step", "Moving the model inside the loop"], answer: 1, explain: "Background workers prepare the next batch while the GPU works, as long as no sync point forces the CPU to wait each step." },
+  { q: "Why does a bigger batch (256 vs 16) speed up an epoch on a GPU?", options: ["Fewer images to process", "Fewer, larger kernel launches, so less overhead per image and better use of the SMs", "It uses less memory", "It skips the backward pass"], answer: 1, explain: "Each step has fixed launch costs; bigger batches spread them over more images and give the GPU enough threads (Unit 3.C)." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can plan GPU work like an engineer.",
-  good: "Good. Replay 'Play It' and move the batch slider from 1 to 2048.",
-  low: "Revisit 'Build in Steps': threads → warps → waves → compute vs memory.",
-  done: "Module 4 Complete! 🔬",
-  body: "You can describe SMs, warps, divergence, latency hiding, the memory hierarchy, and plan a job's threads, waves and limits.",
-  next: "Next up: Module 5 — CPU–GPU Teamwork.",
-  teaser: "How does the CPU actually hand a job to the GPU? Allocate, copy, launch, copy back, free: you'll do every step yourself.",
+  perfect: "Perfect! You're a qualified GPU detective.",
+  good: "Good. Replay 'Play It' and get the GPU above 90%.",
+  low: "Revisit 'Build in Steps': measure honestly, then fix the biggest cost first.",
+  done: "Module 4 Complete! 🤝",
+  body: "You know the whole CPU–GPU partnership: host and device, the five steps, kernels and grids, async queues, and how to profile and fix a pipeline.",
+  next: "Next up: Module 5 — Making AI Fast & Real Projects.",
+  teaser: "Tiling, Tensor Cores, FP16 and the roofline: the tricks that make a GPU hundreds of times faster at AI.",
 };
 
 const UNIT_WORDS = [
-  ["SM", "Streaming Multiprocessor", "The T4 has 40, each holding up to 32 warps.", "from Unit 4.1"],
-  ["wave", "one round of work", "As many warps as the chip can hold at once; big jobs need several waves.", "new here"],
-  ["compute-bound", "limited by arithmetic", "FLOPs ÷ peak is the bigger time.", "new here"],
-  ["memory-bound", "limited by memory", "Bytes ÷ bandwidth is the bigger time.", "new here"],
+  ["profiler", "a performance-measuring tool", "Records how long every operation and kernel takes.", "new here"],
+  ["utilisation", "busy share", "The percentage of time the GPU is actually computing.", "new here"],
+  ["pin_memory", "page-locked memory option", "Makes host-to-GPU copies faster and able to overlap (Unit 4.1).", "from Unit 4.1"],
+  ["sync", "synchronisation", "The CPU waiting for the GPU (Unit 4.4).", "from Unit 4.4"],
 ];
 
 // ── Quiz ──
@@ -353,10 +371,10 @@ export default function Unit4_C({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — plan a layer on the T4</h3><MissionWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — threads → waves → time</h3><BuildWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — the GPU planner</h3><PlayWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and plan vs reality</h3><CodeWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — the case of the starving GPU</h3><MissionWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — measure before you fix</h3><BuildWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — fix the pipeline</h3><PlayWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and profile it for real</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 4.C.</p>
@@ -370,7 +388,7 @@ export default function Unit4_C({ student, onUnitComplete }) {
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 4 › UNIT 4.C</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: Map a Job onto a GPU</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: Where Did the Time Go?</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

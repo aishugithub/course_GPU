@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab03_CPU_vs_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab3_Inside_a_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -68,211 +68,198 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Hamacher §12.2 and §12.2.1 (Vector processing; GPUs) · H&P §4.2–4.4 · Mano Ch 9 (Vector and array processors)";
+const TEXTBOOK = "Kirk & Hwu Ch 4 (Latency tolerance) · Hamacher §12.1 (Hardware multithreading)";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-// ── Section 1: Flynn's taxonomy ──
-const FLYNN = {
-  SISD: { full: "Single Instruction, Single Data", ex: "The processor you studied in COA: one instruction stream working on one piece of data at a time.", c: C.muted },
-  SIMD: { full: "Single Instruction, Multiple Data", ex: "ONE instruction applied to MANY data items at once: CPU vector units (Hamacher §12.2) and, underneath, GPUs. This is the AI-friendly box.", c: C.green },
-  MISD: { full: "Multiple Instruction, Single Data", ex: "Several instruction streams on the same data. Very rare: used mainly for fault-tolerant systems that run the same input through different checks.", c: C.muted },
-  MIMD: { full: "Multiple Instruction, Multiple Data", ex: "Independent processors, each with its own program and data: multicore CPUs, clusters of computers.", c: C.orange },
-};
-function FlynnWidget() {
-  const [k, setK] = useState("SIMD");
-  const cell = (key) => (
-    <div onClick={() => setK(key)} style={{ cursor: "pointer", background: k === key ? FLYNN[key].c + "33" : C.card, border: `2px solid ${k === key ? FLYNN[key].c : C.border}`, borderRadius: 10, padding: 14, textAlign: "center" }}>
-      <div style={{ color: C.text, fontWeight: 700, fontSize: 18, fontFamily: "monospace" }}>{key}</div>
-      <div style={{ color: C.muted, fontSize: 11 }}>{FLYNN[key].full}</div>
-    </div>
-  );
-  return (
-    <div>
-      <Frame>
-        In 1966 Michael Flynn sorted computers by two questions: how many <b style={{ color: C.text }}>instruction</b> streams, and how many
-        <b style={{ color: C.text }}> data</b> streams? Click each box.
-      </Frame>
-      <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr", gap: 8, alignItems: "center" }}>
-        <div /><div style={{ color: C.muted, fontSize: 12, textAlign: "center" }}>Single Data</div><div style={{ color: C.muted, fontSize: 12, textAlign: "center" }}>Multiple Data</div>
-        <div style={{ color: C.muted, fontSize: 12 }}>Single Instruction</div>{cell("SISD")}{cell("SIMD")}
-        <div style={{ color: C.muted, fontSize: 12 }}>Multiple Instruction</div>{cell("MISD")}{cell("MIMD")}
-      </div>
-      <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: FLYNN[k].c + "14", border: `1px solid ${FLYNN[k].c}55`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
-        <b style={{ color: C.text }}>{k}: {FLYNN[k].full}.</b> {FLYNN[k].ex}
-      </div>
-      <Insight color={C.green} title="AI's work is 'do the same thing to lots of numbers', which is exactly SIMD.">
-        Apply ReLU to a million numbers, multiply every row by the same weights: one instruction, many data. That's the box GPUs live in.
-      </Insight>
-    </div>
-  );
+// Discrete warp-scheduler simulation: each warp computes C cycles, then waits L cycles for memory, repeat.
+function simulate(nWarps, C, L, T) {
+  const ready = Array(nWarps).fill(0), left = Array(nWarps).fill(C);
+  const grid = Array.from({ length: nWarps }, () => Array(T).fill(0)); // 0 idle/ready, 1 computing, 2 waiting
+  let busy = 0, rr = 0;
+  for (let t = 0; t < T; t++) {
+    let issued = -1;
+    for (let k = 0; k < nWarps; k++) { const w = (rr + k) % nWarps; if (ready[w] <= t) { issued = w; break; } }
+    for (let w = 0; w < nWarps; w++) grid[w][t] = ready[w] > t ? 2 : 0;
+    if (issued >= 0) {
+      grid[issued][t] = 1; busy++; left[issued]--;
+      if (left[issued] === 0) { ready[issued] = t + 1 + L; left[issued] = C; rr = (issued + 1) % nWarps; }
+    }
+  }
+  return { grid, util: busy / T };
 }
 
-// ── Section 2: SIMD lanes — Hamacher's vectorised loop ──
-function SimdWidget() {
-  const N = 16;
-  const [L, setL] = useState(4);
-  const [step, setStep] = useState(0);
-  const passes = Math.ceil(N / L);
-  const doneUpTo = step * L;
+// ── Section 1: Need — one warp spends its life waiting ──
+function NeedWidget() {
+  const L = 400, Cc = 4;
   return (
     <div>
       <Frame>
-        Hamacher §12.2 uses this example: C[i] = A[i] + B[i] for N elements. A normal loop handles ONE element per pass. A
-        <b style={{ color: C.green }}> vector instruction</b> works on L elements at once using L parallel ALU lanes. Choose the vector length, then
-        step through.
+        Reading from the GPU's main memory (GDDR6) takes roughly <b style={{ color: C.text }}>400–800 clock cycles</b>. A typical AI step does a few
+        cycles of arithmetic, then needs the next data. If an SM ran just ONE warp, this is what its cores would do:
       </Frame>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        {[1, 4, 8, 16].map((v) => <Btn key={v} ghost={v !== L} onClick={() => { setL(v); setStep(0); }} color={C.green}>L = {v}{v === 1 ? " (scalar)" : ""}</Btn>)}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${N}, 1fr)`, gap: 3 }}>
-        {Array.from({ length: N }, (_, i) => {
-          const done = i < doneUpTo, now = i >= doneUpTo - L && i < doneUpTo;
-          return (
-            <div key={i} style={{ textAlign: "center", borderRadius: 4, padding: "4px 0", background: now ? C.green + "55" : done ? C.green + "22" : C.card, border: `1px solid ${now ? C.green : C.border}`, fontFamily: "monospace", fontSize: 10.5, color: C.text }}>
-              {i}<br />{done ? "✓" : "·"}
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <Btn onClick={() => setStep((s) => Math.min(passes, s + 1))} color={C.green}>One pass ▶ ({step} / {passes})</Btn>
-        <Btn ghost onClick={() => setStep(0)}>↺ Reset</Btn>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
-        <Code color={C.orange} title="⚙️ SCALAR LOOP: 9 instructions × N passes">{`LOOP: Load     R6, (R2)     ; R6 ← [A[i]]
-      Load     R7, (R3)     ; R7 ← [B[i]]
-      Add      R8, R6, R7
-      Store    R8, (R4)     ; C[i] ← [R8]
-      Add      R2, R2, #4
-      Add      R3, R3, #4
-      Add      R4, R4, #4
-      Subtract R5, R5, #1
-      Branch_if_[R5]>0  LOOP`}</Code>
-        <Code color={C.green} title={`➗ VECTOR LOOP: 9 instructions × N/L passes`}>{`LOOP: VectorLoad  V0, (R2)   ; L elements of A
-      VectorLoad  V1, (R3)   ; L elements of B
-      VectorAdd   V2, V0, V1 ; L adds at once
-      VectorStore V2, (R4)
-      Add      R2, R2, #4L
-      Add      R3, R3, #4L
-      Add      R4, R4, #4L
-      Subtract R5, R5, #L
-      Branch_if_[R5]>0  LOOP`}</Code>
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="INSTRUCTIONS, SCALAR" value={`9 × ${N} = ${9 * N}`} color={C.orange} />
-        <Stat label={`INSTRUCTIONS, L = ${L}`} value={`9 × ${passes} = ${9 * passes}`} color={C.green} />
-      </div>
-      <Insight color={C.green} title="One vector instruction does L additions, so the loop runs N/L times instead of N.">
-        This is SIMD inside a CPU. Your laptop's CPU has vector units with 8 or 16 lanes, which is part of why NumPy beat plain Python by
-        hundreds of times in Lab 2.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 3: SIMT — write for one thread, run thousands ──
-const KLINES = ["__global__ void add(float *A, float *B, float *C) {", "    int i = blockIdx.x * blockDim.x + threadIdx.x;", "    C[i] = A[i] + B[i];", "}", "", "add<<<N / 256, 256>>>(A, B, C);   // launch N threads"];
-const AV = [3, 1, 4, 1, 5, 9, 2, 6], BV = [2, 7, 1, 8, 2, 8, 1, 8];
-function SimtWidget() {
-  const [s, setS] = useState(0);
-  const line = [5, 1, 2, 3][s];
-  return (
-    <div>
-      <Frame>
-        A GPU flips the idea around. You write the code for <b style={{ color: C.text }}>ONE</b> element, called a <b style={{ color: C.accent }}>kernel</b>,
-        and launch it on thousands of <b style={{ color: C.accent }}>threads</b>. Every thread runs the same instructions, but each has its own
-        number i and its own registers. NVIDIA calls this <b style={{ color: C.green }}>SIMT</b>: Single Instruction, Multiple Threads. Step through with 8 threads.
-      </Frame>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <Code color={C.orange} title="🐢 CPU: one loop, one element after another">{`for i in range(N):
-    C[i] = A[i] + B[i]`}</Code>
-        <pre style={{ margin: 0, background: C.card, border: `1.5px solid ${C.accent}`, borderRadius: 10, padding: 12, fontFamily: "monospace", fontSize: 11, lineHeight: 1.7, color: C.text, whiteSpace: "pre-wrap" }}>
-          <div style={{ color: C.accent, fontWeight: 700, fontSize: 12, marginBottom: 6, fontFamily: "'Segoe UI', sans-serif" }}>⚡ GPU: a kernel, run by N threads (CUDA C)</div>
-          {KLINES.map((l, k) => <div key={k} style={{ background: k === line ? C.accent + "22" : "transparent", borderLeft: `3px solid ${k === line ? C.accent : "transparent"}`, paddingLeft: 4 }}>{l || " "}</div>)}
-        </pre>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 5 }}>
-        {AV.map((a, i) => (
-          <div key={i} style={{ background: C.card, border: `1.5px solid ${s >= 1 ? C.teal : C.border}`, borderRadius: 8, padding: 6, fontFamily: "monospace", fontSize: 10.5, color: C.muted, textAlign: "center" }}>
-            <div style={{ color: C.text, fontWeight: 700 }}>thread {i}</div>
-            <div style={{ color: s >= 2 ? C.teal : C.border }}>i = {s >= 2 ? i : "?"}</div>
-            <div style={{ color: s >= 3 ? C.green : C.border }}>C = {s >= 3 ? a + BV[i] : "?"}</div>
+      <div style={{ display: "flex", height: 30, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
+        {Array.from({ length: 3 }, (_, k) => (
+          <div key={k} style={{ display: "flex", flex: Cc + L }}>
+            <div style={{ flex: Cc, background: C.green }} />
+            <div style={{ flex: L, background: C.red + "44", display: "flex", alignItems: "center", justifyContent: "center", color: C.red, fontSize: 11 }}>waiting for memory…</div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 10, minHeight: 36, color: C.text, fontSize: 13, lineHeight: 1.6 }}>
-        {["The CPU launches the kernel with N threads (here 8 of them; really thousands).", "All threads start the same instruction at the same time.", "Each thread works out ITS OWN index i from its built-in IDs: same instruction, different data.", "Each thread adds its own pair. All 8 additions happen in one step. No loop!"][s]}
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="CYCLES COMPUTING" value={`${Cc} of every ${Cc + L}`} color={C.green} />
+        <Stat label="CORES BUSY" value={`${((Cc / (Cc + L)) * 100).toFixed(1)}%`} color={C.red} />
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <Btn onClick={() => setS((v) => Math.min(3, v + 1))}>Step ▶ ({s + 1} / 4)</Btn>
-        <Btn ghost onClick={() => setS(0)}>↺ Reset</Btn>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+        <div style={{ background: C.card, borderRadius: 8, padding: 10, border: `1.5px solid ${C.orange}` }}><b style={{ color: C.orange, fontSize: 12.5 }}>CPU's answer</b><div style={{ color: C.muted, fontSize: 12, lineHeight: 1.6, marginTop: 4 }}>Huge caches so the data is usually nearby, plus out-of-order execution to find other work in the same thread (COA).</div></div>
+        <div style={{ background: C.card, borderRadius: 8, padding: 10, border: `1.5px solid ${C.green}` }}><b style={{ color: C.green, fontSize: 12.5 }}>GPU's answer</b><div style={{ color: C.muted, fontSize: 12, lineHeight: 1.6, marginTop: 4 }}>Small caches. Instead, keep MANY warps ready, and when one waits, instantly run another. Next section.</div></div>
       </div>
-      <Insight title="SIMD: you write one wide instruction. SIMT: you write a normal program for one thread, and the GPU runs thousands of copies.">
-        The loop disappears: it's replaced by "how many threads to launch". You'll write this exact kernel yourself in Module 5.
+      <Insight color={C.red} title="With one warp, the GPU's cores would sit idle 99% of the time.">
+        Memory is slow compared with arithmetic, on every computer. The question is how a chip avoids waiting for it.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: Warps — SIMT on SIMD hardware ──
-function WarpWidget() {
-  const [n, setN] = useState(10000);
-  const warps = Math.ceil(n / 32);
-  const sms = 40;
+// ── Section 2: Juggle many warps ──
+function JuggleWidget() {
+  const [n, setN] = useState(4);
+  const [L, setL] = useState(40);
+  const Cc = 4, T = 120;
+  const { grid, util } = simulate(n, Cc, L, T);
   return (
     <div>
       <Frame>
-        Underneath, the GPU really is SIMD hardware. It groups threads into bundles of <b style={{ color: C.purple }}>32 called warps</b>; the 32
-        threads of a warp share one instruction unit and move in lock-step. Warps are spread across the GPU's
-        <b style={{ color: C.text }}> streaming multiprocessors</b> (the T4 has 40). Choose how many elements to process.
+        A tea master with one cup stands around while it brews. With 12 cups on the go, he's never idle: pour, add milk, serve, back to the first.
+        The <b style={{ color: C.text }}>warp scheduler</b> does this every clock cycle: if the current warp is waiting for memory, it issues an instruction from
+        another warp that's ready. Add warps and watch the core's busy time fill up. (Small numbers, so it fits on screen.)
       </Frame>
-      <Slider label={<>Elements (one thread each) = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={n} min={32} max={1000000} step={32} onChange={setN} />
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Stat label="THREADS" value={n.toLocaleString("en-IN")} color={C.accent} />
-        <Stat label="WARPS (÷ 32)" value={warps.toLocaleString("en-IN")} color={C.purple} />
-        <Stat label="WARPS PER SM (40 SMs)" value={(warps / sms).toFixed(1)} color={C.green} />
+      <Slider label={<>Warps resident on the SM = <b style={{ color: C.green }}>{n}</b></>} value={n} min={1} max={16} onChange={setN} color={C.green} />
+      <Slider label={<>Memory latency = <b style={{ color: C.red }}>{L}</b> cycles (compute = {Cc} cycles between loads)</>} value={L} min={8} max={80} step={4} onChange={setL} color={C.red} />
+      <div style={{ background: C.card, borderRadius: 8, padding: 8, border: `1px solid ${C.border}` }}>
+        {grid.map((row, w) => (
+          <div key={w} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <div style={{ width: 52, color: C.muted, fontSize: 10, fontFamily: "monospace" }}>warp {w}</div>
+            <div style={{ display: "flex", flex: 1, height: 9 }}>{row.map((v, t) => <div key={t} style={{ flex: 1, background: v === 1 ? C.green : v === 2 ? C.red + "55" : "transparent" }} />)}</div>
+          </div>
+        ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+          <div style={{ width: 52, color: C.text, fontSize: 10, fontFamily: "monospace" }}>core</div>
+          <div style={{ display: "flex", flex: 1, height: 12 }}>{Array.from({ length: T }, (_, t) => <div key={t} style={{ flex: 1, background: grid.some((r) => r[t] === 1) ? C.green : C.border }} />)}</div>
+        </div>
       </div>
-      <table style={{ width: "100%", marginTop: 14, borderCollapse: "collapse", fontSize: 12.5 }}>
-        <thead><tr style={{ color: C.muted, textAlign: "left" }}><th style={{ padding: 6 }}></th><th>CPU SIMD</th><th>GPU SIMT</th></tr></thead>
-        <tbody style={{ color: C.text }}>
-          {[["You write", "wide vector instructions (or the compiler does)", "an ordinary program for ONE thread"], ["Width", "4–16 lanes", "32 threads per warp × thousands of warps"], ["Each lane has", "a slot in a vector register", "its own registers and its own index"], ["Good for", "short bursts inside a CPU program", "huge, regular, independent work, like AI"]].map((r) => (
-            <tr key={r[0]} style={{ borderTop: `1px solid ${C.border}` }}><td style={{ padding: 6, color: C.muted }}>{r[0]}</td><td style={{ color: C.orange }}>{r[1]}</td><td style={{ color: C.green }}>{r[2]}</td></tr>
-          ))}
-        </tbody>
-      </table>
-      <Insight color={C.purple} title="A warp of 32 threads is the GPU's real unit of execution.">
-        Remember "32". It explains a lot in Module 4: why if/else inside a kernel can be slow, and why GPUs like jobs with thousands of threads.
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>■ green = computing · ■ red = waiting for memory · core row = is anyone using the core this cycle?</div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="CORE BUSY" value={`${(util * 100).toFixed(0)}%`} color={util > 0.9 ? C.green : util > 0.5 ? C.yellow : C.red} />
+        <Stat label="WARPS NEEDED TO HIDE IT ≈ (C + L) / C" value={Math.ceil((Cc + L) / Cc)} color={C.purple} />
+      </div>
+      <Insight color={C.green} title="The GPU doesn't avoid the wait. It fills it with other warps' work.">
+        With enough warps, someone is always ready to compute while others wait for memory. This is <b>latency hiding</b>, and it's why GPUs want
+        thousands of threads, many more than there are cores.
       </Insight>
-      <LabCard part="C" title="Vector add: CPU vs GPU"
-        what="Add two arrays of growing size, first with NumPy on the CPU, then with PyTorch on the GPU, timing both correctly (with torch.cuda.synchronize)."
-        expect="the CPU wins for small arrays and the GPU wins clearly for arrays of millions of elements." />
+    </div>
+  );
+}
+
+// ── Section 3: Why switching is free on a GPU ──
+function SwitchWidget() {
+  const [mode, setMode] = useState("gpu");
+  return (
+    <div>
+      <Frame>
+        When an operating system switches a CPU core from one thread to another, it must <b style={{ color: C.orange }}>save</b> all the old thread's registers to memory
+        and <b style={{ color: C.orange }}>load</b> the new one's: thousands of cycles. A GPU switches warps <b style={{ color: C.green }}>every cycle for free</b>. How?
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        <Btn ghost={mode !== "cpu"} onClick={() => setMode("cpu")} color={C.orange}>CPU thread switch</Btn>
+        <Btn ghost={mode !== "gpu"} onClick={() => setMode("gpu")} color={C.green}>GPU warp switch</Btn>
+      </div>
+      {mode === "cpu" ? (
+        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${C.orange}` }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, color: C.text }}>
+            <div style={{ border: `1px solid ${C.orange}`, borderRadius: 6, padding: 8 }}>one register set<br /><span style={{ color: C.muted }}>(thread A's values)</span></div>
+            <span style={{ color: C.orange }}>→ save to memory →</span>
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 6, padding: 8 }}>RAM</div>
+            <span style={{ color: C.orange }}>→ load thread B →</span>
+            <div style={{ border: `1px solid ${C.orange}`, borderRadius: 6, padding: 8 }}>same register set<br /><span style={{ color: C.muted }}>(now thread B's)</span></div>
+          </div>
+          <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>A CPU core has registers for one or two threads (Hamacher §12.1: hardware multithreading usually keeps 2). Switching beyond that goes through memory: slow, so the OS does it only every few milliseconds.</div>
+        </div>
+      ) : (
+        <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${C.green}` }}>
+          <div style={{ color: C.text, fontSize: 12.5, marginBottom: 6 }}>Register file of one SM: every resident warp has its OWN registers, all the time.</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 3 }}>
+            {Array.from({ length: 32 }, (_, i) => <div key={i} style={{ height: 22, borderRadius: 3, background: i === 5 ? C.green : C.teal + "33", border: `1px solid ${i === 5 ? C.green : C.teal + "66"}`, fontSize: 8.5, color: i === 5 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>w{i}</div>)}
+          </div>
+          <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>Switching from warp 5 to warp 6 just means "read your operands from a different part of the register file": nothing is saved or loaded. That's why the register file is so big (256 KB per SM, Unit 3.1).</div>
+        </div>
+      )}
+      <Insight color={C.teal} title="GPUs are hardware multithreading taken to the extreme.">
+        Hamacher §12.1 describes CPUs that keep 2 threads' registers to switch quickly. An SM keeps up to 32 warps × 32 threads = 1,024 threads'
+        registers on-chip, so it can switch every single cycle.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 4: Occupancy ──
+function OccWidget() {
+  const [regs, setRegs] = useState(32);
+  const [Cc, setCc] = useState(20);
+  const L = 400;
+  const byRegs = Math.floor(65536 / (regs * 32));
+  const warps = Math.min(32, byRegs);
+  const occ = warps / 32;
+  const util = Math.min(1, (warps * Cc) / (Cc + L));
+  return (
+    <div>
+      <Frame>
+        How many warps can live on an SM at once? On the T4, at most <b style={{ color: C.text }}>32 warps</b>, and they must all fit in the
+        <b style={{ color: C.text }}> 65,536 registers</b>. A kernel that uses many registers per thread leaves room for fewer warps. The fraction of the 32
+        slots in use is called <b style={{ color: C.purple }}>occupancy</b>.
+      </Frame>
+      <Slider label={<>Registers per thread = <b style={{ color: C.teal }}>{regs}</b></>} value={regs} min={16} max={255} onChange={setRegs} color={C.teal} />
+      <Slider label={<>Arithmetic cycles between memory loads = <b style={{ color: C.green }}>{Cc}</b> (memory latency fixed at {L})</>} value={Cc} min={2} max={100} onChange={setCc} color={C.green} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 2 }}>
+        {Array.from({ length: 32 }, (_, i) => <div key={i} style={{ height: 18, borderRadius: 2, background: i < warps ? C.purple : C.card, border: `1px solid ${C.border}` }} />)}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="WARPS THAT FIT" value={`${warps} / 32`} color={C.purple} />
+        <Stat label="OCCUPANCY" value={`${(occ * 100).toFixed(0)}%`} color={C.purple} />
+        <Stat label="CORE BUSY (MODEL)" value={`${(util * 100).toFixed(0)}%`} color={util > 0.9 ? C.green : util > 0.5 ? C.yellow : C.red} />
+      </div>
+      <Insight color={C.purple} title="More resident warps means more latency hiding, up to the point where the core is always busy.">
+        Kernels with lots of arithmetic per memory load need fewer warps; memory-heavy kernels need many. Unit 5.3 turns this into a rule:
+        compute-bound vs memory-bound.
+      </Insight>
+      <LabCard part="C" title="Watch latency hiding work"
+        what="Run a simple memory-copy kernel while launching more and more threads, measure the bandwidth each time, and plot it."
+        expect="bandwidth climbs steeply as threads are added, then levels off once there are enough warps to hide memory latency." />
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "A multicore CPU running different programs on each core is which Flynn class?", options: ["SISD", "SIMD", "MISD", "MIMD"], answer: 3, explain: "Multiple independent instruction streams on multiple data streams: MIMD." },
-  { q: "Hamacher's loop has 9 instructions per pass. With N = 64 and vector length L = 8, how many instructions run?", options: ["9", "72", "576", "64"], answer: 1, explain: "The vectorised loop runs N/L = 8 passes × 9 instructions = 72, compared with 9 × 64 = 576 for the scalar loop." },
-  { q: "In a CUDA kernel, how does each thread know which element to work on?", options: ["It reads a loop counter", "It computes its own index from built-in IDs (blockIdx, threadIdx)", "The CPU tells each thread separately", "It picks one at random"], answer: 1, explain: "i = blockIdx.x * blockDim.x + threadIdx.x gives every thread a unique index: same code, different data." },
-  { q: "How many threads are in one warp on NVIDIA GPUs?", options: ["8", "16", "32", "1024"], answer: 2, explain: "A warp is 32 threads that share one instruction unit and execute in lock-step." },
+  { q: "How does a GPU mainly cope with slow memory?", options: ["Very large caches like a CPU", "Switching to another ready warp while one waits", "Running at a higher clock speed", "Avoiding memory completely"], answer: 1, explain: "Latency hiding: the warp scheduler issues work from other warps while some wait for memory." },
+  { q: "Compute takes 4 cycles between loads, and memory latency is 60 cycles. About how many warps are needed to keep the core busy?", options: ["1", "4", "16", "64"], answer: 2, explain: "(C + L) / C = (4 + 60) / 4 = 16 warps." },
+  { q: "Why can a GPU switch between warps every cycle for free?", options: ["It saves registers very fast", "Each resident warp keeps its own registers in the large register file, so nothing is saved or loaded", "Warps share one set of registers", "The CPU does the switching"], answer: 1, explain: "All resident warps' registers stay on-chip; switching just changes which warp's registers are used." },
+  { q: "A kernel uses 128 registers per thread. On an SM with 65,536 registers, how many warps (of 32 threads) fit?", options: ["8", "16", "32", "64"], answer: 1, explain: "65,536 ÷ (128 × 32) = 16 warps, so occupancy is 16/32 = 50%." },
 ];
 const RESULT = {
-  perfect: "Perfect! You understand how GPUs run code.",
-  good: "Good. Replay 'SIMT Threads' and watch each thread find its own i.",
-  low: "Revisit 'SIMD Lanes' then 'SIMT Threads': one instruction, many data is the heart of it.",
+  perfect: "Perfect! You understand the GPU's secret weapon.",
+  good: "Good. Replay 'Juggle the Warps' with long latencies.",
+  low: "Revisit 'Juggle the Warps': many warps hide the wait.",
   done: "Unit 3.3 Complete!",
-  body: "You can place machines in Flynn's taxonomy, explain vectorisation (Hamacher §12.2), and describe SIMT threads and warps.",
-  next: "Next up: Unit 3.4 — Amdahl's Law.",
-  teaser: "The GPU makes the matrix multiply 100× faster, but the whole program only 3× faster. Why?",
+  body: "You can explain memory latency, latency hiding by warp switching, why it's free on a GPU, and occupancy.",
+  next: "Next up: Unit 3.4 — GPU Memory & Bandwidth.",
+  teaser: "65 TFLOPS is useless if the numbers can't arrive fast enough. Meet the GPU's memory hierarchy.",
 };
 
 const UNIT_WORDS = [
-  ["SISD / SIMD / MISD / MIMD", "Flynn's four classes", "Single or Multiple Instruction streams × Single or Multiple Data streams.", "new here"],
-  ["SIMT", "Single Instruction, Multiple Threads", "NVIDIA's model: one program, thousands of threads, each with its own data.", "new here"],
-  ["L", "vector length", "How many elements one vector instruction handles at once (Hamacher §12.2).", "new here"],
-  ["SM", "Streaming Multiprocessor", "One of the GPU's 'mini-processors'; the T4 has 40. Unit 4.1 opens one up.", "new here"],
-  ["RTN", "Register Transfer Notation", "R6 ← [A[i]] means 'load the value at A[i] into R6'.", "from COA"],
+  ["latency", "waiting time", "How long one memory request takes to come back.", "from Unit 2.1"],
+  ["GDDR6", "Graphics Double Data Rate 6", "The T4's main (global) memory.", "from Unit 3.1"],
+  ["OS", "Operating System", "Windows, Linux, Android… It schedules threads on CPU cores.", "new here"],
+  ["occupancy", "warps resident ÷ maximum warps", "How full an SM's warp slots are.", "new here"],
 ];
 
 // ── Quiz ──
@@ -363,10 +350,10 @@ function TextbookNote() {
 
 export default function Unit3_3({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "Flynn's Taxonomy" },
-    { id: "s1", label: "SIMD Lanes" },
-    { id: "s2", label: "SIMT Threads" },
-    { id: "s3", label: "Warps" },
+    { id: "s0", label: "Waiting for Memory" },
+    { id: "s1", label: "Juggle the Warps" },
+    { id: "s2", label: "Free Switching" },
+    { id: "s3", label: "Occupancy" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -376,10 +363,10 @@ export default function Unit3_3({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🗂️ Flynn's Taxonomy — SISD, SIMD, MISD, MIMD</h3><FlynnWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>➗ SIMD — one instruction, many lanes (Hamacher §12.2)</h3><SimdWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧵 SIMT — write for one thread, run thousands</h3><SimtWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📦 Warps — 32 threads in lock-step</h3><WarpWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏳ Waiting for Memory — one warp's lonely life</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🫖 Juggle the Warps — the tea master's trick</h3><JuggleWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔁 Free Switching — why the register file is huge</h3><SwitchWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📊 Occupancy — how many warps fit?</h3><OccWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 3.3.</p>
@@ -390,10 +377,10 @@ export default function Unit3_3({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>➗</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🫖</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 3 › UNIT 3.3</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>SIMD → SIMT</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Hiding Latency</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

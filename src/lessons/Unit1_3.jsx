@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab01_AI_Basics.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab1_AI_Is_Hungry.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -68,242 +68,210 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L §3.1 (Linear regression: the neuron) · D2L §5.1 (Activation functions)";
+const TEXTBOOK = "Hamacher §12.2 (Vector (SIMD) processing: vectorization) · H&P §4.1 and §4.5 (Data-level and loop-level parallelism)";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-const PEOPLE = [
-  { n: "KAVYA", h: 4, a: 40, p: 0 }, { n: "RAVI", h: 2, a: 95, p: 1 }, { n: "SURESH", h: 5, a: 90, p: 1 },
-  { n: "GEETHA", h: 1, a: 60, p: 0 }, { n: "IMRAN", h: 3.5, a: 85, p: 1 }, { n: "POOJA", h: 2.5, a: 50, p: 0 },
-];
-
-// ── Section 1: Need — one input is not enough ──
+// ── Section 1: Need — one worker, n³ steps ──
 function NeedWidget() {
-  const [both, setBoth] = useState(false);
-  const predict = (s) => (both ? (s.h * 1 + s.a * 0.05 - 6.5 >= 0 ? 1 : 0) : (s.h >= 3 ? 1 : 0));
-  const right = PEOPLE.filter((s) => predict(s) === s.p).length;
+  const [n, setN] = useState(1000);
+  const macs = n ** 3;
+  const secs = macs / 1e9;
+  const show = secs < 1 ? `${(secs * 1000).toFixed(1)} ms` : secs < 120 ? `${secs.toFixed(1)} s` : secs < 7200 ? `${(secs / 60).toFixed(0)} min` : `${(secs / 3600).toFixed(1)} hours`;
   return (
     <div>
       <Frame>
-        In Unit 1.1 the machine learned a rule from <b style={{ color: C.text }}>one</b> input, study hours. But results also depend on
-        attendance. Look at KAVYA (4 hours, rarely in class) and RAVI (2 hours, almost never absent). Toggle the rule and watch who it gets wrong.
+        Multiplying two n × n matrices takes n × n output cells, each a dot product of length n: <b style={{ color: C.text }}>n³ multiply-adds</b>.
+        Suppose a single worker does one MAC per nanosecond (10⁹ per second), one after another, the way the CPU in COA steps through
+        instructions. Drag n.
+      </Frame>
+      <Slider label={<>Matrix size n = <b style={{ color: C.accent }}>{n.toLocaleString("en-IN")}</b></>} value={n} min={100} max={20000} step={100} onChange={setN} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="OUTPUT CELLS (n²)" value={(n * n).toLocaleString("en-IN")} color={C.teal} />
+        <Stat label="MACs (n³)" value={macs.toExponential(2)} color={C.orange} />
+        <Stat label="ONE WORKER, IN ORDER" value={show} color={secs > 60 ? C.red : C.yellow} />
+      </div>
+      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>Double n and the time goes up 8×. A single layer of a big model can be a matrix with a size in the thousands, and it's used again for every token.</div>
+      <Insight color={C.red} title="Doing it one step at a time doesn't scale.">
+        Making the single worker faster helps only a little (Unit 2.2 shows why clock speeds stopped rising). The real question is: do these
+        steps actually <i>have</i> to happen one after another?
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 2: Who waits for whom? ──
+function DependWidget() {
+  const [task, setTask] = useState("matmul");
+  const [cell, setCell] = useState([1, 2]);
+  const [day, setDay] = useState(3);
+  const N = 4;
+  const deposits = [500, -200, 300, -100, 400, 250];
+  const bal = deposits.reduce((acc, d) => [...acc, (acc.length ? acc[acc.length - 1] : 1000) + d], []);
+  return (
+    <div>
+      <Frame>
+        Two jobs that look alike: both produce a list of answers using additions. Click an answer to see exactly what it needs before it can be
+        computed.
       </Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        <Btn ghost={both} onClick={() => setBoth(false)}>Rule uses hours only</Btn>
-        <Btn ghost={!both} onClick={() => setBoth(true)} color={C.green}>Combine hours + attendance</Btn>
+        <Btn ghost={task !== "matmul"} onClick={() => setTask("matmul")}>🧮 Matrix multiply C = A × B</Btn>
+        <Btn ghost={task !== "bank"} onClick={() => setTask("bank")} color={C.orange}>🏦 Running bank balance</Btn>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead><tr style={{ color: C.muted, textAlign: "left" }}><th style={{ padding: 6 }}>Student</th><th>Hours / day</th><th>Attendance</th><th>Actual</th><th>Rule says</th></tr></thead>
-        <tbody>
-          {PEOPLE.map((s) => {
-            const pr = predict(s), ok = pr === s.p;
-            return (
-              <tr key={s.n} style={{ borderTop: `1px solid ${C.border}`, background: ok ? "transparent" : C.red + "14" }}>
-                <td style={{ padding: 6, color: C.text }}>{s.n}</td><td style={{ color: C.text }}>{s.h}</td><td style={{ color: C.text }}>{s.a}%</td>
-                <td style={{ color: s.p ? C.green : C.red }}>{s.p ? "PASS" : "FAIL"}</td>
-                <td style={{ color: ok ? C.green : C.red }}>{pr ? "PASS" : "FAIL"} {ok ? "✓" : "✗"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <div style={{ marginTop: 10, fontFamily: "monospace", fontSize: 12.5, color: both ? C.green : C.yellow }}>
-        {both ? "score = 1.0 × hours + 0.05 × attendance − 6.5   →  PASS if score ≥ 0" : "PASS if hours ≥ 3"} &nbsp; ({right} / 6 right)
-      </div>
-      <Insight title="Real decisions weigh several inputs at once.">
-        Multiply each input by how much it matters, add everything up, then decide. That small calculation has a name: a
-        <b style={{ color: C.accent }}> neuron</b>.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 2: Anatomy — inputs, weights, bias, sum, activation ──
-const PARTS = {
-  x: { t: "Inputs (x)", c: C.teal, d: "The numbers going in: features such as hours, attendance, or 784 pixel values." },
-  w: { t: "Weights (w)", c: C.accent, d: "One knob per input, saying how much that input matters. A big positive weight pushes towards YES; a negative weight pushes towards NO. Training sets these." },
-  b: { t: "Bias (b)", c: C.purple, d: "A single extra number added at the end. It shifts how easily the neuron says YES, like a threshold." },
-  sum: { t: "Weighted sum (z)", c: C.yellow, d: "z = w₁x₁ + w₂x₂ + w₃x₃ + b. Multiply each pair, then add. This is the only real arithmetic in a neuron." },
-  act: { t: "Activation", c: C.green, d: "Turns z into the output. The simplest one says YES if z ≥ 0, otherwise NO. The next section shows better ones." },
-};
-function AnatomyWidget() {
-  const [part, setPart] = useState("sum");
-  const [x, setX] = useState([1, 1, 0]);
-  const [w, setW] = useState([2, -4, 1.5]);
-  const [b, setB] = useState(-1);
-  const labels = ["☀️ Sunny?", "📚 Exam tomorrow?", "👫 Friends going?"];
-  const z = x[0] * w[0] + x[1] * w[1] + x[2] * w[2] + b;
-  const P = ({ k, x: cx, y, children, r = 0 }) => (
-    <g onClick={() => setPart(k)} style={{ cursor: "pointer" }}>{children}</g>
-  );
-  return (
-    <div>
-      <Frame>
-        Should you go to the IPL match tonight? A neuron decides. Toggle the inputs (1 = yes, 0 = no), change how much each one
-        matters, and click any part of the diagram to learn its name.
-      </Frame>
-      <svg viewBox="0 0 620 220" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-        {[0, 1, 2].map((i) => (
-          <g key={i}>
-            <P k="x"><rect x="10" y={30 + i * 60} width="120" height="34" rx="8" fill={C.teal + "22"} stroke={part === "x" ? C.teal : C.border} /><text x="70" y={52 + i * 60} fill={C.text} fontSize="12" textAnchor="middle">x{i + 1} = {x[i]}</text></P>
-            <line x1="130" y1={47 + i * 60} x2="320" y2="110" stroke={w[i] >= 0 ? C.accent : C.red} strokeWidth={1 + Math.abs(w[i])} opacity="0.7" />
-            <P k="w"><text x="142" y={38 + i * 60} fill={part === "w" ? C.accent : C.muted} fontSize="12">w{i + 1} = {w[i]}</text></P>
-          </g>
-        ))}
-        <P k="sum"><circle cx="350" cy="110" r="34" fill={C.yellow + "22"} stroke={part === "sum" ? C.yellow : C.border} strokeWidth="2" /><text x="350" y="106" fill={C.text} fontSize="18" textAnchor="middle">Σ</text><text x="350" y="125" fill={C.yellow} fontSize="11" textAnchor="middle">z = {z.toFixed(1)}</text></P>
-        <P k="b"><text x="350" y="200" fill={part === "b" ? C.purple : C.muted} fontSize="12" textAnchor="middle">+ bias b = {b}</text><line x1="350" y1="186" x2="350" y2="146" stroke={C.purple} strokeDasharray="4 3" /></P>
-        <line x1="384" y1="110" x2="440" y2="110" stroke={C.muted} />
-        <P k="act"><rect x="440" y="88" width="70" height="44" rx="8" fill={C.green + "22"} stroke={part === "act" ? C.green : C.border} /><text x="475" y="115" fill={C.text} fontSize="11" textAnchor="middle">z ≥ 0 ?</text></P>
-        <line x1="510" y1="110" x2="540" y2="110" stroke={C.muted} />
-        <text x="580" y="116" fill={z >= 0 ? C.green : C.red} fontSize="15" fontWeight="700" textAnchor="middle">{z >= 0 ? "GO ✓" : "STAY"}</text>
-      </svg>
-      <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: PARTS[part].c + "14", border: `1px solid ${PARTS[part].c}55` }}>
-        <b style={{ color: PARTS[part].c, fontSize: 13 }}>{PARTS[part].t}</b>
-        <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{PARTS[part].d}</div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 12 }}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} style={{ background: C.card, borderRadius: 8, padding: 10, border: `1px solid ${C.border}` }}>
-            <label style={{ color: C.text, fontSize: 12.5, cursor: "pointer" }}><input type="checkbox" checked={x[i] === 1} onChange={(e) => setX((v) => v.map((q, j) => (j === i ? (e.target.checked ? 1 : 0) : q)))} /> {labels[i]}</label>
-            <Slider label={<>w{i + 1} = <b style={{ color: C.accent }}>{w[i]}</b></>} value={w[i]} min={-5} max={5} step={0.5} onChange={(v) => setW((q) => q.map((y, j) => (j === i ? v : y)))} />
+      {task === "matmul" ? (
+        <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+          {["A", "B", "C"].map((m) => (
+            <div key={m}>
+              <div style={{ color: C.muted, fontSize: 11, textAlign: "center" }}>{m}</div>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${N}, 28px)`, gap: 3 }}>
+                {Array.from({ length: N * N }, (_, k) => {
+                  const r = Math.floor(k / N), c = k % N;
+                  const on = m === "A" ? r === cell[0] : m === "B" ? c === cell[1] : r === cell[0] && c === cell[1];
+                  return <div key={k} onClick={() => m === "C" && setCell([r, c])} style={{ width: 28, height: 28, borderRadius: 4, cursor: m === "C" ? "pointer" : "default", background: on ? (m === "C" ? C.green : C.accent) + "55" : C.card, border: `1.5px solid ${on ? (m === "C" ? C.green : C.accent) : C.border}` }} />;
+                })}
+              </div>
+            </div>
+          ))}
+          <div style={{ flex: 1, minWidth: 200, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
+            C[{cell[0]}][{cell[1]}] needs <b style={{ color: C.accent }}>row {cell[0]} of A</b> and <b style={{ color: C.accent }}>column {cell[1]} of B</b>,
+            and <b style={{ color: C.green }}>no other cell of C</b>. Click other C cells: none of them ever waits for another.
           </div>
-        ))}
-      </div>
-      <Slider label={<>bias b = <b style={{ color: C.purple }}>{b}</b></>} value={b} min={-5} max={5} step={0.5} onChange={setB} color={C.purple} />
-      <div style={{ fontFamily: "monospace", fontSize: 12.5, color: C.yellow, marginBottom: 12 }}>
-        z = ({w[0]})({x[0]}) + ({w[1]})({x[1]}) + ({w[2]})({x[2]}) + ({b}) = {z.toFixed(1)}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Code color={C.orange} title="✍️ BY HAND (what really happens)">{`z = w1*x1 + w2*x2 + w3*x3 + b
-out = 1 if z >= 0 else 0`}</Code>
-        <Code color={C.accent} title="🔥 IN PYTORCH (one line)">{`neuron = torch.nn.Linear(3, 1)
-z = neuron(x)   # same multiply-add`}</Code>
-      </div>
-      <Insight title="A neuron is just multiply, add, decide.">
-        <code>nn.Linear</code> looks like magic, but it does exactly the sum you calculated by hand. AI frameworks are mostly very
-        fast ways of doing this arithmetic.
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 8px", fontFamily: "monospace", fontSize: 12, color: C.muted }}>start ₹1000</div>
+            {bal.map((b, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: i <= day ? C.orange : C.border }}>→</span>
+                <div onClick={() => setDay(i)} style={{ cursor: "pointer", background: i <= day ? C.orange + "33" : C.card, border: `1.5px solid ${i === day ? C.orange : C.border}`, borderRadius: 6, padding: "6px 8px", fontFamily: "monospace", fontSize: 12, color: C.text }}>
+                  day {i + 1}<br />₹{b}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>
+            Day {day + 1}'s balance needs day {day}'s balance{day > 0 ? `, which needs day ${day - 1}'s` : ""}… all the way back to the start. A <b style={{ color: C.orange }}>chain</b>:
+            nobody can work on day {day + 1} until every earlier day is done.
+          </div>
+        </div>
+      )}
+      <Insight title="Independent outputs can all be computed at the same time. A chain can't.">
+        Matrix multiplication, the core of AI (Unit 0.5), is the perfectly independent kind. That's the gift hidden inside AI's huge appetite.
       </Insight>
     </div>
   );
 }
 
-// ── Section 3: Activation functions ──
-const ACTS = {
-  step: { name: "Step", f: (z) => (z >= 0 ? 1 : 0), note: "YES/NO only. Simple, but there's no 'almost', so the neuron can't tell how close it was. That makes learning hard." },
-  sigmoid: { name: "Sigmoid", f: (z) => 1 / (1 + Math.exp(-z)), note: "Squashes any z into 0…1, a smooth 'how sure am I'. Used when the output is a probability." },
-  relu: { name: "ReLU", f: (z) => Math.max(0, z), note: "If z is negative output 0, otherwise pass z through. Very cheap to compute, and the most common choice inside modern networks." },
-};
-function ActivationWidget() {
-  const [k, setK] = useState("sigmoid");
-  const [z, setZ] = useState(1);
-  const a = ACTS[k];
-  const X = (v) => 30 + (v + 5) * 50, Y = (v) => 150 - v * (k === "relu" ? 24 : 110);
-  const pts = Array.from({ length: 101 }, (_, i) => -5 + i * 0.1).map((v) => `${X(v)},${Y(a.f(v))}`).join(" ");
-  const [stack, setStack] = useState(false);
+// ── Section 3: Hire more workers ──
+const WCOL = [C.accent, C.green, C.orange, C.purple, C.teal, C.yellow, C.red, "#F778BA"];
+function WorkersWidget() {
+  const [w, setW] = useState(4);
+  const [job, setJob] = useState("grid");
+  const [t, setT] = useState(0);
+  const timer = useRef(null);
+  const JOBS = 64;
+  const steps = job === "grid" ? Math.ceil(JOBS / w) : JOBS;
+  useEffect(() => () => clearInterval(timer.current), []);
+  const run = () => { clearInterval(timer.current); setT(0); timer.current = setInterval(() => setT((v) => { if (v >= steps) { clearInterval(timer.current); return v; } return v + 1; }), 120); };
+  const doneAt = (k) => (job === "grid" ? Math.floor(k / w) + 1 : k + 1);
   return (
     <div>
       <Frame>
-        The activation decides what the neuron passes on. Pick one, then slide z to see the output.
+        64 pieces of work, and you can hire workers. For the <b style={{ color: C.green }}>grid</b> (independent cells), each worker grabs a cell.
+        For the <b style={{ color: C.orange }}>chain</b>, step k must wait for step k − 1. Hire workers and press Run.
       </Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        {Object.entries(ACTS).map(([key, v]) => <Btn key={key} ghost={key !== k} onClick={() => setK(key)}>{v.name}</Btn>)}
+        <Btn ghost={job !== "grid"} onClick={() => { setJob("grid"); setT(0); }} color={C.green}>Independent grid</Btn>
+        <Btn ghost={job !== "chain"} onClick={() => { setJob("chain"); setT(0); }} color={C.orange}>Chain</Btn>
       </div>
-      <svg viewBox="0 0 560 175" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-        <line x1="30" y1="150" x2="530" y2="150" stroke={C.border} /><line x1="280" y1="10" x2="280" y2="165" stroke={C.border} />
-        <text x="535" y="154" fill={C.muted} fontSize="11">z</text>
-        <polyline points={pts} fill="none" stroke={C.accent} strokeWidth="2.5" />
-        <circle cx={X(z)} cy={Y(a.f(z))} r="6" fill={C.yellow} />
-        <text x={X(z) + 8} y={Y(a.f(z)) - 8} fill={C.yellow} fontSize="12">out = {a.f(z).toFixed(2)}</text>
-      </svg>
-      <Slider label={<>z = <b style={{ color: C.yellow }}>{z}</b></>} value={z} min={-5} max={5} step={0.25} onChange={setZ} color={C.yellow} />
-      <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{a.note}</div>
-      <div style={{ marginTop: 16, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
-        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Why not skip the activation?</div>
-        <Btn onClick={() => setStack((s) => !s)} ghost>{stack ? "Hide" : "Stack two neurons with NO activation"}</Btn>
-        {stack && (
-          <pre style={{ fontFamily: "monospace", fontSize: 12.5, color: C.text, marginTop: 10, lineHeight: 1.7 }}>{`neuron 1:  y = 3x + 1
-neuron 2:  out = 2y − 4
-put together: out = 2(3x + 1) − 4 = 6x − 2   ← still ONE straight line!`}</pre>
-        )}
+      <Slider label={<>Workers = <b style={{ color: C.accent }}>{w}</b></>} value={w} min={1} max={64} onChange={(v) => { setW(v); setT(0); }} />
+      <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 24px)", gap: 3 }}>
+          {Array.from({ length: JOBS }, (_, k) => {
+            const done = doneAt(k) <= t;
+            const owner = job === "grid" ? k % w : 0;
+            return <div key={k} style={{ width: 24, height: 24, borderRadius: 4, background: done ? WCOL[owner % 8] : C.card, border: `1px solid ${C.border}`, opacity: done ? 0.9 : 1 }} />;
+          })}
+        </div>
+        <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: 8 }}>
+          <Btn onClick={run}>▶ Run</Btn>
+          <Stat label="TIME STEPS NEEDED" value={steps} color={job === "grid" ? C.green : C.orange} />
+          <Stat label="SPEED-UP vs 1 WORKER" value={`${(JOBS / steps).toFixed(1)}×`} color={C.purple} />
+          <div style={{ color: C.muted, fontSize: 12 }}>{job === "chain" && w > 1 ? `${w - 1} workers stand idle: they have nothing they're allowed to do.` : job === "grid" ? "Colours show which worker did each cell." : ""}</div>
+        </div>
       </div>
-      <Insight color={C.green} title="The activation is what makes many neurons more powerful than one.">
-        Without it, any stack of neurons collapses into a single multiply-add. With a bend like ReLU in between, layers can learn
-        curved, complicated patterns.
+      <Insight color={C.green} title="For independent work, N workers ≈ N times faster. For a chain, extra workers do nothing.">
+        Remember this picture: Module 2 builds a chip from thousands of workers. That only pays off because AI's work is the grid kind.
       </Insight>
     </div>
   );
 }
 
-// ── Section 4: Tune a neuron + count its work ──
-function TuneWidget() {
-  const [w1, setW1] = useState(0.5);
-  const [w2, setW2] = useState(0.0);
-  const [b, setB] = useState(-2);
-  const [n, setN] = useState(784);
-  const res = PEOPLE.map((s) => ({ ...s, z: w1 * s.h + w2 * s.a + b }));
-  const right = res.filter((s) => (s.z >= 0 ? 1 : 0) === s.p).length;
+// ── Section 4: Spot the parallelism in AI ──
+const OPS = [
+  { o: "Apply ReLU to every number in a layer's output", p: true, why: "Each number is changed on its own. Fully parallel." },
+  { o: "Run 64 images of a batch through layer 1", p: true, why: "The images don't affect each other inside a layer. Parallel." },
+  { o: "Compute layer 2 before layer 1 has finished", p: false, why: "Layer 2's input IS layer 1's output. Layers form a chain, but each layer inside is parallel." },
+  { o: "Multiply two big matrices", p: true, why: "Every output cell is an independent dot product." },
+  { o: "Start epoch 2 before epoch 1's weight updates are done", p: false, why: "Epoch 2 needs the weights produced by epoch 1. A chain." },
+  { o: "A chatbot generating word 5 before word 4", p: false, why: "Each new word depends on the words before it. Generation is a chain, which is why answers appear word by word." },
+  { o: "Add the bias to all 128 neurons of a layer", p: true, why: "128 separate additions with nothing shared. Parallel." },
+  { o: "Compare 10 lakh predictions with the right answers", p: true, why: "Each comparison is separate. (Adding up the results afterwards can also be done in parallel, in a tree of pairs.)" },
+];
+function SpotWidget() {
+  const [ans, setAns] = useState({});
+  const right = OPS.filter((x, i) => ans[i] === x.p).length;
   return (
     <div>
-      <Frame>
-        You are the training algorithm. Move the two weights and the bias until the neuron gets all 6 students right
-        (hint: attendance is out of 100, so its weight should be small).
-      </Frame>
-      <Slider label={<>w₁ (hours) = <b style={{ color: C.accent }}>{w1}</b></>} value={w1} min={-1} max={2} step={0.1} onChange={setW1} />
-      <Slider label={<>w₂ (attendance) = <b style={{ color: C.accent }}>{w2}</b></>} value={w2} min={-0.1} max={0.1} step={0.01} onChange={setW2} />
-      <Slider label={<>bias b = <b style={{ color: C.purple }}>{b}</b></>} value={b} min={-10} max={2} step={0.5} onChange={setB} color={C.purple} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-        {res.map((s) => {
-          const ok = (s.z >= 0 ? 1 : 0) === s.p;
-          return (
-            <div key={s.n} style={{ background: C.card, borderRadius: 8, padding: 8, border: `1.5px solid ${ok ? C.green : C.red}` }}>
-              <div style={{ color: C.text, fontSize: 12.5, fontWeight: 600 }}>{s.n} <span style={{ color: s.p ? C.green : C.red, fontWeight: 400 }}>({s.p ? "passed" : "failed"})</span></div>
-              <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 11.5 }}>z = {s.z.toFixed(2)} → {s.z >= 0 ? "PASS" : "FAIL"} {ok ? "✓" : "✗"}</div>
+      <Frame>Can each piece of work run at the same time as the others (parallel), or must it wait in line (chain)? Decide for each AI operation.</Frame>
+      {OPS.map((x, i) => {
+        const a = ans[i];
+        return (
+          <div key={i} style={{ background: C.card, border: `1px solid ${a === undefined ? C.border : a === x.p ? C.green : C.red}`, borderRadius: 8, padding: "9px 12px", marginBottom: 7 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 220, color: C.text, fontSize: 13 }}>{x.o}</div>
+              {[[true, "⚡ Parallel", C.green], [false, "⛓️ Chain", C.orange]].map(([v, l, c]) => (
+                <button key={l} onClick={() => a === undefined && setAns((s) => ({ ...s, [i]: v }))} style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${c}`, background: a === v ? c + "33" : "transparent", color: C.text, fontSize: 12, cursor: a === undefined ? "pointer" : "default" }}>{l}</button>
+              ))}
             </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 8, color: right === 6 ? C.green : C.yellow, fontWeight: 700, fontSize: 13 }}>{right} / 6 correct {right === 6 ? "— you trained a neuron! 🎉" : ""}</div>
-
-      <div style={{ marginTop: 18, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
-        <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>How much arithmetic is one neuron?</div>
-        <Slider label={<>Number of inputs = <b style={{ color: C.orange }}>{n.toLocaleString("en-IN")}</b> {n === 784 ? "(one 28×28 image)" : n === 12288 ? "(a large language model's neuron)" : ""}</>} value={n} min={2} max={12288} step={2} onChange={setN} color={C.orange} />
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Stat label="MULTIPLICATIONS" value={n.toLocaleString("en-IN")} color={C.orange} />
-          <Stat label="ADDITIONS" value={n.toLocaleString("en-IN")} color={C.orange} />
-          <Stat label="DIFFICULTY" value="trivial" color={C.green} />
-        </div>
-      </div>
-      <Insight color={C.orange} title="One neuron is easy. The trouble is that AI uses millions of them, over and over.">
-        Each multiply-and-add pair is called a <b>MAC</b> (multiply-accumulate). Tuning 3 knobs by hand was fun; a real model has
-        billions of knobs. Next unit: how the machine turns them by itself.
-      </Insight>
-      <LabCard part="C" title="Build a neuron in NumPy"
-        what="Write the weighted sum by hand with a loop, then again with np.dot, and check that you get the same answer. Then feed it the six students from this section."
-        expect="the loop and np.dot give identical z values, and your weights score 6 / 6." />
+            {a !== undefined && <div style={{ marginTop: 5, fontSize: 12, color: a === x.p ? C.green : C.red }}>{a === x.p ? "✓ " : "✗ "}{x.why}</div>}
+          </div>
+        );
+      })}
+      {Object.keys(ans).length === OPS.length && (
+        <Insight color={C.purple} title={`${right} / ${OPS.length}. Inside every step AI is massively parallel; between steps it's a chain.`}>
+          So the winning machine does each step with thousands of workers at once and runs the steps in order. That's exactly a GPU working
+          alongside a CPU.
+        </Insight>
+      )}
+      <LabCard part="C" title="Loops vs vectorised code"
+        what="Apply ReLU to 10 lakh numbers with a Python for-loop, then with one NumPy call; do the same for a running total. See which job speeds up and which doesn't."
+        expect="NumPy's ReLU is far faster than the loop. np.cumsum is fast too (it's compiled code), but it still has to walk the chain one value after another, so it can't be shared out among many workers." />
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "Inputs x = [2, 3], weights w = [4, −1], bias b = 1. What is z?", options: ["6", "8", "9", "12"], answer: 0, explain: "z = 4×2 + (−1)×3 + 1 = 8 − 3 + 1 = 6." },
-  { q: "What does a large NEGATIVE weight on an input mean?", options: ["That input is ignored", "That input pushes the neuron towards NO", "The neuron will crash", "That input is very small"], answer: 1, explain: "The weight multiplies the input, so a negative weight drags z down. 'Exam tomorrow' got a negative weight for exactly this reason." },
-  { q: "ReLU gives 0 for negative z and z itself otherwise. What is ReLU(−3) and ReLU(2.5)?", options: ["−3 and 2.5", "0 and 2.5", "0 and 1", "3 and 2.5"], answer: 1, explain: "Negative values become 0 and positive values pass through unchanged: ReLU(−3) = 0, ReLU(2.5) = 2.5." },
-  { q: "A neuron has 784 inputs. How many multiplications does it do for one image?", options: ["1", "28", "784", "784 × 784"], answer: 2, explain: "One multiply per input-weight pair: 784 multiplications (plus 784 additions). One neuron is cheap. Millions of them aren't." },
+  { q: "To compute cell C[2][3] of C = A × B, you need…", options: ["All of C computed first", "Row 2 of A and column 3 of B", "Column 2 of A and row 3 of B", "C[2][2]"], answer: 1, explain: "Each output cell is the dot product of one row of A with one column of B. No other output cell is needed." },
+  { q: "64 independent tasks, 16 workers, each task takes 1 time step. How many steps?", options: ["1", "4", "16", "64"], answer: 1, explain: "Each step, 16 tasks finish: 64 ÷ 16 = 4 steps." },
+  { q: "A 64-step chain (each step needs the previous one) with 16 workers takes…", options: ["4 steps", "16 steps", "64 steps", "1 step"], answer: 2, explain: "Only one step can ever run at a time, so the extra workers stay idle: still 64 steps." },
+  { q: "Which part of a neural network is a CHAIN?", options: ["The neurons within one layer", "The images within one batch", "The layers, one after another", "The cells of a matrix multiply"], answer: 2, explain: "Layer 2 needs layer 1's output. Inside each layer, though, everything is parallel." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can compute a neuron by hand.",
-  good: "Good. Replay 'Anatomy' and redo the z calculation yourself.",
-  low: "Revisit 'Anatomy': z = w₁x₁ + w₂x₂ + … + b is the heart of this unit.",
+  perfect: "Perfect! You can see the parallelism hidden in AI.",
+  good: "Good. Replay 'Hire More Workers' with the chain.",
+  low: "Revisit 'Who Waits for Whom?': independent vs chained is the key idea for the next module.",
   done: "Unit 1.3 Complete!",
-  body: "You can build a neuron from weights, a bias and an activation, and count its multiply-adds.",
-  next: "Next up: Unit 1.4 — Learning = Reducing Error.",
-  teaser: "You tuned 3 knobs by hand. How does a machine tune a billion of them by itself?",
+  body: "You can tell independent work from chained work, and you know that matrix multiplication is perfectly parallel.",
+  next: "Next up: Unit 1.C — Capstone: The Compute Bill.",
+  teaser: "Estimate what it really takes to train and run an AI model for your college, and measure your own CPU's speed.",
 };
 
 const UNIT_WORDS = [
-  ["ReLU", "Rectified Linear Unit", "Activation: negative → 0, positive → unchanged. The most common activation today.", "new here"],
-  ["MAC", "Multiply-Accumulate", "One multiply followed by adding the result to a running sum: the basic step of a neuron.", "new here"],
-  ["IPL", "Indian Premier League", "The cricket league. Only used in the example!", "new here"],
+  ["MAC", "Multiply-Accumulate", "One multiply plus one add.", "from Unit 0.3"],
+  ["n³", "n cubed", "n × n × n. The number of MACs in an n × n matrix multiply.", "new here"],
+  ["ReLU", "Rectified Linear Unit", "Negative → 0, positive stays. Applied to every number on its own.", "from Unit 0.3"],
 ];
 
 // ── Quiz ──
@@ -394,10 +362,10 @@ function TextbookNote() {
 
 export default function Unit1_3({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "One Input Isn't Enough" },
-    { id: "s1", label: "Anatomy" },
-    { id: "s2", label: "Activation" },
-    { id: "s3", label: "Tune It" },
+    { id: "s0", label: "One After Another" },
+    { id: "s1", label: "Who Waits for Whom?" },
+    { id: "s2", label: "Hire More Workers" },
+    { id: "s3", label: "Spot the Parallelism" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -407,10 +375,10 @@ export default function Unit1_3({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚖️ One Input Isn't Enough — combine the evidence</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚡ Anatomy of a Neuron — multiply, add, decide</h3><AnatomyWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📈 Activation Functions — the bend that matters</h3><ActivationWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎛️ Tune a Neuron — and count its arithmetic</h3><TuneWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🐢 One After Another — n³ steps for one worker</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔗 Who Waits for Whom? — independent vs chained</h3><DependWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>👷 Hire More Workers — when does it help?</h3><WorkersWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔍 Spot the Parallelism — inside AI</h3><SpotWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 1.3.</p>
@@ -421,10 +389,10 @@ export default function Unit1_3({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⚡</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧩</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 1 › UNIT 1.3</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>The Neuron</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Every Output Is Independent</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>
