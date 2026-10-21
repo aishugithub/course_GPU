@@ -59,8 +59,7 @@ for name, h, p in zip(names, hours, passed):
     ok = guess == p
     correct += ok
     print(f"{name:8s} {h:3.1f} h   rule says {'PASS' if guess else 'FAIL'}   actually {'PASS' if p else 'FAIL'}   {'✓' if ok else '✗'}")
-print(f"
-My hand-written rule gets {correct} / {len(hours)} right")
+print(f"\\nMy hand-written rule gets {correct} / {len(hours)} right")
 """),
 md("""
 Now let the machine **learn** the cut-off: try every candidate, score it against the real answers, keep the best.
