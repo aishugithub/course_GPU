@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+
+# test-run downloads (MNIST etc.) from tools/notebooks/run_nb.py
+tools/notebooks/data/
+__pycache__/

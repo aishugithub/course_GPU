@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Allows re-running a failed deploy by hand from the Actions tab
+  workflow_dispatch:
+
+# The default GITHUB_TOKEN can be read-only; the gh-pages push needs write access
+permissions:
+  contents: write
+
+# Never let two deployments overlap — overlapping Pages deployments cause
+# "Deployment failed, try again later" errors
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # v6+ of the official actions run on Node 24 (Node 20 was deprecated on
+      # runners in 2026 — older majors print deprecation warnings)
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npx vite build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
