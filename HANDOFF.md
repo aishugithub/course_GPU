@@ -48,8 +48,8 @@ The per-unit map lives in `tools/assemble.py` (`BOOKS`).
 ## Before deploying
 1. Backend: the dedicated Google Sheet **course_GPU** exists
    (https://docs.google.com/spreadsheets/d/18TU3ZbowIEhBUkElNjx9XxJns9KA6q_bdiCZ0TFpISs/edit). Paste `Code.gs` into its
-   Apps Script, run menu "Foothold GPU → 1. Set up sheets", deploy as a Web App, and put the /exec URL in
-   `config/gas.config.js` (it still points at the COA backend until then). The Sheet's menu also has
+   Apps Script, run menu "Foothold GPU → 1. Set up sheets", deploy as a Web App: DONE 2026-10-21, and the /exec URL is in
+   `config/gas.config.js`. The Sheet's menu also has
    "2. Refresh progress summary" (Summary tab per student, completion count per unit on the Units tab).
 2. GitHub repo: https://github.com/aishugithub/course_GPU (public). Push, and enable Pages (same workflow as course_COA: `.github/workflows/deploy.yml`).
 3. Run every lab once on a Colab T4 and note real timings; adjust lesson numbers if any are far off.
