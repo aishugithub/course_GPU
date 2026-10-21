@@ -52,8 +52,15 @@ def my_rule(h):
     # ✏️ a hand-written rule: PASS if hours >= 5
     return 1 if h >= 5 else 0
 
-correct = sum(1 for h, p in zip(hours, passed) if my_rule(h) == p)
-print(f"My hand-written rule gets {correct} / {len(hours)} right")
+# "correct" counts EVERY right prediction: a correct PASS and a correct FAIL both count
+correct = 0
+for name, h, p in zip(names, hours, passed):
+    guess = my_rule(h)
+    ok = guess == p
+    correct += ok
+    print(f"{name:8s} {h:3.1f} h   rule says {'PASS' if guess else 'FAIL'}   actually {'PASS' if p else 'FAIL'}   {'✓' if ok else '✗'}")
+print(f"
+My hand-written rule gets {correct} / {len(hours)} right")
 """),
 md("""
 Now let the machine **learn** the cut-off: try every candidate, score it against the real answers, keep the best.
