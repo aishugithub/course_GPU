@@ -150,9 +150,11 @@ else:
         <div style={{ background: C.card, border: `1.5px solid ${C.accent}66`, borderRadius: 10, padding: 14 }}>
           <div style={{ color: C.accent, fontWeight: 700, fontSize: 12, marginBottom: 8 }}>🧠 THE MACHINE FINDS IT</div>
           <pre style={{ fontFamily: "monospace", fontSize: 11.5, color: C.text, margin: 0 }}>{`model.fit(hours, results)
+# the model works out: cut-off = 3
+
 model.predict([4.5])
 # → "PASS"`}</pre>
-          <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>The "3" is learned from past students' data.</div>
+          <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Nobody types the cut-off: the machine finds the same 3 hours from past students' data (watch it happen in the next section).</div>
         </div>
       </div>
       <Insight title="Traditional code turns rules into answers. Machine learning turns answers into rules.">
