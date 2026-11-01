@@ -83,7 +83,7 @@ const SMI = [
 ];
 const FIELDS = [
   { k: "temp", t: "67C", d: "Temperature. GPUs slow themselves down if they get too hot (above about 85 °C for many cards)." },
-  { k: "power", t: "52W / 70W", d: "Power now / power limit. The T4's 70 W limit is low, which is why it's so common in cloud servers (Unit 2.2: power is the real constraint)." },
+  { k: "power", t: "52W / 70W", d: "Power now / power limit. The T4's 70 W limit is low, which is why it's so common in cloud servers (Unit 2.6: power is the real constraint)." },
   { k: "mem", t: "9817MiB / 15360MiB", d: "Memory used / total. Includes PyTorch's cache and the CUDA context, so it's usually MORE than your tensors need (section 2)." },
   { k: "util", t: "87%", d: "GPU-Util: the share of recent time in which at least one kernel was running. NOT the share of cores busy: a tiny kernel running non-stop shows 100%. Low numbers mean a starving GPU (Unit 4.C)." },
 ];
@@ -261,7 +261,7 @@ const RESULT = {
 };
 
 const UNIT_WORDS = [
-  ["nvidia-smi", "NVIDIA System Management Interface", "Command-line dashboard for NVIDIA GPUs.", "from Unit 2.1"],
+  ["nvidia-smi", "NVIDIA System Management Interface", "Command-line dashboard for NVIDIA GPUs.", "from Unit 2.5"],
   ["GiB / MiB", "gibibyte / mebibyte", "2³⁰ / 2²⁰ bytes, slightly more than GB / MB.", "new here"],
   ["GPU-Util", "GPU utilisation", "Share of time a kernel was running.", "new here"],
   ["no_grad", "torch.no_grad()", "Turns off graph-building, for evaluation and inference.", "new here"],

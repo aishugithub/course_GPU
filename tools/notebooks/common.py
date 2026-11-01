@@ -19,27 +19,26 @@ import time, subprocess            # time: stopwatch; subprocess: run system com
 import numpy as np                  # arrays and maths on the CPU
 import matplotlib.pyplot as plt     # charts
 import torch                        # PyTorch: runs maths on the CPU or the GPU
+from torch import nn                # nn: PyTorch's layers and losses
 
 if torch.cuda.is_available():       # is there an NVIDIA GPU we can use? ("cuda" = NVIDIA's GPU system)
     device = "cuda"                 # yes: from now on, device = "cuda" means "put it on the GPU"
     print("✅ GPU found:", torch.cuda.get_device_name(0))   # the name of GPU number 0 (the first one)
-else:
-    device = "cpu"                  # no: fall back to the CPU
-    print("⚠️ NO GPU! Go to Runtime → Change runtime type → T4 GPU → Save, then run this cell again.")
-    print("   (The rest of the notebook will still run on the CPU, but you won't see any GPU speed-up.)")
+else:                               # no GPU in this session
+    device = "cpu"                  # fall back to the CPU
+    print("⚠️ NO GPU! Go to Runtime → Change runtime type → T4 GPU → Save, then run this cell again.")   # how to get one
+    print("   (Most of this notebook needs the GPU, so switch it on before going further.)")              # and why it matters
 
-def sync():
-    # GPU work is asynchronous: wait for it to really finish before reading the clock
-    if device == "cuda":
-        torch.cuda.synchronize()
+def sync():                         # GPU work runs in the background: wait for it to really finish before reading the clock
+    if device == "cuda":            # (only needed when there is a GPU)
+        torch.cuda.synchronize()    # wait until every queued GPU job is done
 
-def timeit(fn, repeats=5):
-    # run the function fn several times and return the average time of one run, in seconds
-    fn(); sync()                         # warm-up run (first GPU call has extra start-up cost)
-    t0 = time.perf_counter()             # start the stopwatch
-    for _ in range(repeats):
-        fn()
-    sync()                               # wait until the GPU has really finished all the runs
+def timeit(fn, repeats=5):          # run fn several times and return the average time of one run, in seconds
+    fn(); sync()                    # warm-up run (the first GPU call has extra start-up cost)
+    t0 = time.perf_counter()        # start the stopwatch
+    for _ in range(repeats):        # run it several times
+        fn()                        # the work itself
+    sync()                          # wait until the GPU has really finished all the runs
     return (time.perf_counter() - t0) / repeats   # total time ÷ number of runs
 """)
 
@@ -49,18 +48,17 @@ CUPY_SETUP = code("""
 try:                                # "try": attempt this; if it fails, jump to "except" instead of crashing
     import cupy as cp               # CuPy: NumPy-like arrays on the GPU, plus our own CUDA kernels
     HAVE_CUPY = device == "cuda"    # we can only use it if there is also a GPU
-    print("CuPy", cp.__version__, "ready" if HAVE_CUPY else "(installed, but no GPU in this session)")
+    print("CuPy", cp.__version__, "ready" if HAVE_CUPY else "(installed, but no GPU in this session)")   # say whether it's usable
 except ImportError:                 # CuPy is not installed
-    HAVE_CUPY = False
-    print("CuPy not found. On Colab with a GPU, run:  !pip install cupy-cuda12x   then re-run this cell.")
+    HAVE_CUPY = False               # remember that, so later cells can say so
+    print("CuPy not found. On Colab with a GPU, run:  !pip install cupy-cuda12x   then re-run this cell.")   # how to install it
 
-def cuda_time_ms(launch, repeats=5):
-    # time GPU work with CUDA events (they are recorded on the GPU itself); returns milliseconds per run
+def cuda_time_ms(launch, repeats=5):                # time GPU work with the GPU's own clock (CUDA events); returns ms per run
     launch(); cp.cuda.Device().synchronize()        # warm-up run, then wait for it to finish
     start, end = cp.cuda.Event(), cp.cuda.Event()   # two time-stamps on the GPU
     start.record()                                  # stamp "start" in the GPU's queue
-    for _ in range(repeats):
-        launch()                                    # queue the kernel several times
+    for _ in range(repeats):                        # several runs
+        launch()                                    # queue the kernel once more
     end.record(); end.synchronize()                 # stamp "end", and wait until the GPU reaches it
     return cp.cuda.get_elapsed_time(start, end) / repeats   # time between the stamps ÷ runs
 """)

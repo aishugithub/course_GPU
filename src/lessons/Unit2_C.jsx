@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2_CPU_vs_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2B_CPU_vs_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2B · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2B in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -80,11 +80,11 @@ const tfmt = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : s < 1 ? `${(s * 
 
 const JOBS = [
   { id: "tiny", t: "Add two lists of 100 numbers", parallel: true, flops: 100, bytes: 1200, serial: 0, ans: "cpu",
-    why: "The GPU's 20 µs launch cost is thousands of times longer than the work itself. Tiny jobs stay on the CPU (Unit 2.1)." },
+    why: "The GPU's 20 µs launch cost is thousands of times longer than the work itself. Tiny jobs stay on the CPU (Unit 2.5)." },
   { id: "matmul", t: "Multiply two 4096 × 4096 matrices", parallel: true, flops: 2 * 4096 ** 3, bytes: 3 * 4096 * 4096 * 4, serial: 0, ans: "gpu",
-    why: "1.4 × 10¹¹ FLOPs of perfectly independent work (Unit 1.3). Even after copying 200 MB over PCIe, the GPU wins clearly." },
+    why: "1.4 × 10¹¹ FLOPs of perfectly independent work (Unit 2.3). Even after copying 200 MB over PCIe, the GPU wins clearly." },
   { id: "csv", t: "Parse 10,000 lines of a messy CSV with lots of if/else in Python", parallel: false, flops: 0, bytes: 0, serial: 0.08, ans: "cpu",
-    why: "Branchy, one-line-at-a-time Python string work isn't SIMD work at all. p ≈ 0, so Amdahl gives no speed-up (Unit 2.4). This is the CPU's home ground." },
+    why: "Branchy, one-line-at-a-time Python string work isn't SIMD work at all. p ≈ 0, so Amdahl gives no speed-up (Unit 2.8). This is the CPU's home ground." },
   { id: "relu_cpu", t: "Apply ReLU to 5 crore numbers that are in CPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: true, ans: "cpu",
     why: "A trap! Only one comparison per number, but 400 MB must cross PCIe and come back. Copying takes longer than the CPU needs to just do it. Where the data lives matters (Module 4)." },
   { id: "relu_gpu", t: "Apply ReLU to 5 crore numbers already in GPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: false, ans: "gpu",
@@ -102,10 +102,10 @@ function times(j) {
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Latency vs throughput, and the GPU's start-up cost", "Unit 2.1"],
-  ["time = work ÷ speed", "Unit 1.1"],
-  ["Is the work independent (SIMD/SIMT-friendly)?", "Units 1.3, 2.3"],
-  ["Amdahl: the serial part sets the ceiling", "Unit 2.4"],
+  ["Latency vs throughput, and the GPU's start-up cost", "Unit 2.5"],
+  ["time = work ÷ speed", "Unit 2.1"],
+  ["Is the work independent (SIMD/SIMT-friendly)?", "Units 2.3, 2.7"],
+  ["Amdahl: the serial part sets the ceiling", "Unit 2.8"],
   ["Data must be copied to the GPU before it can work on it", "preview of Module 4"],
 ];
 function MissionWidget() {
@@ -218,7 +218,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete decision tool. In Lab 2 Part E you'll test its predictions against real timings on Colab's T4.</Frame>
+      <Frame>The complete decision tool. In Lab 2B Part E you'll test its predictions against real timings on Colab's T4.</Frame>
       <Code color={C.green} title="🧭 cpu_or_gpu.py">{`CPU_FLOPS, CPU_BW = 0.2e12, 20e9     # effective speed, memory bandwidth (approx.)
 GPU_FLOPS, GPU_BW = 4e12, 300e9
 LAUNCH, PCIE = 20e-6, 12e9
@@ -273,7 +273,7 @@ const UNIT_WORDS = [
   ["PCIe", "Peripheral Component Interconnect Express", "The bus the GPU card plugs into, about 12 GB/s in practice for the T4. Hamacher Ch 7.", "from COA"],
   ["GB/s", "gigabytes per second", "How fast data moves.", "new here"],
   ["µs", "microsecond", "One millionth of a second.", "new here"],
-  ["FLOPS", "FLoating-point Operations Per Second", "A machine's arithmetic speed.", "from Unit 1.1"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A machine's arithmetic speed.", "from Unit 2.1"],
 ];
 
 // ── Quiz ──

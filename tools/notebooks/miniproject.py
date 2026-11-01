@@ -22,7 +22,7 @@ md("## 0 · Setup"),
 GPU_SETUP,
 md("""
 ---
-## 1 · Plan  *(Units 1.1, 1.2, 5.3, 5.7)*
+## 1 · Plan  *(Units 2.1, 2.2, 5.3, 5.7)*
 Before writing any training code, estimate:
 | Quantity | Your estimate | How you got it |
 |---|---|---|
@@ -35,7 +35,7 @@ Before writing any training code, estimate:
 code("""
 # ✏️ Your planning calculations here. Comment every line you write, like the labs do.
 params = 0                                  # number of parameters in your model
-print("parameters:", params)
+print("parameters:", params)   # show the count
 """),
 md("""
 ---

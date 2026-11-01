@@ -75,14 +75,14 @@ const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e 
 // ── Section 1: Need — one GPU would take centuries ──
 function NeedWidget() {
   const [g, setG] = useState(1);
-  const flops = 3.14e23;                     // GPT-3 training estimate (Unit 1.2)
+  const flops = 3.14e23;                     // GPT-3 training estimate (Unit 2.2)
   const per = 312e12 * 0.4;                  // A100 FP16 peak × 40% utilisation
   const eff = g === 1 ? 1 : Math.pow(0.97, Math.log2(g));   // illustrative: a little communication loss per doubling
   const days = flops / (per * g * eff) / 86400;
   return (
     <div>
       <Frame>
-        Training a GPT-3-sized model takes about 3 × 10²³ FLOPs (Unit 1.2). Even on one big data-centre GPU (an A100 at 40% of its FP16 peak), how long?
+        Training a GPT-3-sized model takes about 3 × 10²³ FLOPs (Unit 2.2). Even on one big data-centre GPU (an A100 at 40% of its FP16 peak), how long?
         Now add GPUs.
       </Frame>
       <Slider label={<>GPUs = <b style={{ color: C.green }}>{g.toLocaleString("en-IN")}</b></>} value={g} min={1} max={4096} onChange={setG} color={C.green} />
@@ -136,7 +136,7 @@ function DataParWidget() {
 # the training loop stays the same; backward() triggers the all-reduce`}</Code>
       <Insight title="Averaging the gradients of 4 slices gives exactly the gradient of the whole batch.">
         So 4 GPUs act like one GPU with a 4× bigger batch, at nearly 4× the speed, as long as the gradient exchange is fast. The exchange is the serial part
-        that Amdahl's law warns about (Unit 2.4).
+        that Amdahl's law warns about (Unit 2.8).
       </Insight>
     </div>
   );

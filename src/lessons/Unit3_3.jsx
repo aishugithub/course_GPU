@@ -256,7 +256,7 @@ const RESULT = {
 };
 
 const UNIT_WORDS = [
-  ["latency", "waiting time", "How long one memory request takes to come back.", "from Unit 2.1"],
+  ["latency", "waiting time", "How long one memory request takes to come back.", "from Unit 2.5"],
   ["GDDR6", "Graphics Double Data Rate 6", "The T4's main (global) memory.", "from Unit 3.1"],
   ["OS", "Operating System", "Windows, Linux, Android… It schedules threads on CPU cores.", "new here"],
   ["occupancy", "warps resident ÷ maximum warps", "How full an SM's warp slots are.", "new here"],

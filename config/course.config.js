@@ -3,7 +3,7 @@
 //
 //  How it wires up (unchanged from the Foothold engine):
 //    - Each `unitId` must EXACTLY match a file in src/lessons/
-//      without the .jsx extension  (e.g. "Unit1_1" ↔ Unit1_1.jsx).
+//      without the .jsx extension  (e.g. "Unit2_1" ↔ Unit2_1.jsx).
 //    - Adding a lesson = drop the file in src/lessons/ + add one
 //      line here. App.jsx auto-discovers lesson files via glob;
 //      Dashboard.jsx renders module/unit cards straight from this list.
@@ -31,54 +31,46 @@ const COURSE_CONFIG = {
 
   modules: [
     {
-      moduleId:    "M0",
+      moduleId:    "M1",
       moduleTitle: "What Is AI, Really?",
       icon:        "🧠",
       blurb:       "No magic, no robots — just numbers, multiplication and a lot of practice. Build the idea of AI from scratch.",
       units: [
-        { unitId: "Unit0_1", title: "Rules vs Learning",
+        { unitId: "Unit1_1", title: "Rules vs Learning",
           blurb: "Some problems you can't write rules for. So you let the computer find the rules itself." },
-        { unitId: "Unit0_2", title: "Everything Is Numbers",
+        { unitId: "Unit1_2", title: "Everything Is Numbers",
           blurb: "A cat photo, a WhatsApp message, a song: to a computer, all of them are just long lists of numbers." },
-        { unitId: "Unit0_3", title: "The Neuron",
+        { unitId: "Unit1_3", title: "The Neuron",
           blurb: "Multiply, add, decide. The tiny calculator that all of AI is built from." },
-        { unitId: "Unit0_4", title: "Learning = Reducing Error",
+        { unitId: "Unit1_4", title: "Learning = Reducing Error",
           blurb: "Measure how wrong you are, feel which way is downhill, take a step. Repeat a million times." },
-        { unitId: "Unit0_5", title: "Layers = Matrix Multiplication",
+        { unitId: "Unit1_5", title: "Layers = Matrix Multiplication",
           blurb: "Stack neurons into layers and something surprising happens: all of AI turns into one giant multiplication table." },
-        { unitId: "Unit0_C", title: "Capstone: Train a Tiny Network",
+        { unitId: "Unit1_C", title: "Capstone: Train a Tiny Network",
           blurb: "Twenty students, one neuron, zero rules given. Watch it learn to predict who passes." },
       ],
     },
     {
-      moduleId:    "M1",
-      moduleTitle: "Why Is AI So Hungry?",
-      icon:        "🍔",
-      blurb:       "One chatbot answer: a quadrillion multiply-adds. Count AI's appetite and watch an ordinary CPU start to choke.",
-      units: [
-        { unitId: "Unit1_1", title: "Counting the Multiply-Adds",
-          blurb: "Work ÷ speed = time. The one division that explains why AI needs special chips." },
-        { unitId: "Unit1_2", title: "Training vs Inference, Epochs & Batches",
-          blurb: "Using a model is like writing an exam; training it is the months of preparation. Guess which one is hungrier." },
-        { unitId: "Unit1_3", title: "Every Output Is Independent",
-          blurb: "AI's huge appetite comes with a hidden gift: almost none of the work has to wait in a queue." },
-        { unitId: "Unit1_C", title: "Capstone: The Compute Bill",
-          blurb: "Your principal wants an AI helpdesk. Work out the computing it needs, the machine and the bill, before anyone spends a rupee." },
-      ],
-    },
-    {
       moduleId:    "M2",
-      moduleTitle: "CPU vs GPU",
+      moduleTitle: "Why AI Needs a GPU",
       icon:        "⚔️",
-      blurb:       "One brilliant professor or a thousand ordinary students? Race them, and see why physics forced chips to go wide.",
+      blurb:       "One chatbot answer: a quadrillion multiply-adds. Count AI's appetite, then race the two machines that could feed it: the CPU and the GPU.",
       units: [
-        { unitId: "Unit2_1", title: "Latency vs Throughput",
+        { unitId: "Unit2_1", title: "Counting the Multiply-Adds",
+          blurb: "Work ÷ speed = time. The one division that explains why AI needs special chips." },
+        { unitId: "Unit2_2", title: "Training vs Inference, Epochs & Batches",
+          blurb: "Using a model is like writing an exam; training it is the months of preparation. Guess which one is hungrier." },
+        { unitId: "Unit2_3", title: "Every Output Is Independent",
+          blurb: "AI's huge appetite comes with a hidden gift: almost none of the work has to wait in a queue." },
+        { unitId: "Unit2_4", title: "Capstone: The Compute Bill",
+          blurb: "Your principal wants an AI helpdesk. Work out the computing it needs, the machine and the bill, before anyone spends a rupee." },
+        { unitId: "Unit2_5", title: "Latency vs Throughput",
           blurb: "A car is faster for one person; a bus is faster for fifty. CPUs and GPUs are the car and the bus." },
-        { unitId: "Unit2_2", title: "Why Clocks Stopped Getting Faster",
+        { unitId: "Unit2_6", title: "Why Clocks Stopped Getting Faster",
           blurb: "Around 2005 physics hit the brakes on CPU speed. Chips had to go wide instead, and that's where GPUs come in." },
-        { unitId: "Unit2_3", title: "SIMD → SIMT",
+        { unitId: "Unit2_7", title: "SIMD → SIMT",
           blurb: "One instruction, many data. Then the GPU's trick: write code for one thread and run ten thousand copies." },
-        { unitId: "Unit2_4", title: "Amdahl's Law",
+        { unitId: "Unit2_8", title: "Amdahl's Law",
           blurb: "The GPU made the maths 100× faster, so why is your program only 3× faster? Meet the law that keeps everyone honest." },
         { unitId: "Unit2_C", title: "Capstone: CPU or GPU?",
           blurb: "Six jobs, one GPU server, and you decide where each one runs. Watch out for the traps." },

@@ -91,9 +91,9 @@ function epochModel(f) {
 // ── Section 1: The Mission ──
 const CLUES = [
   ["The five steps: copies cross the slow PCIe bus", "Units 4.1, 4.2"],
-  ["Small jobs waste time on launch overhead", "Units 2.1, 3.C"],
+  ["Small jobs waste time on launch overhead", "Units 2.5, 3.C"],
   ["Overlap CPU prep with GPU work; avoid sync points", "Unit 4.4"],
-  ["The slowest part sets the ceiling (Amdahl)", "Unit 2.4"],
+  ["The slowest part sets the ceiling (Amdahl)", "Unit 2.8"],
   ["Measure with synchronisation, or with a profiler", "Unit 4.4"],
 ];
 function MissionWidget() {

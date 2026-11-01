@@ -252,7 +252,7 @@ const UNIT_WORDS = [
   ["cudaMalloc", "CUDA memory allocate", "Reserves space in GPU memory.", "new here"],
   ["cudaMemcpy", "CUDA memory copy", "Copies between host and device, in the direction you name.", "new here"],
   ["cudaFree", "CUDA free", "Releases GPU memory.", "new here"],
-  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Unit 2.3).", "from Unit 2.3"],
+  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Unit 2.7).", "from Unit 2.7"],
   ["DMA", "Direct Memory Access", "Moves the data over PCIe (COA Unit 5).", "from COA"],
 ];
 

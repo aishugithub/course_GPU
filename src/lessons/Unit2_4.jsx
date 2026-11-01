@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2_CPU_vs_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2A_AI_Is_Hungry.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,12 +34,12 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2A · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2 in Colab ↗</a>
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2A in Colab ↗</a>
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
     </div>
   );
 }
@@ -68,173 +68,206 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Hamacher §12.7 (Performance modelling) · Stallings §2.3 (Amdahl's law) · H&P Ch 1 (Amdahl's law)";
+const TEXTBOOK = "D2L Ch 13 (Computational performance) · Hamacher Ch 1 (Performance)";
 const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
 
 
-const speedup = (p, s) => 1 / ((1 - p) + p / s);
+const fmt = (x) => {
+  const u = [["", 1], [" thousand", 1e3], [" million", 1e6], [" billion", 1e9], [" trillion", 1e12], [" quadrillion", 1e15], [" quintillion", 1e18]];
+  let k = 0; while (k < u.length - 1 && x >= u[k + 1][1]) k++;
+  return `${(x / u[k][1]).toFixed(x / u[k][1] < 10 ? 1 : 0)}${u[k][0]}`;
+};
 
-// ── Section 1: Need — 100× faster part, 3× faster whole ──
-function NeedWidget() {
-  const [gpu, setGpu] = useState(false);
-  const load = 30, mm = 70;
-  const mmNew = gpu ? mm / 100 : mm;
-  const total = load + mmNew;
-  return (
-    <div>
-      <Frame>
-        One training step takes 100 ms on the CPU: <b style={{ color: C.orange }}>30 ms</b> loading and preparing the next batch of images (plain
-        Python), and <b style={{ color: C.accent }}>70 ms</b> of matrix multiplies. A GPU makes matrix multiplies <b style={{ color: C.green }}>100× faster</b>.
-        Move them to the GPU and predict the new total first.
-      </Frame>
-      <Btn onClick={() => setGpu((v) => !v)} color={C.green}>{gpu ? "◀ Back to CPU only" : "Move the matrix multiplies to the GPU (100×) ▶"}</Btn>
-      <div style={{ display: "flex", height: 44, marginTop: 14, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <div style={{ width: `${load}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 12, fontWeight: 700 }}>load 30 ms</div>
-        <div style={{ width: `${mmNew}%`, minWidth: 4, background: gpu ? C.green : C.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 12, fontWeight: 700, transition: "width 0.6s" }}>{gpu ? "" : "matmul 70 ms"}</div>
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-        <Stat label="STEP TIME" value={`${total.toFixed(1)} ms`} color={gpu ? C.green : C.text} />
-        <Stat label="OVERALL SPEED-UP" value={`${(100 / total).toFixed(2)}×`} color={C.purple} />
-      </div>
-      {gpu && (
-        <Insight color={C.red} title="The matrix part got 100× faster, but the whole step only about 3.3× faster.">
-          The 30 ms of loading didn't change, and now it's almost all the time that's left. However fast the GPU gets, this step can never take less
-          than 30 ms. That's Amdahl's law.
-        </Insight>
-      )}
-    </div>
-  );
-}
-
-// ── Section 2: The law ──
-function LawWidget() {
-  const [p, setP] = useState(0.9);
-  const [s, setS] = useState(10);
-  const S = speedup(p, s);
-  const cap = 1 / (1 - p);
-  const X = (v) => 40 + (Math.log10(v) / 3) * 460, Y = (v) => 170 - (Math.min(v, 22) / 22) * 155;
-  return (
-    <div>
-      <Frame>
-        Gene Amdahl (1967): if a fraction <b style={{ color: C.accent }}>p</b> of a program's time can be sped up by a factor
-        <b style={{ color: C.green }}> s</b>, and the rest can't, the overall speed-up is:
-      </Frame>
-      <div style={{ textAlign: "center", fontFamily: "monospace", fontSize: 17, color: C.text, background: C.card, borderRadius: 10, padding: 12, border: `1px solid ${C.border}` }}>
-        S = 1 / ( (1 − <span style={{ color: C.accent }}>p</span>) + <span style={{ color: C.accent }}>p</span> / <span style={{ color: C.green }}>s</span> )
-      </div>
-      <Slider label={<>Parallel fraction p = <b style={{ color: C.accent }}>{Math.round(p * 100)}%</b></>} value={p} min={0} max={0.99} step={0.01} onChange={setP} />
-      <Slider label={<>Speed-up of that part s = <b style={{ color: C.green }}>{s}×</b></>} value={s} min={1} max={1000} onChange={setS} color={C.green} />
-      <div style={{ fontFamily: "monospace", fontSize: 13, color: C.yellow, marginBottom: 8 }}>
-        S = 1 / ({(1 - p).toFixed(2)} + {p.toFixed(2)} / {s}) = <b>{S.toFixed(2)}×</b>
-      </div>
-      <svg viewBox="0 0 520 185" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
-        <line x1="40" x2="500" y1={Y(cap)} y2={Y(cap)} stroke={C.red} strokeDasharray="5 4" />
-        <text x="44" y={Y(cap) - 5} fill={C.red} fontSize="10">ceiling = 1 / (1 − p) = {cap.toFixed(1)}×</text>
-        <polyline fill="none" stroke={C.purple} strokeWidth="2.5" points={Array.from({ length: 61 }, (_, i) => 10 ** (i * 0.05)).map((v) => `${X(v)},${Y(speedup(p, v))}`).join(" ")} />
-        <circle cx={X(s)} cy={Y(S)} r="6" fill={C.yellow} />
-        {[1, 10, 100, 1000].map((v) => <text key={v} x={X(v)} y="182" fill={C.muted} fontSize="10" textAnchor="middle">s = {v}</text>)}
-      </svg>
-      <Insight color={C.purple} title="The part you can't speed up sets a hard ceiling: 1 / (1 − p).">
-        With p = 90%, even an infinitely fast GPU gives at most 10×. To get big speed-ups, p must be very close to 100%: almost all the time
-        must be spent in parallel work.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 3: The dosa kitchen ──
-function KitchenWidget() {
-  const [cooks, setCooks] = useState(1);
-  const grind = 60;                     // one grinder: can't be shared
-  const dosas = 100 * 3;                // 100 dosas × 3 min each, one tawa per cook
-  const total = grind + dosas / cooks;
-  return (
-    <div>
-      <Frame>
-        A wedding needs 100 dosas. First the batter must be ground: <b style={{ color: C.orange }}>60 minutes in the only grinder</b> (one machine,
-        no sharing). Then each dosa takes <b style={{ color: C.green }}>3 minutes on a tawa</b>, and every extra cook brings a tawa. Hire cooks.
-      </Frame>
-      <Slider label={<>Cooks = <b style={{ color: C.green }}>{cooks}</b></>} value={cooks} min={1} max={100} onChange={setCooks} color={C.green} />
-      <div style={{ display: "flex", height: 40, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <div style={{ width: `${(grind / 360) * 100}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11.5, fontWeight: 700 }}>grind 60</div>
-        <div style={{ width: `${(dosas / cooks / 360) * 100}%`, minWidth: 3, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11.5, fontWeight: 700 }}>{cooks < 4 ? `dosas ${(dosas / cooks).toFixed(0)}` : ""}</div>
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="TOTAL TIME" value={`${total.toFixed(0)} min`} color={C.text} />
-        <Stat label="SPEED-UP vs 1 COOK" value={`${(360 / total).toFixed(2)}×`} color={C.purple} />
-        <Stat label="BEST POSSIBLE" value="6× (360 ÷ 60)" color={C.red} />
-      </div>
-      <Insight color={C.orange} title="Hiring the 100th cook barely helps: the grinder is the bottleneck.">
-        In AI the "grinder" is often the CPU-side work: reading files, decoding images, Python code between GPU calls. A fast GPU waiting for
-        slow data is a very expensive idle machine.
-      </Insight>
-    </div>
-  );
-}
-
-// ── Section 4: What should you optimise? ──
-const PARTS = [
-  { k: "load", t: "Read images from disk", pct: 20, c: C.orange },
-  { k: "prep", t: "Decode & resize (CPU)", pct: 15, c: C.yellow },
-  { k: "copy", t: "Copy to GPU", pct: 10, c: C.teal },
-  { k: "compute", t: "Forward + backward", pct: 50, c: C.green },
-  { k: "log", t: "Logging & saving", pct: 5, c: C.purple },
+// ── Section 1: The Mission ──
+const TOOLS = [
+  ["FLOPs per token ≈ 2 × parameters", "Unit 2.1"],
+  ["A token is about ¾ of a word", "Unit 2.1"],
+  ["time = work (FLOPs) ÷ speed (FLOPS)", "Unit 2.1"],
+  ["Inference only: no backward pass needed to answer questions", "Unit 2.2"],
+  ["Different students' questions are independent, so they can be answered in parallel", "Unit 2.3"],
 ];
-function OptimiseWidget() {
-  const [pick, setPick] = useState(null);
-  const res = (k) => 1 / PARTS.reduce((s, x) => s + (x.k === k ? x.pct / 10 : x.pct) / 100, 0);
+function MissionWidget() {
+  const [ticks, setTicks] = useState([]);
   return (
     <div>
       <Frame>
-        Your training step is split up as below. Your budget buys <b style={{ color: C.text }}>ONE 10× upgrade</b> for ONE part. Which part gives the
-        biggest overall speed-up? Pick one, then try the others.
+        Your principal wants a <b style={{ color: C.text }}>College Helpdesk Bot</b>: students ask about timetables, fees and exams, and an AI model
+        answers. Before buying anything, she asks you: <i>how much computing does this need each day, which machine can handle it, and what will
+        it cost?</i> Tick each tool once you've found where you learned it.
       </Frame>
-      <div style={{ display: "flex", height: 40, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}`, marginBottom: 10 }}>
-        {PARTS.map((x) => <div key={x.k} style={{ width: `${pick === x.k ? x.pct / 10 : x.pct}%`, minWidth: 3, background: x.c, transition: "width 0.5s" }} title={x.t} />)}
+      {TOOLS.map(([t, u], i) => {
+        const on = ticks.includes(i);
+        return (
+          <div key={i} onClick={() => setTicks((s) => (on ? s.filter((x) => x !== i) : [...s, i]))} style={{ display: "flex", gap: 10, alignItems: "center", background: C.card, border: `1.5px solid ${on ? C.green : C.border}`, borderRadius: 8, padding: "9px 12px", marginBottom: 7, cursor: "pointer" }}>
+            <span style={{ fontSize: 16 }}>{on ? "✅" : "⬜"}</span>
+            <span style={{ flex: 1, color: C.text, fontSize: 13 }}>{t}</span>
+            <span style={{ color: C.accent, fontSize: 12, fontFamily: "monospace" }}>{u}</span>
+          </div>
+        );
+      })}
+      <Insight color={C.green} title="An engineer's estimate needs no special software, just these five facts and a calculator.">
+        Real AI teams do exactly this "back-of-the-envelope" maths before spending lakhs of rupees on hardware.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 2: Build in Steps ──
+const VERSIONS = [
+  { tag: "v1", title: "Work for ONE answer", color: C.teal, why: "Start small: how many FLOPs does a single answer take? Model size × 2 × tokens.", code: `params = 7e9                 # a 7-billion-parameter model
+words_per_answer = 200
+tokens = words_per_answer / 0.75          # ≈ 267 tokens
+
+flops_per_answer = 2 * params * tokens
+print(f"{flops_per_answer:.2e} FLOPs per answer")   # ≈ 3.7e12` },
+  { tag: "v2", title: "+ a whole day", color: C.yellow, why: "One answer is fine, but the college has thousands of students. Multiply by the number of questions per day.", code: `students = 5000
+questions_each = 4
+answers_per_day = students * questions_each      # 20,000
+
+flops_per_day = flops_per_answer * answers_per_day
+print(f"{flops_per_day:.2e} FLOPs per day")       # ≈ 7.5e16` },
+  { tag: "v3", title: "+ machines, time & money", color: C.green, why: "Now divide by each machine's speed. Real programs reach only part of the peak, so include a utilisation factor. Then turn GPU-hours into rupees.", code: `machines = {                      # peak FLOPS (approximate)
+    "laptop CPU": 0.2e12,
+    "T4 GPU (FP16)": 65e12,
+}
+utilisation = 0.3                 # real code rarely hits peak
+rupees_per_gpu_hour = 35          # assumed cloud price
+
+for name, peak in machines.items():
+    hours = flops_per_day / (peak * utilisation) / 3600
+    print(f"{name:14s}: {hours:8.1f} hours of work per day")
+
+t4_hours = flops_per_day / (65e12 * utilisation) / 3600
+print(f"Cloud cost ≈ ₹{t4_hours * rupees_per_gpu_hour:.0f} per day")` },
+];
+function BuildWidget() {
+  const [v, setV] = useState(0);
+  const cur = VERSIONS[v];
+  return (
+    <div>
+      <Frame>Grow the estimator one idea at a time. Each version adds ONE idea.</Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        {VERSIONS.map((x, i) => <Btn key={x.tag} ghost={i !== v} onClick={() => setV(i)} color={x.color}>{x.tag}: {x.title}</Btn>)}
       </div>
-      {PARTS.map((x) => (
-        <div key={x.k} onClick={() => setPick(x.k)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 8, marginBottom: 5, cursor: "pointer", background: pick === x.k ? x.c + "22" : C.card, border: `1.5px solid ${pick === x.k ? x.c : C.border}` }}>
-          <div style={{ width: 12, height: 12, borderRadius: 3, background: x.c }} />
-          <div style={{ flex: 1, color: C.text, fontSize: 13 }}>{x.t}</div>
-          <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 12 }}>{x.pct}% of time</div>
-          {pick && <div style={{ fontFamily: "monospace", fontSize: 12, color: x.k === "compute" ? C.green : C.muted, minWidth: 70, textAlign: "right" }}>→ {res(x.k).toFixed(2)}×</div>}
-        </div>
-      ))}
-      {pick && (
-        <Insight color={C.green} title="Speed up the biggest part first, and remember that the small parts become the new bottleneck.">
-          10× on compute gives 1.82×; 10× on logging gives only 1.05×. After upgrading compute, loading (20%) and decoding (15%) become most of
-          the remaining time. That's why real AI code uses several CPU workers to load data in parallel (PyTorch's DataLoader
-          <code> num_workers</code>).
-        </Insight>
-      )}
-      <LabCard part="D" title="Amdahl's law on a real GPU"
-        what="Build a fake training loop with a slow CPU part (Python preprocessing) and a GPU matrix multiply, time each part, then predict the speed-up with Amdahl's law and compare it with what you measure."
-        expect="your Amdahl prediction lands close to the measured speed-up, and the CPU part sets the ceiling." />
+      <div style={{ padding: "10px 14px", borderRadius: 8, background: cur.color + "14", border: `1px solid ${cur.color}55`, color: C.muted, fontSize: 13, lineHeight: 1.7, marginBottom: 12 }}>
+        <b style={{ color: cur.color }}>{cur.tag}: </b>{cur.why}
+      </div>
+      <Code color={cur.color}>{cur.code}</Code>
+      <Insight title="One answer → one day → machines and money.">
+        Each version answers a bigger question using the previous one. That's how estimates, and programs, should grow.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 3: Play It — the estimator ──
+const MACH = [
+  { m: "Laptop CPU (NumPy)", f: 2e11 },
+  { m: "NVIDIA T4, FP32", f: 8.1e12 },
+  { m: "NVIDIA T4, FP16 Tensor Cores", f: 6.5e13 },
+  { m: "NVIDIA A100, FP16 Tensor Cores", f: 3.12e14 },
+];
+function PlayWidget() {
+  const [students, setStudents] = useState(5000);
+  const [q, setQ] = useState(4);
+  const [words, setWords] = useState(200);
+  const [params, setParams] = useState(7);
+  const [util, setUtil] = useState(30);
+  const [rate, setRate] = useState(35);
+  const perDay = 2 * params * 1e9 * (words / 0.75) * students * q;
+  return (
+    <div>
+      <Frame>Your estimator, live. Change the college and the model, and see whether each machine can keep up within 24 hours, and at what cost.</Frame>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <Slider label={<>Students = <b style={{ color: C.teal }}>{students.toLocaleString("en-IN")}</b></>} value={students} min={500} max={50000} step={500} onChange={setStudents} color={C.teal} />
+        <Slider label={<>Questions per student per day = <b style={{ color: C.teal }}>{q}</b></>} value={q} min={1} max={20} onChange={setQ} color={C.teal} />
+        <Slider label={<>Words per answer = <b style={{ color: C.purple }}>{words}</b></>} value={words} min={20} max={1000} step={10} onChange={setWords} color={C.purple} />
+        <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} B</b> parameters</>} value={params} min={1} max={70} onChange={setParams} />
+        <Slider label={<>Utilisation = <b style={{ color: C.yellow }}>{util}%</b> of peak</>} value={util} min={5} max={80} step={5} onChange={setUtil} color={C.yellow} />
+        <Slider label={<>Cloud price = <b style={{ color: C.green }}>₹{rate}</b> per GPU-hour</>} value={rate} min={10} max={300} step={5} onChange={setRate} color={C.green} />
+      </div>
+      <Stat label="WORK PER DAY" value={`${fmt(perDay)} FLOPs`} color={C.orange} />
+      <div style={{ marginTop: 10 }}>
+        {MACH.map((x) => {
+          const hrs = perDay / (x.f * util / 100) / 3600;
+          const n = Math.ceil(hrs / 24);
+          return (
+            <div key={x.m} style={{ display: "flex", gap: 8, alignItems: "center", background: C.card, borderRadius: 8, padding: "8px 12px", marginBottom: 6, border: `1.5px solid ${hrs <= 24 ? C.green : C.red}` }}>
+              <div style={{ flex: 1, color: C.text, fontSize: 13 }}>{x.m}</div>
+              <div style={{ fontFamily: "monospace", fontSize: 12.5, color: hrs <= 24 ? C.green : C.red }}>{hrs < 1 ? `${(hrs * 60).toFixed(0)} min` : `${hrs.toFixed(1)} h`} of work/day</div>
+              <div style={{ fontFamily: "monospace", fontSize: 12, color: C.muted, minWidth: 120, textAlign: "right" }}>{hrs <= 24 ? "✓ 1 machine" : `needs ${n.toLocaleString("en-IN")} machines`}</div>
+            </div>
+          );
+        })}
+      </div>
+      <Stat label="T4 CLOUD COST PER DAY (FP16)" value={`₹${Math.round(perDay / (6.5e13 * util / 100) / 3600 * rate).toLocaleString("en-IN")}`} color={C.green} />
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Speeds are approximate published peaks; the price is an assumption, so check current rates. Unit 5.3 shows why chatbot answers often run slower than this FLOPs estimate (memory speed becomes the limit).</div>
+      <Insight color={C.green} title="The laptop CPU can't keep up with even a small college; a single GPU usually can.">
+        Same arithmetic, same model. The difference is entirely how many operations the machine does per second. The rest of this module opens up that
+        difference: CPU vs GPU.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 4: Full code + lab ──
+function CodeWidget() {
+  return (
+    <div>
+      <Frame>The complete estimator, runnable in any Python. In Lab 2A Part D you'll replace the guessed "laptop CPU" speed with one you measure yourself.</Frame>
+      <Code color={C.green} title="🧾 compute_bill.py">{`params            = 7e9      # model size
+students          = 5000
+questions_each    = 4
+words_per_answer  = 200
+utilisation       = 0.3
+rupees_per_hour   = 35       # assumption: check current cloud prices
+
+tokens_per_answer = words_per_answer / 0.75
+flops_per_day = 2 * params * tokens_per_answer * students * questions_each
+print(f"Work per day: {flops_per_day:.2e} FLOPs")
+
+machines = {"laptop CPU": 0.2e12, "T4 FP32": 8.1e12, "T4 FP16": 65e12, "A100 FP16": 312e12}
+for name, peak in machines.items():
+    hours = flops_per_day / (peak * utilisation) / 3600
+    fits = "fits in a day" if hours <= 24 else f"needs {int(hours // 24) + 1} machines"
+    print(f"{name:10s} {hours:10.1f} h/day   {fits}")
+
+t4 = flops_per_day / (65e12 * utilisation) / 3600
+print(f"T4 cloud cost: about ₹{t4 * rupees_per_hour:,.0f} per day")`}</Code>
+      <div style={{ marginTop: 12, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
+        <b style={{ color: C.text }}>Challenge upgrades:</b> (1) add a peak hour, when 40% of the day's questions arrive in one hour: how many GPUs do you need then?
+        (2) Add a one-time training cost using 6 × parameters × tokens (Unit 2.2).
+      </div>
+      <LabCard part="D" title="Measure your own CPU's speed"
+        what="Time matrix multiplication in plain Python and in NumPy for growing sizes, plot time against n, and compute your machine's real GFLOPS = 2n³ ÷ time. Then put that number into the estimator."
+        expect="plain Python reaching only tens of MFLOPS, NumPy reaching tens to hundreds of GFLOPS, and time growing about 8× when n doubles." />
+      <Insight color={C.orange} title="Halfway up Module 2: you can now put a number on AI's hunger.">
+        Next you'll meet the machine built to feed it.
+      </Insight>
     </div>
   );
 }
 
 const QUESTIONS = [
-  { q: "80% of a program can be sped up 4×. What is the overall speed-up?", options: ["4×", "3.2×", "2.5×", "1.8×"], answer: 2, explain: "S = 1 / (0.2 + 0.8/4) = 1 / (0.2 + 0.2) = 1 / 0.4 = 2.5×." },
-  { q: "95% of a program is parallel. With an infinitely fast GPU, the best possible speed-up is…", options: ["95×", "20×", "100×", "Infinite"], answer: 1, explain: "Ceiling = 1 / (1 − p) = 1 / 0.05 = 20×. The serial 5% never shrinks." },
-  { q: "A GPU training job shows the GPU busy only 30% of the time. What is the most likely bottleneck?", options: ["The GPU is too slow", "CPU-side data loading and preprocessing", "Too much GPU memory", "The learning rate"], answer: 1, explain: "The GPU sits waiting for data. Speed up the input pipeline (for example with more DataLoader workers) before buying a faster GPU." },
-  { q: "Which part should you optimise first?", options: ["The smallest part", "The part that takes the largest share of the time", "The part that's easiest to explain", "Whichever runs on the CPU"], answer: 1, explain: "Amdahl says the gain is limited by the fraction you improve. Start with the biggest slice of time." },
+  { q: "A 7-billion-parameter model writes a 300-token answer. About how many FLOPs is that?", options: ["2.1 × 10⁹", "4.2 × 10¹²", "2.1 × 10¹²", "7 × 10⁹"], answer: 1, explain: "2 × 7 × 10⁹ × 300 = 4.2 × 10¹² FLOPs." },
+  { q: "A machine's peak is 10 TFLOPS but your program reaches 30% of it. What speed should you use in the estimate?", options: ["10 TFLOPS", "3 TFLOPS", "30 TFLOPS", "0.3 TFLOPS"], answer: 1, explain: "Effective speed = peak × utilisation = 10 × 0.3 = 3 TFLOPS." },
+  { q: "The bot needs 48 GPU-hours of work every day. How many GPUs must run round the clock?", options: ["1", "2", "24", "48"], answer: 1, explain: "Each GPU gives 24 hours a day: 48 ÷ 24 = 2 GPUs. This only works because different students' questions are independent and can run in parallel." },
+  { q: "Why doesn't the helpdesk estimate include a backward pass?", options: ["It's too small to matter", "Answering questions is inference; the backward pass is only needed for training", "GPUs skip it automatically", "Chatbots have no layers"], answer: 1, explain: "Using a trained model is forward-only (Unit 2.2). Backward passes and updates belong to training." },
 ];
 const RESULT = {
-  perfect: "Perfect! You can predict real-world speed-ups.",
-  good: "Good. Replay 'The Law' and drag p close to 100%.",
-  low: "Revisit 'The Dosa Kitchen': the part you can't parallelise decides everything.",
-  done: "Unit 2.4 Complete!",
-  body: "You can apply Amdahl's law, find the ceiling 1 / (1 − p), and choose what to optimise.",
-  next: "Next up: Unit 2.C — Capstone: CPU or GPU?",
-  teaser: "Put it all together: for any job, decide where it should run, then prove it on a real GPU.",
+  perfect: "Perfect! You can size an AI deployment like an engineer.",
+  good: "Good. Replay 'Play It' and push the sliders to extremes.",
+  low: "Revisit 'Build in Steps': one answer → one day → machines.",
+  done: "Unit 2.4 Complete! 🍔",
+  body: "You can count AI's work, separate training from inference, spot the parallelism, and estimate time and cost on real machines.",
+  next: "Next up: Unit 2.5 — Latency vs Throughput.",
+  teaser: "Why does a chip with thousands of 'slow' cores beat a CPU with a few fast ones? Time to race them.",
 };
 
 const UNIT_WORDS = [
-  ["p", "parallel fraction", "The share of a program's time that can be sped up.", "new here"],
-  ["s", "speed-up of the parallel part", "How many times faster that part gets (for example on a GPU).", "new here"],
-  ["S", "overall speed-up", "Old total time ÷ new total time.", "new here"],
-  ["num_workers", "a DataLoader setting", "How many CPU processes load data in parallel in PyTorch.", "new here"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A machine's speed.", "from Unit 2.1"],
+  ["A100", "NVIDIA A100", "A data-centre GPU, much bigger than Colab's T4.", "new here"],
+  ["GPU-hour", "one GPU used for one hour", "How cloud companies charge for GPUs.", "new here"],
 ];
 
 // ── Quiz ──
@@ -325,10 +358,10 @@ function TextbookNote() {
 
 export default function Unit2_4({ student, onUnitComplete }) {
   const sections = [
-    { id: "s0", label: "100× but only 3×?" },
-    { id: "s1", label: "The Law" },
-    { id: "s2", label: "The Dosa Kitchen" },
-    { id: "s3", label: "What to Optimise?" },
+    { id: "s0", label: "The Mission" },
+    { id: "s1", label: "Build in Steps" },
+    { id: "s2", label: "Play It" },
+    { id: "s3", label: "Full Code & Lab" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -338,10 +371,10 @@ export default function Unit2_4({ student, onUnitComplete }) {
   const quizIdx = sections.length - 1;
 
   const content = [
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🤨 100× Faster, But Only 3× Overall?</h3><NeedWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚖️ Amdahl's Law — S = 1 / ((1 − p) + p/s)</h3><LawWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🥞 The Dosa Kitchen — the grinder is the bottleneck</h3><KitchenWidget /></div>,
-    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 What Should You Optimise?</h3><OptimiseWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎯 The Mission — the College Helpdesk Bot</h3><MissionWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🪜 Build in Steps — one answer → one day → money</h3><BuildWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>▶️ Play It — your compute estimator</h3><PlayWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and measure your own CPU</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
       <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.4.</p>
@@ -352,10 +385,10 @@ export default function Unit2_4({ student, onUnitComplete }) {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, paddingBottom: 40 }}>
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⚖️</div>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
           <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.4</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Amdahl's Law</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: The Compute Bill</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
       </div>

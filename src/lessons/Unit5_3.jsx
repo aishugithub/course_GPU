@@ -219,7 +219,7 @@ function ActWidget() {
         </div>
       </div>
       <Insight color={C.teal} title="Chatbot speed is set by memory bandwidth, not FLOPS. That's why INT8/INT4 quantisation makes chatbots faster.">
-        Halve the bytes per weight and you double the tokens per second. This is also why Unit 1.C's FLOPs-only estimate was too optimistic, as
+        Halve the bytes per weight and you double the tokens per second. This is also why Unit 2.4's FLOPs-only estimate was too optimistic, as
         promised.
       </Insight>
       <LabCard part="C" title="Plot your own roofline"

@@ -256,7 +256,7 @@ const RESULT = {
 };
 
 const UNIT_WORDS = [
-  ["warp", "a group of 32 threads", "They share one instruction stream and move in lock-step.", "from Unit 2.3"],
+  ["warp", "a group of 32 threads", "They share one instruction stream and move in lock-step.", "from Unit 2.7"],
   ["mask", "active mask", "Which lanes of a warp are switched on for the current instruction.", "new here"],
   ["fmaxf", "floating-point maximum (CUDA C)", "Returns the larger of two floats, with no branch.", "new here"],
   ["CuPy", "a NumPy-like library for NVIDIA GPUs", "Lets Python run small CUDA kernels, used in the lab.", "new here"],

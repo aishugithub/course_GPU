@@ -176,7 +176,7 @@ function OverlapWidget() {
       </div>
       <Insight color={C.green} title="Overlap turns 'prep + train' into 'whichever is slower'.">
         This is what PyTorch's DataLoader does with <code>num_workers</code> (CPU processes preparing batches in the background) and
-        <code> pin_memory=True</code> + <code>.to("cuda", non_blocking=True)</code> (copies that run while the GPU computes). It's Amdahl's law (Unit 2.4)
+        <code> pin_memory=True</code> + <code>.to("cuda", non_blocking=True)</code> (copies that run while the GPU computes). It's Amdahl's law (Unit 2.8)
         fought with parallelism.
       </Insight>
     </div>
@@ -247,7 +247,7 @@ const UNIT_WORDS = [
   ["stream", "a CUDA command queue", "GPU commands in one stream run in order; the CPU keeps going.", "new here"],
   ["sync", "synchronise", "Make the CPU wait until the GPU's queued work is finished.", "new here"],
   ["non_blocking", "a PyTorch copy option", "Lets a copy from pinned memory run without making the CPU wait.", "new here"],
-  ["DataLoader", "PyTorch's batch loader", "Prepares batches, optionally with background CPU workers.", "from Unit 2.4"],
+  ["DataLoader", "PyTorch's batch loader", "Prepares batches, optionally with background CPU workers.", "from Unit 2.8"],
 ];
 
 // ── Quiz ──

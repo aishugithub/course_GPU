@@ -158,7 +158,7 @@ function ActWidget() {
   return (
     <div>
       <Frame>
-        Activations are the layer outputs saved for the backward pass (Unit 1.2). Their size is <b style={{ color: C.text }}>batch × (sum of layer widths) × bytes</b>, so
+        Activations are the layer outputs saved for the backward pass (Unit 2.2). Their size is <b style={{ color: C.text }}>batch × (sum of layer widths) × bytes</b>, so
         they grow with the batch, unlike the weights. Here's a 4-hidden-layer network like the ones in this course.
       </Frame>
       <Slider label={<>Batch size = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={8192} onChange={setB} color={C.orange} />
@@ -239,7 +239,7 @@ const RESULT = {
 
 const UNIT_WORDS = [
   ["Adam", "Adaptive Moment Estimation", "A popular optimiser that keeps two running averages (m, v) per parameter.", "new here"],
-  ["activations", "saved layer outputs", "Stored in forward, used in backward (Unit 1.2).", "from Unit 1.2"],
+  ["activations", "saved layer outputs", "Stored in forward, used in backward (Unit 2.2).", "from Unit 2.2"],
   ["LoRA", "Low-Rank Adaptation", "Fine-tuning by training small add-on matrices while the big model stays frozen.", "new here"],
   ["OOM", "Out Of Memory", "The 'CUDA out of memory' error.", "from Unit 5.4"],
   ["CUDA context", "the driver's per-process setup", "Takes a few hundred MB of GPU memory before any tensor exists.", "new here"],

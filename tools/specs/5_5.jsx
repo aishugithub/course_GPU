@@ -17,7 +17,7 @@ function MissionWidget() {
     <div>
       <Frame>
         Your project team must demo a clothing classifier (<b style={{ color: C.text }}>Fashion-MNIST</b>: 60,000 grey 28 × 28 photos of shirts, shoes, bags… in 10 classes)
-        tomorrow. The network is a wide version of what you built in Module 0: 784 → 1024 → 1024 → 10. The current code trains far too slowly to try ideas.
+        tomorrow. The network is a wide version of what you built in Module 1: 784 → 1024 → 1024 → 10. The current code trains far too slowly to try ideas.
         Your target: <b style={{ color: C.green }}>at least 5× faster per epoch, with the same accuracy</b>.
       </Frame>
       {TOOLS.map(([t, u], i) => {

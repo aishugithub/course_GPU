@@ -87,10 +87,10 @@ const tf = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : `${(s * 1e3).toFix
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["One thread per output element (SIMT)", "Unit 2.3"],
-  ["Threads are grouped into warps of 32", "Units 2.3, 3.2"],
+  ["One thread per output element (SIMT)", "Unit 2.7"],
+  ["Threads are grouped into warps of 32", "Units 2.7, 3.2"],
   ["The T4 has 40 SMs, each holding up to 32 warps at once", "Units 3.1, 3.3"],
-  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Units 1.1, 3.1"],
+  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Units 2.1, 3.1"],
   ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Unit 3.4"],
   ["Keep warps from diverging", "Unit 3.2"],
 ];

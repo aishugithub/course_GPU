@@ -144,7 +144,7 @@ function TensorWidget() {
         <Btn ghost onClick={() => setStep(0)}>↺ Reset</Btn>
       </div>
       <Insight color={C.orange} title="One Tensor Core does in one step what a CUDA core does in 64.">
-        Tensor Cores exist only because AI is matrix multiplication (Unit 0.5). They need lower-precision inputs (FP16 and smaller), which Unit 5.2
+        Tensor Cores exist only because AI is matrix multiplication (Unit 1.5). They need lower-precision inputs (FP16 and smaller), which Unit 5.2
         explains. PyTorch uses them automatically when the numbers are in FP16.
       </Insight>
     </div>
@@ -203,7 +203,7 @@ const RESULT = {
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["SM", "Streaming Multiprocessor", "One of the GPU's mini-processors; the T4 has 40.", "from Unit 2.3"],
+  ["SM", "Streaming Multiprocessor", "One of the GPU's mini-processors; the T4 has 40.", "from Unit 2.7"],
   ["FMA", "Fused Multiply-Add", "a × b + c in one instruction = 2 FLOPs (the GPU's MAC).", "new here"],
   ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats (IEEE 754, COA). Tensor Cores work on FP16.", "from COA"],
   ["GDDR6", "Graphics Double Data Rate 6 memory", "The T4's fast off-chip memory, 16 GB.", "new here"],

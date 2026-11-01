@@ -110,7 +110,7 @@ function NoticeWidget() {
   return (
     <div>
       <Frame>
-        Take the pass/fail neuron you trained in Unit 0.C and store its weights as <b style={{ color: C.orange }}>signed integers</b> with fewer and fewer bits
+        Take the pass/fail neuron you trained in Unit 1.C and store its weights as <b style={{ color: C.orange }}>signed integers</b> with fewer and fewer bits
         (each weight = integer × a shared scale). Does it still predict well?
       </Frame>
       <Slider label={<>Bits per weight = <b style={{ color: C.orange }}>{bits}</b> ({2 * levels + 1} possible values)</>} value={bits} min={2} max={16} onChange={setBits} color={C.orange} />

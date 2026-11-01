@@ -39,7 +39,7 @@ export default function App() {
   // Remembers the LAST unit opened even after we return to the dashboard
   // (activeUnit is cleared on "back", this is not). The dashboard uses it to
   // re-expand the module the learner just came from, instead of snapping back
-  // to Module 0. Persisted so a page reload also restores the right module.
+  // to the first module. Persisted so a page reload also restores the right module.
   const [lastUnitId, setLastUnitId]           = useState(() => {
     try { return localStorage.getItem('foothold_lastUnit_' + COURSE_CONFIG.courseId) || null; }
     catch { return null; }

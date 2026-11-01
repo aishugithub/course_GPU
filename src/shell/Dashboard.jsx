@@ -67,7 +67,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
   // Which module did the learner just come back from? If App handed us a
   // returnUnitId (the last lesson they opened), find its module so we can
   // re-expand it. This is what stops the dashboard from snapping back to
-  // Module 0 every time you leave a lesson.
+  // the first module every time you leave a lesson.
   const returnModuleId = returnUnitId
     ? COURSE_CONFIG.modules.find(m => m.units.some(u => u.unitId === returnUnitId))?.moduleId
     : null;

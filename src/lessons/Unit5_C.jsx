@@ -96,7 +96,7 @@ function planFor(pk, params, amount, prec, g) {
   } else {
     memGB = P * 16 / 1e9 + P * 2 / 1e9 + 0.5;                 // mixed-precision Adam + rough activations (Unit 5.7)
     const tokens = pk === "tune" ? amount * 1e6 : amount * 1e5;
-    hours = (6 * P * tokens) / (g.tf * 0.35) / 3600;          // 6·N·D at 35% of peak (Unit 1.2)
+    hours = (6 * P * tokens) / (g.tf * 0.35) / 3600;          // 6·N·D at 35% of peak (Unit 2.2)
   }
   const n = Math.max(1, Math.ceil(memGB / g.mem));
   return { memGB, n, hours: hours / n, cost: (hours / n) * n * g.rs };
@@ -105,9 +105,9 @@ function planFor(pk, params, amount, prec, g) {
 // ── Section 1: The Mission ──
 const TOOLS = [
   ["Bytes per parameter: 2 to run (FP16), ~16 to train", "Unit 5.7"],
-  ["Training FLOPs ≈ 6 × parameters × tokens", "Unit 1.2"],
+  ["Training FLOPs ≈ 6 × parameters × tokens", "Unit 2.2"],
   ["Chatbot decoding is memory-bound: time per token ≈ model bytes ÷ bandwidth", "Unit 5.3"],
-  ["Real code reaches only part of the peak; Amdahl applies", "Units 1.C, 2.4"],
+  ["Real code reaches only part of the peak; Amdahl applies", "Units 2.4, 2.8"],
   ["FP16 / INT8 to save memory and time", "Unit 5.2"],
   ["Several GPUs when it doesn't fit on one", "Unit 5.9"],
 ];
@@ -283,10 +283,10 @@ const RESULT = {
 
 const UNIT_WORDS = [
   ["L4", "NVIDIA L4", "A newer, efficient data-centre GPU: 24 GB, FP16 Tensor Cores.", "new here"],
-  ["A100", "NVIDIA A100", "A large data-centre GPU: 40 or 80 GB, very high bandwidth.", "from Unit 1.C"],
+  ["A100", "NVIDIA A100", "A large data-centre GPU: 40 or 80 GB, very high bandwidth.", "from Unit 2.4"],
   ["distilgpt2", "a small GPT-2-style language model", "82 million parameters, small enough to run anywhere.", "new here"],
   ["transformers", "Hugging Face's model library", "Downloads and runs thousands of pretrained models.", "new here"],
-  ["GPU-hour", "one GPU used for one hour", "How cloud GPUs are priced.", "from Unit 1.C"],
+  ["GPU-hour", "one GPU used for one hour", "How cloud GPUs are priced.", "from Unit 2.4"],
 ];
 
 // ── Quiz ──
