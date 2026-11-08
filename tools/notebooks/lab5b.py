@@ -69,10 +69,7 @@ md("""
 
 We ask for a batch far too big for the T4 and **catch** the error so the notebook keeps running. (The sizes suit Colab's 15 GB T4; on a smaller GPU, halve them.)
 """),
-book(5, "H_OOM", replace=[
-    ("try_batch(50_000)   # fix 1: a smaller batch", "try_batch(100_000)   # fix 1: a smaller batch"),
-    ("try_batch(100_000, amp=True)", "try_batch(150_000, amp=True)"),
-]),
+book(5, "H_OOM"),
 md("""
 **The classic leak:** collecting model outputs during evaluation **without** `torch.no_grad()` keeps every batch's graph and activations alive.
 """),
