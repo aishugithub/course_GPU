@@ -595,6 +595,37 @@ A machine that reads the marks handwritten on answer sheets: a 784 → 128 → 1
 Everything you learned is here: tensors (B), neurons and layers (C, E), a loss and gradient descent (D).
 
 We **time every epoch**. Keep this number — in Module 2 you will run the same thing on a GPU.
+
+### F0 · How sure is it? Answers as probabilities
+Our pass/fail neuron never said PASS: it said a number like **0.94**, a **probability** (0 = never, 1 = certain; the probabilities of all the possible answers add up to 1).
+Sigmoid gives the probability of YES for a two-way question. For **many** answers (a grade A, B, C or F; a digit 0–9; a chatbot's next word) the network has one output neuron per answer, and **softmax** turns their scores into probabilities:
+**e to the power of each score** (all become positive), then **divide by the total** (they add up to 1).
+"""),
+code("""
+scores = np.array([2.0, 1.0, 0.1, -1.0])   # the 4 output neurons' scores for one student: A, B, C, F
+e = np.exp(scores)   # softmax, move 1: e to the power of each score (all become positive)
+probs = e / e.sum()   # softmax, move 2: divide by the total, so the four add up to 1
+print(probs.round(3), "total:", probs.sum().round(3))   # the four probabilities, rounded, and their total
+print("loss if the student really got a B:", round(-np.log(probs[1]), 3))   # cross-entropy: −log(probability of the right answer)
+"""),
+md("""
+A chatbot does the same over its whole dictionary, then **draws** the next word at random using those odds. The **temperature** T divides every score by T before softmax.
+Four candidate words after *"The exam was …"*, with the same scores: easy, hard, long, cancelled.
+"""),
+code("""
+for T in [0.5, 1.0, 2.0]:   # try three temperatures: low, normal and high
+    p = np.exp(scores / T) / np.exp(scores / T).sum()   # divide the scores by T, then softmax as before
+    print("T =", T, p.round(3))   # the four probabilities at this temperature
+"""),
+md("""
+### ✏️ YOUR TURN (F0)
+1. Change the score for F from −1.0 to 3.0 and re-run. Which grade wins now, and do the four still add up to 1?
+2. At T = 0.5 and at T = 2.0, how likely is *"cancelled"*? Why can the same question get different answers from a chatbot?
+
+*Your answers:*
+
+### F1 · Your first real AI: reading handwritten digits
+The network below ends with **10 output neurons, one per digit**. `nn.CrossEntropyLoss` applies softmax to those 10 scores and takes −log of the right digit's probability, all in one step.
 """),
 code("""
 import torch   # PyTorch: the toolkit for building and training AI models
@@ -660,6 +691,14 @@ for i in range(10):   # the first 10 pictures
 plt.suptitle("The network's guesses (green = right, red = wrong)")   # a title over all the pictures
 plt.show()   # draw it
 """),
+md("How sure is the network about each of those digits? Softmax turns its 10 scores into 10 probabilities:"),
+code("""
+with torch.no_grad():   # just checking, not learning: keep no history
+    probs = torch.softmax(model(images[:10]), dim=1)   # softmax over the 10 scores of each picture (dim=1 = along each row)
+for i in range(10):   # the same 10 pictures
+    best = probs[i].argmax().item()   # the digit with the highest probability = the guess
+    print(f"picture {i}: guess {best}, {probs[i, best].item():.1%} sure   (real digit {labels[i].item()})")   # the guess, how sure, and the truth
+"""),
 md("""
 ### ✏️ YOUR TURN (F) — record your results
 | | Your value |
@@ -667,8 +706,11 @@ md("""
 | Test accuracy after 3 epochs | |
 | Seconds per epoch on the CPU | |
 | Parameters in the model | |
+| The lowest "% sure" among the 10 test pictures | |
 
 Then: change `nn.Linear(784, 128)` and `nn.Linear(128, 10)` to use **512** hidden neurons and re-run both cells. What happens to the time per epoch?
+
+Look at the "% sure" list. Is any guess **wrong yet very sure**? What does that tell you about a model that says it is "97% sure"?
 
 *Your answers:*
 
