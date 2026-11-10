@@ -16,4 +16,7 @@ Started 9 Nov 2026. Nothing here blocks the Foothold update. Tick an item off wh
 - [ ] **Code.gs is ready** (10 Nov: adds Unit1_6 and Unit1_7 and the new Step 5 title). Re-paste it into the Sheet's Apps Script, run "Foothold GPU → 1. Set up sheets", and redeploy as a new version of the same deployment.
 - [ ] **Look through the updated site yourself** (`npm run dev`), especially the new lessons 1.6 and 1.7 and the new tabs in 1.4, 1.C, 3.1 and 5.7.
 - [ ] **Optional extras from the book, not yet on the site:** the "You'll see this written as…" notation boxes (Step 1), the Nila Asks boxes in 3.3 and 4.3, the Step 5 "just recognise" term marks, and new quiz questions for the 3.1 / 5.3 / 5.7 / 5.9 additions (their quizzes are unchanged).
-- [ ] **Push to GitHub** (`aishugithub/course_GPU`, public). The Colab buttons only work after the push. The book stays out of the repo (gitignored).
+- [x] **Pushed to GitHub** on 10 Nov (Colab buttons now work). ~~Push to GitHub~~ (`aishugithub/course_GPU`, public). The Colab buttons only work after the push. The book stays out of the repo (gitignored).
+
+## Backups
+- [x] **The book has its own private repo:** `aishugithub/a-billion-small-steps-book` (10 Nov). The book folder `course_GPU/book/` is its working copy; it stays gitignored in the public course repo. Commit and push it after each round of book work. Datasets, Colab run outputs and `build/` scratch are left out by its `.gitignore`.
