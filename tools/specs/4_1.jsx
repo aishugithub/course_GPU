@@ -1,5 +1,5 @@
 //@@META
-{"unit": "4.1", "module": 4, "title": "Host & Device on PCIe", "icon": "🔌", "lab": "Lab4_CPU_GPU_Teamwork.ipynb", "labNo": "4", "gpu": true}
+{"unit": "4.1", "module": 4, "title": "Host & Device on PCIe", "icon": "🔌", "lab": "CoreLab08_Hand_a_Job_to_the_GPU.ipynb", "labNo": "Core Lab 8", "gpu": true}
 //@@WIDGETS
 
 // ── Section 1: Need — the data is in the wrong building ──
@@ -37,7 +37,7 @@ const PARTS = {
   cpu: { t: "CPU (the host)", d: "Runs your Python program, makes decisions, and tells the GPU what to do. In CUDA language the CPU side is called the HOST.", c: C.orange },
   ram: { t: "Host memory (RAM)", d: "Where your program's variables, the dataset and NumPy arrays live, around 12 GB on Colab. The GPU can't compute directly on it.", c: C.orange },
   pcie: { t: "PCIe bus", d: "The slot the GPU card plugs into: a high-speed serial bus (COA Unit 5: standard I/O interfaces). The T4 uses PCIe Gen 3 ×16, about 16 GB/s in theory and around 12 GB/s in practice. Copies are done by DMA engines on the GPU, without the CPU moving each byte.", c: C.yellow },
-  gpu: { t: "GPU (the device)", d: "The SMs, cores and Tensor Cores from Module 3. In CUDA language the GPU side is called the DEVICE.", c: C.green },
+  gpu: { t: "GPU (the device)", d: "The SMs, cores and Tensor Cores from Step 3. In CUDA language the GPU side is called the DEVICE.", c: C.green },
   vram: { t: "Device memory (GDDR6)", d: "The GPU's own 16 GB, delivering 320 GB/s, about 25× faster than PCIe. Your model weights and tensors must be here for the GPU to use them.", c: C.green },
 };
 function SystemWidget() {
@@ -110,8 +110,8 @@ function CopyWidget() {
 // ── Section 4: Other ways to connect ──
 const VARIANTS = [
   { t: "Pinned (page-locked) host memory", c: C.teal, d: "Normal RAM can be moved around by the operating system's paging, so the GPU's DMA engine can't read it directly: the driver first copies it into a locked staging area. Pinned memory is locked in place, so DMA reads it directly. Copies get faster and can overlap with computing. In PyTorch: DataLoader(pin_memory=True)." },
-  { t: "Integrated GPU / unified memory", c: C.purple, d: "Phones, laptops with integrated graphics and Apple M-series chips put the CPU and GPU on one chip sharing ONE memory: no PCIe copy at all. The trade-off is less total memory bandwidth than a big discrete GPU." },
-  { t: "NVLink", c: C.green, d: "NVIDIA's direct GPU-to-GPU link in data-centre servers: hundreds of GB/s, many times faster than PCIe. It lets 8 GPUs work on one model (Unit 5.9)." },
+  { t: "Shared (unified) physical memory", c: C.purple, d: "Phones, Apple M-series laptops and small boards such as NVIDIA Jetson put the CPU and GPU on one chip sharing ONE physical memory: no PCIe copy at all. The trade-off is less total memory bandwidth than a big discrete GPU. Don't confuse this with CUDA's Unified Memory (managed memory, cudaMallocManaged): that gives a separate GPU and the CPU one shared address, so your code needs no explicit copies, but the data still travels over PCIe; the driver moves it for you when the other side touches it." },
+  { t: "NVLink", c: C.green, d: "NVIDIA's direct GPU-to-GPU link in data-centre servers: hundreds of GB/s, many times faster than PCIe. It lets 8 GPUs work on one model (Lesson 5.9)." },
   { t: "Newer PCIe generations", c: C.yellow, d: "Each PCIe generation roughly doubles the speed: Gen 3 ≈ 16 GB/s, Gen 4 ≈ 32 GB/s, Gen 5 ≈ 64 GB/s for ×16 (theoretical, approximate). Still far below the GPU's own memory." },
 ];
 function VariantsWidget() {
@@ -136,7 +136,7 @@ function VariantsWidget() {
 [["Wrong Building", "🏢 The Data Is in the Wrong Building", "NeedWidget"],
  ["Host & Device", "🔌 Host & Device — the system picture", "SystemWidget"],
  ["What a Copy Costs", "📦 What a Copy Costs — PCIe vs GPU memory", "CopyWidget"],
- ["Variations", "🔀 Variations — pinned memory, unified memory, NVLink", "VariantsWidget"]]
+ ["Variations", "🔀 Variations — pinned memory, shared memory chips, NVLink", "VariantsWidget"]]
 //@@QUIZ
 const QUESTIONS = [
   { q: "In CUDA terminology, the 'host' is…", options: ["The GPU", "The CPU and its memory", "The PCIe bus", "The cloud server"], answer: 1, explain: "Host = CPU + RAM; device = GPU + its own memory." },
@@ -148,9 +148,9 @@ const RESULT = {
   perfect: "Perfect! You understand the host-device split.",
   good: "Good. Replay 'What a Copy Costs' and push the operations slider.",
   low: "Revisit 'Host & Device': two memories, one narrow bus.",
-  done: "Unit 4.1 Complete!",
-  body: "You can explain host vs device, the PCIe link, copy costs, and pinned memory, unified memory and NVLink.",
-  next: "Next up: Unit 4.2 — The Five Steps of Offloading.",
+  done: "Lesson 4.1 Complete!",
+  body: "You can explain host vs device, the PCIe link, copy costs, and pinned memory, shared (unified) physical memory and NVLink.",
+  next: "Next up: Lesson 4.2 — The Five Steps of Offloading.",
   teaser: "Allocate, copy in, launch, copy out, free: exactly how the CPU hands a job to the GPU.",
 };
 //@@WORDS
@@ -158,6 +158,6 @@ const UNIT_WORDS = [
   ["host / device", "CPU side / GPU side", "CUDA's names for the two halves of the system.", "new here"],
   ["PCIe", "Peripheral Component Interconnect Express", "The bus the GPU card plugs into (COA Unit 5).", "from COA"],
   ["DMA", "Direct Memory Access", "Hardware that copies data without the CPU moving each byte (COA Unit 5).", "from COA"],
-  ["VRAM / GDDR6", "the GPU's own memory", "Video RAM; on the T4 it's 16 GB of GDDR6.", "from Unit 3.1"],
+  ["VRAM / GDDR6", "the GPU's own memory", "Video RAM; on the T4 it's 16 GB of GDDR6.", "from Lesson 3.1"],
   ["NVLink", "NVIDIA's GPU-to-GPU link", "Much faster than PCIe; used in multi-GPU servers.", "new here"],
 ];

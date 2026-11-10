@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5B_GPUs_in_Real_Projects.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab12_Will_It_Fit.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5B · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 12 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5B in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,24 +68,25 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L Ch 13 · NVIDIA's nvidia-smi documentation";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.8";
+const TEXTBOOK = "D2L Ch 13";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Read the dashboard ──
 const SMI = [
-  { k: "driver", txt: "| NVIDIA-SMI 550.54     Driver Version: 550.54     CUDA Version: 12.4     |", d: "The driver version and the newest CUDA version it supports (Unit 5.6). PyTorch's CUDA build must not be newer than this." },
+  { k: "driver", txt: "| NVIDIA-SMI 550.54     Driver Version: 550.54     CUDA Version: 12.4     |", d: "The driver version and the newest CUDA version it supports (Lesson 5.6). PyTorch's CUDA build must not be newer than this." },
   { k: "sep", txt: "|-----------------------------+----------------------+----------------------|", d: null },
-  { k: "name", txt: "|   0  Tesla T4         Off  | 00000000:00:04.0 Off |                    0 |", d: "GPU number 0, its name, and its PCIe bus address (Unit 4.1). Servers with several GPUs list each one on its own row." },
+  { k: "name", txt: "|   0  Tesla T4         Off  | 00000000:00:04.0 Off |                    0 |", d: "GPU number 0, its name, and its PCIe bus address (Lesson 4.1). Servers with several GPUs list each one on its own row." },
   { k: "status", txt: "| N/A   67C    P0    52W /  70W |  9817MiB / 15360MiB |     87%      Default |", d: null },
   { k: "sep2", txt: "+-----------------------------+----------------------+----------------------+", d: null },
   { k: "proc", txt: "|    0   N/A  N/A    1234      C   /usr/bin/python3                 9814MiB |", d: "Which processes are using the GPU and how much memory each holds. On Colab, that's your notebook's Python." },
 ];
 const FIELDS = [
   { k: "temp", t: "67C", d: "Temperature. GPUs slow themselves down if they get too hot (above about 85 °C for many cards)." },
-  { k: "power", t: "52W / 70W", d: "Power now / power limit. The T4's 70 W limit is low, which is why it's so common in cloud servers (Unit 2.6: power is the real constraint)." },
+  { k: "power", t: "52W / 70W", d: "Power now / power limit. The T4's 70 W limit is low, which is why it's so common in cloud servers (Lesson 2.6: power is the real constraint)." },
   { k: "mem", t: "9817MiB / 15360MiB", d: "Memory used / total. Includes PyTorch's cache and the CUDA context, so it's usually MORE than your tensors need (section 2)." },
-  { k: "util", t: "87%", d: "GPU-Util: the share of recent time in which at least one kernel was running. NOT the share of cores busy: a tiny kernel running non-stop shows 100%. Low numbers mean a starving GPU (Unit 4.C)." },
+  { k: "util", t: "87%", d: "GPU-Util: the share of recent time in which at least one kernel was running. NOT the share of cores busy: a tiny kernel running non-stop shows 100%. Low numbers mean a starving GPU (Lesson 4.C)." },
 ];
 function SmiWidget() {
   const [sel, setSel] = useState("util");
@@ -124,10 +125,10 @@ function SmiWidget() {
 
 // ── Section 2: Anatomy of the OOM message ──
 const OOM_PARTS = [
-  { t: "torch.OutOfMemoryError: CUDA out of memory.", d: "PyTorch asked the driver for GPU memory (step 1, allocate, Unit 4.2) and didn't get it." },
+  { t: "torch.OutOfMemoryError: CUDA out of memory.", d: "PyTorch asked the driver for GPU memory (step 1, allocate, Lesson 4.2) and didn't get it." },
   { t: "Tried to allocate 2.00 GiB.", d: "The size of the ONE request that failed: often a big activation tensor from a large batch. It's not the total you need." },
   { t: "GPU 0 has a total capacity of 14.74 GiB of which 1.13 GiB is free.", d: "The T4 has 16 GB, but about 15 GiB is usable (GiB = 2³⁰ bytes, a little more than a GB), and only 1.13 GiB is free right now." },
-  { t: "Of the allocated memory 12.90 GiB is allocated by PyTorch,", d: "Memory held by live tensors: weights, gradients, optimiser states, activations (Unit 5.7)." },
+  { t: "Of the allocated memory 12.90 GiB is allocated by PyTorch,", d: "Memory held by live tensors: weights, gradients, optimiser states, activations (Lesson 5.7)." },
   { t: "and 398.00 MiB is reserved by PyTorch but unallocated.", d: "PyTorch's caching allocator keeps freed blocks to reuse quickly instead of returning them to the driver. nvidia-smi counts these as 'used'." },
 ];
 function OomWidget() {
@@ -206,7 +207,7 @@ for x, y in loader:
 // ── Section 4: The OOM debugging flowchart ──
 const FLOW = {
   start: { q: "When does the OOM happen?", opts: [["On the very first batch", "first"], ["After many steps (it worked at first)", "later"], ["Only during evaluation", "evalq"]] },
-  first: { a: "The job is simply too big: a sizing problem (Unit 5.7).", fixes: ["Halve the batch size (then use gradient accumulation to keep the effective batch)", "Turn on mixed precision (autocast)", "Use gradient checkpointing", "For running a big model: quantise to INT8/INT4"] },
+  first: { a: "The job is simply too big: a sizing problem (Lesson 5.7).", fixes: ["Halve the batch size (then use gradient accumulation to keep the effective batch)", "Turn on mixed precision (autocast)", "Use gradient checkpointing", "For running a big model: quantise to INT8/INT4"] },
   later: { a: "Memory grows step by step: a leak, or inputs that keep getting bigger.", fixes: ["Look for tensors kept across steps: store outputs under no_grad or with .detach()", "Accumulate with total_loss += loss.detach(), not += loss", "Check whether sequence lengths or image sizes vary: the biggest batch sets the peak"] },
   evalq: { a: "Evaluation is building graphs it never uses.", fixes: ["Wrap evaluation in with torch.no_grad(): (or torch.inference_mode())", "Use a smaller evaluation batch if needed", "Call model.eval() too (for layers like dropout), though that alone doesn't save memory"] },
 };
@@ -237,7 +238,7 @@ function FlowWidget() {
       <Insight color={C.green} title="First batch → too big. Grows over time → leak. Only in evaluation → missing no_grad.">
         Three questions solve the vast majority of out-of-memory errors.
       </Insight>
-      <LabCard part="C" title="Cause an OOM, read it, fix it, and catch a leak"
+      <LabCard part="B" title="Cause an OOM, read it, fix it, and catch a leak"
         what="Deliberately trigger an OOM with a huge batch, catch the error and read its numbers, fix it with a smaller batch and with autocast; then reproduce the preds.append(model(x)) leak, watch memory_allocated() climb, and fix it with no_grad."
         expect="a real OutOfMemoryError message, a working run after each fix, and a climbing memory curve that goes flat after the leak fix." />
     </div>
@@ -254,18 +255,18 @@ const RESULT = {
   perfect: "Perfect! You can diagnose GPU memory problems like a pro.",
   good: "Good. Replay 'Classic Leaks' and fix both bugs.",
   low: "Revisit 'The Debugging Flowchart': first batch, over time, or evaluation only?",
-  done: "Unit 5.8 Complete!",
+  done: "Lesson 5.8 Complete!",
   body: "You can read nvidia-smi, decode an OOM message, tell allocated from reserved memory, and find and fix leaks.",
-  next: "Next up: Unit 5.9 — Many GPUs & Other Accelerators.",
+  next: "Next up: Lesson 5.9 — Many GPUs & Other Accelerators.",
   teaser: "How do thousands of GPUs train one model together, and what are TPUs and NPUs?",
 };
 
 const UNIT_WORDS = [
-  ["nvidia-smi", "NVIDIA System Management Interface", "Command-line dashboard for NVIDIA GPUs.", "from Unit 2.5"],
+  ["nvidia-smi", "NVIDIA System Management Interface", "Command-line dashboard for NVIDIA GPUs.", "from Lesson 2.5"],
   ["GiB / MiB", "gibibyte / mebibyte", "2³⁰ / 2²⁰ bytes, slightly more than GB / MB.", "new here"],
   ["GPU-Util", "GPU utilisation", "Share of time a kernel was running.", "new here"],
   ["no_grad", "torch.no_grad()", "Turns off graph-building, for evaluation and inference.", "new here"],
-  ["detach", "tensor.detach()", "The same numbers, cut off from the computation graph.", "from Unit 4.C"],
+  ["detach", "tensor.detach()", "The same numbers, cut off from the computation graph.", "from Lesson 4.C"],
 ];
 
 // ── Quiz ──
@@ -326,7 +327,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -347,9 +348,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -375,7 +376,7 @@ export default function Unit5_8({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧭 The OOM Debugging Flowchart</h3><FlowWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.8.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.8.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -385,7 +386,7 @@ export default function Unit5_8({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🩺</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.8</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.8</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>nvidia-smi & Out-of-Memory</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

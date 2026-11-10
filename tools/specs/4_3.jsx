@@ -1,5 +1,5 @@
 //@@META
-{"unit": "4.3", "module": 4, "title": "Kernels, Grids, Blocks, Threads", "icon": "🏟️", "lab": "Lab4_CPU_GPU_Teamwork.ipynb", "labNo": "4", "gpu": true}
+{"unit": "4.3", "module": 4, "title": "Kernels, Grids, Blocks, Threads", "icon": "🏟️", "lab": "CoreLab08_Hand_a_Job_to_the_GPU.ipynb", "labNo": "Core Lab 8", "gpu": true}
 //@@WIDGETS
 
 // ── Section 1: Need — a million threads need an address system ──
@@ -30,7 +30,7 @@ function NeedWidget() {
         ))}
       </div>
       <Insight color={C.purple} title="Grid of blocks, block of threads: a two-level address system.">
-        Blocks are the unit the GPU hands to SMs (each block runs entirely on one SM); threads in a block can share 'shared memory' (Unit 3.4).
+        Blocks are the unit the GPU hands to SMs (each block runs entirely on one SM); threads in a block can share 'shared memory' (Lesson 3.4).
       </Insight>
     </div>
   );
@@ -86,6 +86,42 @@ relu<<<(n + 255) / 256, 256>>>(x, y, n);`}</Code>
       <Insight color={C.yellow} title="Round the number of blocks UP, then let the extra threads do nothing with if (i < n).">
         Forgetting the check is the classic beginner bug: the last block's extra threads write past the end of the array.
       </Insight>
+      <ErrorCheck />
+    </div>
+  );
+}
+
+// ── Why was there no error message? CUDA error checking (book 4.3) ──
+function ErrorCheck() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Btn ghost onClick={() => setOpen((v) => !v)}>{open ? "▲ Hide" : "▼ Nila asks: \"Why was there no error message?\""}</Btn>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <Frame>
+            In the lab, the extra threads wrote into spare slots that were our own memory, so the damage was silent. Past the end of a real array the GPU
+            may stop with "an illegal memory access was encountered". But a launch is <b style={{ color: C.text }}>asynchronous</b> (Lesson 4.4): the CPU
+            does not wait, so the error is reported at the <b style={{ color: C.text }}>next</b> CUDA call, often far from the real bug. Two habits help.
+          </Frame>
+          <Code color={C.accent} title="1 · IN CUDA C: CHECK STRAIGHT AFTER EVERY LAUNCH">{`// launch the kernel: the CPU queues it and does not wait
+relu<<<(n + 255) / 256, 256>>>(x, y, n);
+// did the launch itself fail (a bad block size, no GPU, ...)?
+cudaError_t err = cudaGetLastError();
+// if not, wait for the kernel and collect any error it hit while running
+if (err == cudaSuccess) err = cudaDeviceSynchronize();
+// turn the error code into words
+if (err != cudaSuccess) printf("CUDA error: %s\\n", cudaGetErrorString(err));`}</Code>
+          <div style={{ height: 8 }} />
+          <Code color={C.green} title="2 · IN PYTORCH OR CUPY: MAKE EVERY LAUNCH WAIT (DEBUGGING ONLY)">{`# set this before the first CUDA call (in Colab: in the first cell, then restart the session)
+import os
+# every launch now waits for its kernel, so an error appears at the line that caused it
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"`}</Code>
+          <Insight color={C.orange} title="CUDA_LAUNCH_BLOCKING=1 makes everything slower: use it only while hunting a bug.">
+            NVIDIA's compute-sanitizer tool goes further: it runs your program and reports every out-of-bounds read or write.
+          </Insight>
+        </div>
+      )}
     </div>
   );
 }
@@ -118,7 +154,7 @@ function BlockSizeWidget() {
       </div>
       <Insight color={C.green} title="Use a multiple of 32, typically 128–512. 256 is the common default.">
         Too small (32) hits the 16-blocks-per-SM limit, so half the warp slots stay empty. A non-multiple of 32 (100) wastes lanes in every
-        block. (Real kernels can be limited by registers too, Unit 3.3.)
+        block. (Real kernels can be limited by registers too, Lesson 3.3.)
       </Insight>
     </div>
   );
@@ -160,7 +196,7 @@ dim3 grid((width + 15) / 16, (height + 15) / 16);
 brighten<<<grid, block>>>(img, width, height, 0.2f);`}</Code>
       <Insight title="One thread per pixel, organised in 2-D tiles.">
         The same idea scales to a 4K photo (about 83 lakh pixels → 83 lakh threads) and to matrix multiplies, where each thread computes one output
-        cell. Unit 5.1 tiles a matrix multiply exactly like this.
+        cell. Lesson 5.1 tiles a matrix multiply exactly like this.
       </Insight>
       <LabCard part="C" title="Write and launch your first kernel"
         what="Write the ReLU kernel above in CuPy, launch it with block sizes 32, 100, 256 and 1024, check the answer against NumPy, and time each. Then remove the if (i < n) check on an array that isn't a multiple of the block size and see what happens."
@@ -184,9 +220,9 @@ const RESULT = {
   perfect: "Perfect! You can organise millions of GPU threads.",
   good: "Good. Replay 'The Index Formula' and switch off the safety check.",
   low: "Revisit 'Exam Halls': hall number × seats + seat = roll number.",
-  done: "Unit 4.3 Complete!",
+  done: "Lesson 4.3 Complete!",
   body: "You can compute global thread indices, launch enough blocks safely, choose good block sizes, and write 2-D kernels.",
-  next: "Next up: Unit 4.4 — Async Launch & Synchronization.",
+  next: "Next up: Lesson 4.4 — Async Launch & Synchronization.",
   teaser: "Your GPU timing says 0.02 ms for a huge matrix multiply. Too good to be true? It is. Find out why.",
 };
 //@@WORDS

@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab1_AI_Basics.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab02_How_a_Neuron_Learns.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 1 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 2 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 1 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 2 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L §3.1–3.4 (Loss and minibatch stochastic gradient descent)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 1.4";
+const TEXTBOOK = "D2L §3.1–3.4";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // Predict marks from study hours: marks = w × hours + 20  (bias fixed at 20 so there is ONE knob)
@@ -145,7 +146,7 @@ function NeedWidget() {
   return (
     <div>
       <Frame>
-        With one knob you can simply try every setting, as you just did. But the digit reader you will train in Lab 1 Part F has
+        With one knob you can simply try every setting, as you just did. But the digit reader you will train in Core Lab 3 has
         <b style={{ color: C.text }}> 1,01,770 knobs</b>. Suppose each knob had only 10 possible positions, and the computer tested 100 crore (10⁹)
         settings every second. Drag the number of knobs.
       </Frame>
@@ -222,7 +223,7 @@ function NudgeWidget() {
       <div style={{ marginTop: 18, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
         <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Now try the nudge test on a STEP neuron</div>
         <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginBottom: 8 }}>
-          The pass/fail neuron from Unit 1.3: z = 1 × hours + b on the 12 students. With the step activation the loss is "fraction of
+          The pass/fail neuron from Lesson 1.3: z = 1 × hours + b on the 12 students. With the step activation the loss is "fraction of
           students wrong". With sigmoid it is the average squared gap between the output (0…1) and the real answer. Nudge b by +0.01.
         </div>
         <Slider label={<>bias b = <b style={{ color: C.purple }}>{b.toFixed(1)}</b></>} value={b} min={-5} max={-1} step={0.1} onChange={(v) => { setB(v); setShownB(false); }} color={C.purple} />
@@ -293,7 +294,76 @@ function DescentWidget() {
   );
 }
 
-// ── Section 5: The training loop, traced ──
+// ── Section 5: Backpropagation by hand — pass the slope backward ──
+function BackpropWidget() {
+  const [x, setX] = useState(2);
+  const [stage, setStage] = useState(0);
+  const t = 5, w1 = 0.5, w2 = 3;
+  const h = w1 * x, y = w2 * h, L = (y - t) ** 2;
+  const dy = 2 * (y - t), dw2 = dy * h, dh = dy * w2, dw1 = dh * x;
+  const lossAt2 = (a, b) => (b * (a * x) - t) ** 2;
+  const n1 = (lossAt2(w1 + 0.001, w2) - L) / 0.001, n2 = (lossAt2(w1, w2 + 0.001) - L) / 0.001;
+  const nw1 = w1 - 0.01 * dw1, nw2 = w2 - 0.01 * dw2;
+  const f = (v) => (Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : v.toFixed(2));
+  const steps = [
+    ["Forward: h = w1 × x", `h = ${w1} × ${x} = ${f(h)}`, C.accent],
+    ["Forward: y = w2 × h", `y = ${w2} × ${f(h)} = ${f(y)}`, C.accent],
+    ["Forward: loss = (y − t)²", `loss = (${f(y)} − ${t})² = ${f(L)}`, C.yellow],
+    ["Backward: slope at y", `2 × (y − t) = 2 × (${f(y)} − ${t}) = ${f(dy)}`, C.orange],
+    ["Backward: slope for w2", `slope at y × h = ${f(dy)} × ${f(h)} = ${f(dw2)}`, C.orange],
+    ["Backward: passed back to h", `slope at y × w2 = ${f(dy)} × ${w2} = ${f(dh)}`, C.orange],
+    ["Backward: slope for w1", `slope at h × x = ${f(dh)} × ${x} = ${f(dw1)}`, C.orange],
+    ["Check with the nudge test (nudge 0.001)", `w1: ${n1.toFixed(3)}   w2: ${n2.toFixed(3)}   (backprop: ${f(dw1)} and ${f(dw2)})`, C.green],
+    ["One step, learning rate 0.01", `w1 = ${w1} − 0.01 × (${f(dw1)}) = ${nw1.toFixed(2)}   w2 = ${w2} − 0.01 × (${f(dw2)}) = ${nw2.toFixed(2)}   loss → ${lossAt2(nw1, nw2).toFixed(4)}`, C.purple],
+  ];
+  const box = (label, val, col) => (
+    <div style={{ textAlign: "center" }}>
+      <div style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${col}`, background: col + "18", color: C.text, fontFamily: "monospace", fontSize: 13 }}>{label}</div>
+      <div style={{ color: col, fontSize: 11.5, marginTop: 3, fontFamily: "monospace", minHeight: 16 }}>{val}</div>
+    </div>
+  );
+  const arrow = (txt) => <div style={{ color: C.muted, fontSize: 11.5, alignSelf: "flex-start", marginTop: 8 }}>→ {txt} →</div>;
+  return (
+    <div>
+      <Frame>
+        A real network has many knobs in a chain. Take the smallest chain with more than one: an input x goes through two weights, one after the other.
+        We want the answer t = 5; the knobs start at w1 = 0.5 and w2 = 3. Step forward (left to right), then <b style={{ color: C.orange }}>backward</b>, asking the
+        nudge-test question at every link: if this number grew a tiny bit, how much would the loss change?
+      </Frame>
+      <Slider label={<>input x = <b style={{ color: C.accent }}>{x}</b> (the book uses 2; try 3)</>} value={x} min={1} max={3} onChange={(v) => { setX(v); setStage(0); }} />
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", margin: "8px 0 12px" }}>
+        {box(`x = ${x}`, "", C.teal)}{arrow("× w1")}{box("h", stage >= 1 ? `h = ${f(h)}` : "", C.accent)}
+        {arrow("× w2")}{box("y", stage >= 2 ? `y = ${f(y)}` : "", C.accent)}{arrow("vs t = 5")}{box("loss", stage >= 3 ? `= ${f(L)}` : "", C.yellow)}
+      </div>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontFamily: "monospace", fontSize: 12.5, lineHeight: 1.9 }}>
+        {steps.slice(0, stage).map(([what, calc, col], i) => (
+          <div key={i}><span style={{ color: col }}>{what}:</span> <span style={{ color: C.text }}>{calc}</span></div>
+        ))}
+        {stage === 0 && <span style={{ color: C.muted }}>Press "Next" to start the forward pass.</span>}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <Btn onClick={() => setStage(Math.min(steps.length, stage + 1))} disabled={stage === steps.length}>Next ▶ ({stage} / {steps.length})</Btn>
+        <Btn ghost onClick={() => setStage(0)}>↺ Reset</Btn>
+      </div>
+      {stage >= 7 && (
+        <Insight color={C.green} title="That is the whole trick: at every link, multiply the slope by the number that link multiplied by on the way forward.">
+          Backpropagation gets the nudge test's answers exactly, without a single extra pass. Both slopes are negative, so both knobs go up, and the loss
+          falls from 4 to about 0.25 in one step (with x = 2).
+        </Insight>
+      )}
+      <Insight color={C.purple} title="Why the backward pass costs about twice the forward pass.">
+        Going forward, each weight does one multiply. Going backward, each link does <b>two</b>: one for its own weight's slope (−12 × x for w1) and one to pass
+        the slope on (−4 × w2 for h). So backward ≈ 2 × forward, and one training step ≈ 3 forward passes: the rule Lesson 2.2 uses to cost a training run.
+      </Insight>
+      <Insight color={C.orange} title="⚠️ Slippery step: the backward pass needs the forward pass's numbers.">
+        The slope for w2 used h, and the slope for w1 used x. So every layer's output must be <b>kept in memory</b> until the backward pass has used it.
+        That is why training needs far more memory than just using a model (Lessons 2.2 and 5.7).
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 6: The training loop, traced ──
 const TRACE = (() => {
   const rows = []; let w = 0;
   for (let e = 0; e < 8; e++) { const g = gradAt(w); rows.push({ e, w, loss: lossAt(w), g }); w = w - 0.02 * g; }
@@ -346,9 +416,9 @@ optimizer.step()`}</Code>
         (1,01,770 subtractions that don't depend on each other). Training repeats this loop tens of thousands of times: one tiny loop,
         repeated an enormous number of times.
       </Insight>
-      <LabCard part="D" title="The nudge test and gradient descent from scratch"
-        what="First do the nudge test by hand at w = 8 and compare it with the formula, and watch a step neuron give a slope of 0. Then code the loop above for Nila's 5 classmates, print w and the loss every epoch, and try learning rates 0.005, 0.02, 0.08 and 0.1."
-        expect="a nudge slope of −88.9 against the exact −90; w settling near 12.09 with lr = 0.02; crawling at 0.005, zig-zag at 0.08, blow-up at 0.1." />
+      <LabCard part="B" title="The nudge test and gradient descent from scratch"
+        what="First do the nudge test by hand at w = 8 and compare it with the formula, and watch a step neuron give a slope of 0. Then code the loop above for Nila's 5 classmates, print w and the loss every epoch, and try learning rates 0.005, 0.02, 0.08 and 0.1. Finally (Part B2), check backpropagation on the two-weight chain against the nudge test."
+        expect="a nudge slope of −88.9 against the exact −90; w settling near 12.09 with lr = 0.02; crawling at 0.005, zig-zag at 0.08, blow-up at 0.1; backprop slopes −24 and −4 against nudge slopes −23.964 and −3.999." />
     </div>
   );
 }
@@ -357,22 +427,22 @@ const QUESTIONS = [
   { q: "A model predicts 50 and 70; the true answers are 40 and 70. What is the mean squared error?", options: ["5", "10", "50", "100"], answer: 2, explain: "Errors are 10 and 0. Squared: 100 and 0. Mean = (100 + 0) / 2 = 50." },
   { q: "Nudging w from 5 to 5.1 changes the loss from 300 to 290. What is the slope, and what should gradient descent do?", options: ["Slope +100: decrease w", "Slope −100: increase w", "Slope −10: decrease w", "Slope 0: stop"], answer: 1, explain: "Slope = change ÷ nudge = (290 − 300) ÷ 0.1 = −100. Negative means going right lowers the loss, and w − lr × (−100) makes w bigger." },
   { q: "During training, the loss jumps up and down and gets bigger every epoch. What is the most likely cause?", options: ["Learning rate too small", "Learning rate too big", "Too few students in the data", "The activation function"], answer: 1, explain: "A step that's too large overshoots the valley floor each time and climbs higher on the other side. You saw this at lr = 0.1." },
-  { q: "What does PyTorch's loss.backward() do?", options: ["Undoes the last step", "Computes the gradient for every weight", "Prints the loss", "Moves the data to the GPU"], answer: 1, explain: "backward() runs backpropagation, which finds the slope of the loss with respect to every weight. The optimizer then uses those slopes to nudge the weights." },
+  { q: "In the chain x → (× w1) → h → (× w2) → y, the slope arriving at y is −6, x = 1, w1 = 2 and w2 = 0.5. What are the slopes for w2 and for w1?", options: ["w2: −6, w1: −6", "w2: −12, w1: −3", "w2: −3, w1: −12", "w2: −3, w1: −3"], answer: 1, explain: "h = 2 × 1 = 2. Slope for w2 = −6 × h = −12. Passed back to h: −6 × w2 = −3. Slope for w1 = −3 × x = −3. That is what loss.backward() does, link by link." },
 ];
 const RESULT = {
   perfect: "Perfect! You understand how a machine learns.",
   good: "Good. Replay 'Feel the Slope' and 'Roll Downhill' with different learning rates.",
   low: "Revisit 'Score a Guess' and 'Feel the Slope': measuring wrongness and then stepping against the slope is the core idea.",
-  done: "Unit 1.4 Complete!",
+  done: "Lesson 1.4 Complete!",
   body: "You can explain loss, the slope (nudge test), the learning rate and the training loop: the engine of all of AI.",
-  next: "Next up: Unit 1.5 — Layers = Matrix Multiplication.",
+  next: "Next up: Lesson 1.5 — Layers = Matrix Multiplication.",
   teaser: "One neuron gives one cut-off. What if a question needs two?",
 };
 
 const UNIT_WORDS = [
   ["MSE", "Mean Squared Error", "Square each error, then average. The most common loss for predicting numbers.", "new here"],
   ["lr", "learning rate", "How big a step gradient descent takes each time.", "new here"],
-  ["MAC", "Multiply-Accumulate", "Multiply, then add to a running total.", "from Unit 1.3"],
+  ["MAC", "Multiply-Accumulate", "Multiply, then add to a running total.", "from Lesson 1.3"],
 ];
 
 // ── Quiz ──
@@ -433,7 +503,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -454,9 +524,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -467,7 +537,8 @@ export default function Unit1_4({ student, onUnitComplete }) {
     { id: "s1", label: "Too Many Knobs" },
     { id: "s2", label: "Feel the Slope" },
     { id: "s3", label: "Roll Downhill" },
-    { id: "s4", label: "The Training Loop" },
+    { id: "s4", label: "Pass the Slope Back" },
+    { id: "s5", label: "The Training Loop" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -481,10 +552,11 @@ export default function Unit1_4({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🎛️ Too Many Knobs — why not just try everything?</h3><NeedWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🦶 Feel the Slope — the nudge test</h3><NudgeWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>⛰️ Gradient Descent — step against the slope</h3><DescentWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔙 Backpropagation by Hand — pass the slope backward</h3><BackpropWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔁 The Training Loop — the four steps of learning</h3><LoopWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 1.4.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 1.4.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -494,7 +566,7 @@ export default function Unit1_4({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⛰️</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 1 › UNIT 1.4</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 1 › LESSON 1.4</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Learning = Reducing Error</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2A_AI_Is_Hungry.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab04_How_Much_Work_Is_AI.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2A · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 4 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2A in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 4 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L §5.3 (Forward and backward propagation) · D2L Ch 12 (Optimization: minibatches)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 2.2";
+const TEXTBOOK = "D2L §5.3, Ch 12";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const fmt = (x) => {
@@ -152,7 +153,7 @@ function TraceWidget() {
       </div>
       <Insight color={C.teal} title="Training needs extra memory as well as extra arithmetic.">
         Every layer's output from the forward pass is stored until the backward pass uses it. Big batches × big layers = lots of saved numbers.
-        In Module 5 this is the reason for the famous "CUDA out of memory" error.
+        In Step 5 this is the reason for the famous "CUDA out of memory" error.
       </Insight>
     </div>
   );
@@ -194,8 +195,8 @@ function EpochWidget() {
         ))}
       </div>
       <Insight color={C.purple} title="Batches turn many small sums into one big matrix multiply.">
-        From Unit 1.5: a batch makes the layer X @ W with many rows. Bigger, fewer matrix multiplies suit parallel hardware far better than
-        thousands of tiny ones. Unit 5.4 measures this on a real GPU.
+        From Lesson 1.5: a batch makes the layer X @ W with many rows. Bigger, fewer matrix multiplies suit parallel hardware far better than
+        thousands of tiny ones. Lesson 5.4 measures this on a real GPU.
       </Insight>
     </div>
   );
@@ -228,11 +229,11 @@ function BillWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Assumes the T4's 65 TFLOPS FP16 peak and 40% average use (approximate). Real projects use thousands of bigger GPUs at once.</div>
       <Insight color={C.orange} title="Training is a one-time mountain; inference is a daily river.">
-        A big model's training run would take a single GPU centuries, so companies split it across thousands of GPUs (Unit 5.9). Serving
+        A big model's training run would take a single GPU centuries, so companies split it across thousands of GPUs (Lesson 5.9). Serving
         crores of users adds up too. Either way the answer is the same: more parallel arithmetic.
       </Insight>
       <LabCard part="B" title="Time inference vs training on the CPU"
-        what="Take your Lab 1 network, time 100 forward passes on a batch, then time 100 full training iterations (forward + backward + update), and compute the ratio."
+        what="Take your Core Lab 3 network, time 100 forward passes on a batch, then time 100 full training iterations (forward + backward + update), and compute the ratio."
         expect="a training iteration takes roughly 2–4× as long as a forward pass alone." />
     </div>
   );
@@ -248,16 +249,16 @@ const RESULT = {
   perfect: "Perfect! You can read a training log and estimate its cost.",
   good: "Good. Replay 'Forward & Backward' and watch the saved outputs.",
   low: "Revisit 'Use vs Teach' and 'Epochs & Batches': they're the vocabulary for the rest of the course.",
-  done: "Unit 2.2 Complete!",
+  done: "Lesson 2.2 Complete!",
   body: "You can explain inference vs training, forward vs backward, and epochs vs batches vs iterations, and estimate a training bill.",
-  next: "Next up: Unit 2.3 — Every Output Is Independent.",
+  next: "Next up: Lesson 2.3 — Every Output Is Independent.",
   teaser: "All this work has a hidden gift: most of it doesn't have to wait in a queue.",
 };
 
 const UNIT_WORDS = [
-  ["FLOP", "FLoating-point OPeration", "One add or multiply on decimal numbers.", "from Unit 2.1"],
-  ["lr", "learning rate", "The size of each update step.", "from Unit 1.4"],
-  ["CUDA", "Compute Unified Device Architecture", "NVIDIA's system for programming its GPUs. Used properly from Module 4.", "new here"],
+  ["FLOP", "FLoating-point OPeration", "One add or multiply on decimal numbers.", "from Lesson 2.1"],
+  ["lr", "learning rate", "The size of each update step.", "from Lesson 1.4"],
+  ["CUDA", "Compute Unified Device Architecture", "NVIDIA's system for programming its GPUs. Used properly from Step 4.", "new here"],
   ["T4", "NVIDIA Tesla T4", "The GPU you get free in Google Colab.", "new here"],
 ];
 
@@ -319,7 +320,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -340,9 +341,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -368,7 +369,7 @@ export default function Unit2_2({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧾 The Training Bill — 6 × parameters × tokens</h3><BillWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.2.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 2.2.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -378,7 +379,7 @@ export default function Unit2_2({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏋️</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.2</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 2 › LESSON 2.2</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Training vs Inference, Epochs & Batches</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

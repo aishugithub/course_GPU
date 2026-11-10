@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab3_Inside_a_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab07_Feeding_the_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 3 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 7 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 3 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 7 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 5 (Memory architecture and data locality) · H&P §4.4 (GPU memory structures) · Hamacher Ch 8 (Memory)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 3.4";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 5 · Hamacher Ch 8";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Need — feeding the beast ──
@@ -134,7 +135,7 @@ function HierarchyWidget() {
       </div>
       <Insight color={C.teal} title="Same idea as COA: keep the data you're using in the small, fast levels.">
         The difference is who manages it. A CPU's caches work automatically. On a GPU, the fastest shared level (shared memory) is a
-        scratchpad that the programmer fills deliberately. Unit 5.1 does exactly that.
+        scratchpad that the programmer fills deliberately. Lesson 5.1 does exactly that.
       </Insight>
     </div>
   );
@@ -143,7 +144,7 @@ function HierarchyWidget() {
 // ── Section 3: Who shares what — confusing names ──
 const SPACES = {
   register: { t: "Registers", who: "one thread only", scope: (sm, b, th) => sm === 0 && b === 0 && th === 0, note: "Each thread's own variables, like i in the vector-add kernel. The fastest storage there is." },
-  shared: { t: "'Shared' memory", who: "the threads of ONE block (on one SM)", scope: (sm, b) => sm === 0 && b === 0, note: "The name misleads: it's shared only inside one thread block, a team of threads that runs together on one SM (Unit 4.3 shows how you pick block sizes). Hennessy & Patterson point out that it's really LOCAL to the block." },
+  shared: { t: "'Shared' memory", who: "the threads of ONE block (on one SM)", scope: (sm, b) => sm === 0 && b === 0, note: "The name misleads: it's shared only inside one thread block, a team of threads that runs together on one SM (Lesson 4.3 shows how you pick block sizes). Hennessy & Patterson point out that it's really LOCAL to the block." },
   global: { t: "'Global' memory", who: "EVERY thread on the GPU, plus the CPU by copying", scope: () => true, note: "The big 16 GB memory. This is the one that's truly shared: every thread, in every block, on every SM, can read and write it. Your tensors live here." },
 };
 function ScopeWidget() {
@@ -192,14 +193,16 @@ function CoalesceWidget() {
   const [pattern, setPattern] = useState("seq");
   const [mb, setMb] = useState(400);
   const addr = Array.from({ length: 32 }, (_, i) => (pattern === "seq" ? i : pattern === "stride" ? i * 32 : [5, 900, 33, 412, 77, 640, 2, 1000, 300, 150, 820, 64, 501, 13, 700, 222, 999, 45, 380, 610, 91, 870, 256, 128, 777, 18, 560, 430, 330, 950, 60, 705][i]));
-  const segs = new Set(addr.map((a) => Math.floor(a / 32)));   // 32 floats = one 128-byte segment
-  const eff = 1 / segs.size;
+  const segs = new Set(addr.map((a) => Math.floor(a / 8)));    // 8 floats = one 32-byte sector (4 sectors = one 128-byte line)
+  const eff = 128 / (segs.size * 32);
+  const good = segs.size === 4;
   return (
     <div>
       <Frame>
-        Memory delivers data in chunks of <b style={{ color: C.text }}>128 bytes</b> (32 floats). When the 32 threads of a warp read 32 neighbouring
-        floats, one chunk serves them all. That's <b style={{ color: C.green }}>coalesced</b>. If their addresses are far apart, the memory must fetch
-        many chunks and throw most of each away. Choose how the warp reads.
+        Global memory is organised in <b style={{ color: C.text }}>128-byte lines</b> (32 floats), and on every recent NVIDIA GPU, the T4 included, a
+        warp's reads are served in <b style={{ color: C.text }}>32-byte sectors</b>, four to a line. When the 32 threads of a warp read 32 neighbouring
+        floats, exactly 4 sectors (one whole line) serve them all. That's <b style={{ color: C.green }}>coalesced</b>. If their addresses are far apart,
+        each thread may need a sector of its own. Choose how the warp reads.
       </Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
         <Btn ghost={pattern !== "seq"} onClick={() => setPattern("seq")} color={C.green}>x[i]: neighbours</Btn>
@@ -207,12 +210,13 @@ function CoalesceWidget() {
         <Btn ghost={pattern !== "rand"} onClick={() => setPattern("rand")} color={C.orange}>random</Btn>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(32, 1fr)", gap: 1 }}>
-        {Array.from({ length: 32 }, (_, s) => <div key={s} style={{ height: 16, background: segs.has(s) ? (pattern === "seq" ? C.green : C.red) : C.card, border: `1px solid ${C.border}` }} />)}
+        {Array.from({ length: 128 }, (_, s) => <div key={s} style={{ height: 12, background: segs.has(s) ? (good ? C.green : C.red) : C.card, border: `1px solid ${C.border}`, marginRight: s % 4 === 3 ? 2 : 0 }} />)}
       </div>
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>Each box = one 128-byte chunk of memory (32 shown). Coloured = fetched for this one warp read.</div>
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>Each box = one 32-byte sector (128 shown; every 4 boxes make one 128-byte line). Coloured = fetched for this one warp read.</div>
       <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-        <Stat label="CHUNKS FETCHED" value={segs.size} color={segs.size === 1 ? C.green : C.red} />
-        <Stat label="USEFUL BYTES" value={`${(eff * 100).toFixed(0)}%`} color={segs.size === 1 ? C.green : C.red} />
+        <Stat label="SECTORS FETCHED" value={segs.size} color={good ? C.green : C.red} />
+        <Stat label="BYTES MOVED" value={`${segs.size * 32} for 128 used`} color={good ? C.green : C.red} />
+        <Stat label="USEFUL BYTES" value={`${(eff * 100).toFixed(0)}%`} color={good ? C.green : C.red} />
       </div>
       <div style={{ marginTop: 16, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
         <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Bandwidth calculator</div>
@@ -225,7 +229,7 @@ function CoalesceWidget() {
         Simple operations like ReLU or vector add are limited by memory, not maths, so their speed is set by bytes ÷ bandwidth, and only if access is
         coalesced. PyTorch's built-in operations are written to coalesce.
       </Insight>
-      <LabCard part="D" title="Measure your GPU's memory bandwidth"
+      <LabCard part="B" title="Measure your GPU's memory bandwidth"
         what="Copy a large tensor inside the GPU and compute GB/s, then time a kernel reading with stride 1 vs stride 32."
         expect="roughly 200–250 GB/s for the copy (a good fraction of the 320 GB/s peak) and the strided read running several times slower." />
     </div>
@@ -242,18 +246,18 @@ const RESULT = {
   perfect: "Perfect! You understand what really limits GPU speed.",
   good: "Good. Replay 'Feeding the Beast' and see how much reuse is needed.",
   low: "Revisit 'The Hierarchy' and 'Coalescing': bytes, not FLOPs, are often the limit.",
-  done: "Unit 3.4 Complete!",
-  body: "You can map the GPU memory hierarchy, explain CUDA's memory spaces, coalescing, and bandwidth-limited speed.",
-  next: "Next up: Unit 3.C — Capstone: Map a Job onto a GPU.",
-  teaser: "Take a real AI job and plan it on the T4: threads, warps, SMs, bytes, and time.",
+  done: "Step 3 Complete! 🔬",
+  body: "You can describe SMs, warps, divergence and latency hiding, map the GPU memory hierarchy, and explain coalescing and bandwidth-limited speed. Optional 🥾 Side Trail: Lesson 3.C plans a whole job on the T4.",
+  next: "Next up: Step 4 — CPU–GPU Teamwork.",
+  teaser: "How does the CPU actually hand a job to the GPU? Allocate, copy, launch, copy back, free: you'll do every step yourself.",
 };
 
 const UNIT_WORDS = [
-  ["GB/s / TB/s", "gigabytes / terabytes per second", "Bandwidth: how many bytes per second memory can deliver.", "from Unit 2.C"],
-  ["GDDR6", "Graphics Double Data Rate 6", "The GPU's global memory.", "from Unit 3.1"],
-  ["coalesced", "combined", "A warp's 32 reads merged into as few memory chunks as possible.", "new here"],
-  ["thread block", "a team of threads on one SM", "Threads that run together and share 'shared memory'. Chosen by the programmer in Unit 4.3.", "new here"],
-  ["PCIe", "Peripheral Component Interconnect Express", "The CPU–GPU bus.", "from Unit 2.C"],
+  ["GB/s / TB/s", "gigabytes / terabytes per second", "Bandwidth: how many bytes per second memory can deliver.", "from Lesson 2.C"],
+  ["GDDR6", "Graphics Double Data Rate 6", "The GPU's global memory.", "from Lesson 3.1"],
+  ["coalesced", "combined", "A warp's 32 reads merged into as few 32-byte sectors as possible: 4 sectors (one 128-byte line) for 32 neighbouring floats.", "new here"],
+  ["thread block", "a team of threads on one SM", "Threads that run together and share 'shared memory'. Chosen by the programmer in Lesson 4.3.", "new here"],
+  ["PCIe", "Peripheral Component Interconnect Express", "The CPU–GPU bus.", "from Lesson 2.C"],
 ];
 
 // ── Quiz ──
@@ -314,7 +318,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -335,9 +339,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -363,7 +367,7 @@ export default function Unit3_4({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧲 Coalescing — read like a warp</h3><CoalesceWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 3.4.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 3.4.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -373,7 +377,7 @@ export default function Unit3_4({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🚰</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 3 › UNIT 3.4</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 3 › LESSON 3.4</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>GPU Memory & Bandwidth</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

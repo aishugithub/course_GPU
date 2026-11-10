@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2B_CPU_vs_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/SideTrails_Step2_Power_SIMD_Decision.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2B · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🥾 SIDE TRAIL (OPTIONAL) — STEP 2 SIDE TRAILS · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2B in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Step 2 Side Trails in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "H&P Ch 1 (Trends in power and energy) · Stallings §2.1 (Designing for performance)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 2.6";
+const TEXTBOOK = "H&P Ch 1";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // Approximate top desktop CPU clock (GHz) and transistor counts, for illustration
@@ -206,9 +207,9 @@ function ManyWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>Simplified model: power ∝ V² × f, with voltage dropping as frequency drops (down to a minimum). Real chips differ, but the trend is real.</div>
       <Insight color={C.green} title="Many slow cores do the same work for a fraction of the power, as long as the work is parallel.">
-        That's the GPU bargain: thousands of modest cores at about 1–2 GHz. And from Unit 2.3 you know AI's work is exactly the parallel kind.
+        That's the GPU bargain: thousands of modest cores at about 1–2 GHz. And from Lesson 2.3 you know AI's work is exactly the parallel kind.
       </Insight>
-      <LabCard part="B" title="Read your GPU's clock and power"
+      <LabCard part="A" title="Read your GPU's clock and power"
         what="Ask nvidia-smi for the T4's clock speed, power draw and power limit, and compare them with a typical CPU's clock speed."
         expect="a GPU clock of roughly 0.6–1.6 GHz (slower than a CPU core!) and a power limit of about 70 W." />
     </div>
@@ -225,9 +226,9 @@ const RESULT = {
   perfect: "Perfect! You know why the whole industry went parallel.",
   good: "Good. Replay 'The Power Wall' and push the clock to 10 GHz.",
   low: "Revisit 'The Flat Line' and 'The Power Wall': the reason GPUs matter starts there.",
-  done: "Unit 2.6 Complete!",
+  done: "Lesson 2.6 Complete!",
   body: "You can explain the power wall, P ∝ C·V²·f, and why many slow cores are the energy-efficient way to get throughput.",
-  next: "Next up: Unit 2.7 — SIMD → SIMT.",
+  next: "Next up: Lesson 2.7 — SIMD → SIMT.",
   teaser: "One instruction, many data. From the CPU's vector units to the GPU's thousands of threads.",
 };
 
@@ -296,7 +297,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -317,9 +318,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -345,7 +346,7 @@ export default function Unit2_6({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🐜 Many Slow Cores Beat One Fast Core</h3><ManyWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.6.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 2.6.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -355,7 +356,7 @@ export default function Unit2_6({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🔥</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.6</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 2 › LESSON 2.6</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Why Clocks Stopped Getting Faster</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

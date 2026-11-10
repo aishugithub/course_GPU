@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2A_AI_Is_Hungry.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab04_How_Much_Work_Is_AI.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2A · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 4 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2A in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 4 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Hamacher Ch 1 (Performance) · Stallings §2.4 (Basic measures of computer performance)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 2.1";
+const TEXTBOOK = "Hamacher Ch 1";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const fmt = (x) => {
@@ -81,7 +82,7 @@ const fmt = (x) => {
 
 // ── Section 1: Need — guess the work ──
 const TASKS = [
-  { t: "Read ONE handwritten digit (your Lab 1 network)", macs: 1.0e5, note: "784×128 + 128×10 ≈ 1 lakh MACs." },
+  { t: "Read ONE handwritten digit (your Core Lab 3 network)", macs: 1.0e5, note: "784×128 + 128×10 ≈ 1 lakh MACs." },
   { t: "Recognise ONE photo with ResNet-50 (a classic image model)", macs: 4.1e9, note: "About 4 billion MACs for a single 224 × 224 photo (approximate published figure)." },
   { t: "Generate ONE word (token) with a GPT-3-sized chatbot (175 billion parameters)", macs: 1.75e11, note: "Roughly one MAC per parameter for every token: about 175 billion." },
   { t: "TRAIN GPT-3 once, from scratch", macs: 1.6e23, note: "About 3 × 10²³ arithmetic operations (≈ 1.6 × 10²³ MACs), a published estimate." },
@@ -92,7 +93,7 @@ function NeedWidget() {
   return (
     <div>
       <Frame>
-        Every AI answer is multiply-adds (MACs, from Unit 1.3). But how many? Guess the order of magnitude for each job, then check.
+        Every AI answer is multiply-adds (MACs, from Lesson 1.3). But how many? Guess the order of magnitude for each job, then check.
         Most people are off by a factor of a million.
       </Frame>
       {TASKS.map((x, i) => {
@@ -190,14 +191,14 @@ function CountWidget() {
 // ── Section 4: How long on which machine? ──
 const DEVICES = [
   { d: "You, with pen and paper", f: 0.1, tag: "1 operation every 10 s" },
-  { d: "A single CPU core, plain Python loops", f: 3e7, tag: "≈ 30 MFLOPS (measured in Lab 2A)" },
+  { d: "A single CPU core, plain Python loops", f: 3e7, tag: "≈ 30 MFLOPS (measured in Core Lab 4)" },
   { d: "A laptop CPU, all cores, NumPy", f: 2e11, tag: "≈ 0.2 TFLOPS (approx.)" },
   { d: "NVIDIA T4 GPU (free Colab), FP32", f: 8.1e12, tag: "8.1 TFLOPS peak" },
   { d: "NVIDIA T4 GPU, FP16 Tensor Cores", f: 6.5e13, tag: "65 TFLOPS peak" },
   { d: "NVIDIA H100 GPU, FP16 Tensor Cores", f: 9.9e14, tag: "≈ 990 TFLOPS peak" },
 ];
 const JOBS = [
-  { j: "Classify 10,000 digits (Lab 1 network)", f: 2 * 1e5 * 1e4 },
+  { j: "Classify 10,000 digits (Core Lab 3 network)", f: 2 * 1e5 * 1e4 },
   { j: "Recognise 1,000 photos (ResNet-50)", f: 2 * 4.1e9 * 1e3 },
   { j: "A 500-word chatbot answer (7 B model)", f: 2 * 7e9 * 650 },
   { j: "Train GPT-3 once", f: 3.14e23 },
@@ -234,8 +235,8 @@ function DeviceWidget() {
         The rest of the course explains each jump.
       </Insight>
       <LabCard part="A" title="Count parameters and FLOPs of real models"
-        what="Count the parameters of your Lab 1 network and of ResNet-18 using PyTorch, then estimate FLOPs per input with the 2 × MACs rule and the time it needs at your measured speed."
-        expect="about 1 lakh parameters for the Lab 1 network and about 1.17 crore (11.7 million) for ResNet-18." />
+        what="Count the parameters of your Core Lab 3 network and of ResNet-18 using PyTorch, then estimate FLOPs per input with the 2 × MACs rule and the time it needs at your measured speed."
+        expect="about 1 lakh parameters for the Core Lab 3 network and about 1.17 crore (11.7 million) for ResNet-18." />
     </div>
   );
 }
@@ -250,19 +251,19 @@ const RESULT = {
   perfect: "Perfect! You can estimate the cost of any AI job.",
   good: "Good. Replay 'FLOPs vs FLOPS'; the s matters.",
   low: "Revisit 'FLOPs vs FLOPS' and 'How Long?': work ÷ speed = time is the key tool.",
-  done: "Unit 2.1 Complete!",
+  done: "Lesson 2.1 Complete!",
   body: "You can count multiply-adds, convert to FLOPs, and estimate run time on any machine.",
-  next: "Next up: Unit 2.2 — Training vs Inference, Epochs & Batches.",
+  next: "Next up: Lesson 2.2 — Training vs Inference, Epochs & Batches.",
   teaser: "Using a model is cheap. Teaching it is a lot more expensive. Find out exactly why.",
 };
 
 const UNIT_WORDS = [
-  ["MAC", "Multiply-Accumulate", "One multiply + one add = 2 FLOPs.", "from Unit 1.3"],
+  ["MAC", "Multiply-Accumulate", "One multiply + one add = 2 FLOPs.", "from Lesson 1.3"],
   ["FLOP", "FLoating-point OPeration", "One add or one multiply on decimal (floating-point) numbers. FLOPs = an amount of work.", "new here"],
   ["FLOPS", "FLoating-point Operations Per Second", "A speed: how many FLOPs a chip can do each second.", "new here"],
   ["TFLOPS", "tera-FLOPS", "10¹² FLOPs per second, a lakh crore every second.", "new here"],
   ["GPT", "Generative Pre-trained Transformer", "The family of language models behind ChatGPT.", "new here"],
-  ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats with more or fewer bits (IEEE 754, from COA). Unit 5.2 explains why fewer bits run faster.", "from COA"],
+  ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats with more or fewer bits (IEEE 754, from COA). Lesson 5.2 explains why fewer bits run faster.", "from COA"],
 ];
 
 // ── Quiz ──
@@ -323,7 +324,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -344,9 +345,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -372,7 +373,7 @@ export default function Unit2_1({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏱️ How Long? — time = work ÷ speed</h3><DeviceWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.1.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 2.1.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -382,7 +383,7 @@ export default function Unit2_1({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧮</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.1</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 2 › LESSON 2.1</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Counting the Multiply-Adds</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

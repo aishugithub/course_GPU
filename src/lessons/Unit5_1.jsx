@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5A_Why_GPUs_Make_AI_Fast.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab10_Make_It_Fast.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5A · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 10 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5A in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 10 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 5 (Tiling for reduced memory traffic) · Hamacher Ch 8 (Cache memories: locality)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.1";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 5";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Need — the naive kernel is starving ──
@@ -83,7 +84,7 @@ function NeedWidget() {
     <div>
       <Frame>
         The obvious GPU matrix multiply: one thread per output cell C[row][col], each reading a whole row of A and column of B from global memory
-        (Unit 4.3's 2-D grid). Every number of A is fetched <b style={{ color: C.red }}>n times</b>, once by every thread that needs it. Count the traffic.
+        (Lesson 4.3's 2-D grid). Every number of A is fetched <b style={{ color: C.red }}>n times</b>, once by every thread that needs it. Count the traffic.
       </Frame>
       <Code color={C.red} title="❌ NAIVE KERNEL: everything from global memory">{`__global__ void matmul_naive(const float *A, const float *B, float *C, int n) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -102,7 +103,7 @@ function NeedWidget() {
         <Stat label="TIME FOR THE MATHS" value={`${(tComp * 1e3).toFixed(1)} ms`} color={C.green} />
       </div>
       <Insight color={C.red} title="Two global reads for every multiply-add: memory-bound by a factor of about 100.">
-        This is Unit 3.4's 'feeding the beast' problem. (Caches soften it a little in practice, but not enough.) The cure is to fetch each number
+        This is Lesson 3.4's 'feeding the beast' problem. (Caches soften it a little in practice, but not enough.) The cure is to fetch each number
         ONCE into fast shared memory and let many threads reuse it.
       </Insight>
     </div>
@@ -121,7 +122,7 @@ function IdeaWidget() {
       <Frame>
         A study group needs the same 32 reference pages. Bad plan: every student walks to the library for every page. Good plan: fetch a stack of pages
         to the group's table <b style={{ color: C.teal }}>once</b>, and everyone reads them there. A GPU <b style={{ color: C.text }}>thread block</b> does the same: it loads a T × T
-        <b style={{ color: C.teal }}> tile</b> of A and of B into <b style={{ color: C.teal }}>shared memory</b> (Unit 3.4), and all T × T threads reuse it. Choose the tile size.
+        <b style={{ color: C.teal }}> tile</b> of A and of B into <b style={{ color: C.teal }}>shared memory</b> (Lesson 3.4), and all T × T threads reuse it. Choose the tile size.
       </Frame>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
         {[1, 2, 4, 8, 16, 32].map((v) => <Btn key={v} ghost={v !== T} onClick={() => setT(v)} color={C.teal}>T = {v}</Btn>)}
@@ -207,6 +208,7 @@ __global__ void matmul_tiled(const float *A, const float *B, float *C, int n) {
     int row = blockIdx.y * T + threadIdx.y;
     int col = blockIdx.x * T + threadIdx.x;
     float sum = 0.0f;
+    // (this kernel assumes n is a multiple of T, as 1024 and 2048 are)
     for (int p = 0; p < n / T; p++) {             // one phase per tile pair
         As[threadIdx.y][threadIdx.x] = A[row * n + p * T + threadIdx.x];
         Bs[threadIdx.y][threadIdx.x] = B[(p * T + threadIdx.y) * n + col];
@@ -263,18 +265,18 @@ const RESULT = {
   perfect: "Perfect! You know the core trick behind fast GPU maths.",
   good: "Good. Replay 'Trace the Tiles' phase by phase.",
   low: "Revisit 'The Tiling Idea': fetch once into shared memory, reuse many times.",
-  done: "Unit 5.1 Complete!",
+  done: "Lesson 5.1 Complete!",
   body: "You can explain why naive matrix multiply is memory-bound, how tiling with shared memory fixes it, and why libraries win.",
-  next: "Next up: Unit 5.2 — Precision: FP32 → FP16/BF16 → INT8.",
+  next: "Next up: Lesson 5.2 — Precision: FP32 → FP16/BF16 → INT8.",
   teaser: "Fewer bits per number: half the memory, double the speed, and Tensor Cores switched on. Does AI even notice?",
 };
 
 const UNIT_WORDS = [
   ["tile", "a small square block of a matrix", "Loaded into shared memory and reused by a thread block.", "new here"],
-  ["__shared__", "CUDA's shared-memory keyword", "Declares an array in the SM's fast shared memory (Unit 3.4).", "new here"],
+  ["__shared__", "CUDA's shared-memory keyword", "Declares an array in the SM's fast shared memory (Lesson 3.4).", "new here"],
   ["__syncthreads()", "block barrier", "Every thread in the block waits here until all have arrived.", "new here"],
   ["cuBLAS", "CUDA Basic Linear Algebra Subprograms", "NVIDIA's highly tuned matrix library, used by PyTorch.", "new here"],
-  ["FMA", "Fused Multiply-Add", "a × b + c in one instruction.", "from Unit 3.1"],
+  ["FMA", "Fused Multiply-Add", "a × b + c in one instruction.", "from Lesson 3.1"],
 ];
 
 // ── Quiz ──
@@ -335,7 +337,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -356,9 +358,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -384,7 +386,7 @@ export default function Unit5_1({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚙️ The Code — and the library that beats it</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.1.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.1.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -394,7 +396,7 @@ export default function Unit5_1({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧩</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.1</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.1</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Parallel Matrix Multiply & Tiling</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

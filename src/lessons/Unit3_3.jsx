@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab3_Inside_a_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab07_Feeding_the_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 3 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 7 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 3 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 7 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 4 (Latency tolerance) · Hamacher §12.1 (Hardware multithreading)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 3.3";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 4 · Hamacher §12.1";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // Discrete warp-scheduler simulation: each warp computes C cycles, then waits L cycles for memory, repeat.
@@ -191,7 +192,7 @@ function SwitchWidget() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 3 }}>
             {Array.from({ length: 32 }, (_, i) => <div key={i} style={{ height: 22, borderRadius: 3, background: i === 5 ? C.green : C.teal + "33", border: `1px solid ${i === 5 ? C.green : C.teal + "66"}`, fontSize: 8.5, color: i === 5 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>w{i}</div>)}
           </div>
-          <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>Switching from warp 5 to warp 6 just means "read your operands from a different part of the register file": nothing is saved or loaded. That's why the register file is so big (256 KB per SM, Unit 3.1).</div>
+          <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>Switching from warp 5 to warp 6 just means "read your operands from a different part of the register file": nothing is saved or loaded. That's why the register file is so big (256 KB per SM, Lesson 3.1).</div>
         </div>
       )}
       <Insight color={C.teal} title="GPUs are hardware multithreading taken to the extreme.">
@@ -229,10 +230,10 @@ function OccWidget() {
         <Stat label="CORE BUSY (MODEL)" value={`${(util * 100).toFixed(0)}%`} color={util > 0.9 ? C.green : util > 0.5 ? C.yellow : C.red} />
       </div>
       <Insight color={C.purple} title="More resident warps means more latency hiding, up to the point where the core is always busy.">
-        Kernels with lots of arithmetic per memory load need fewer warps; memory-heavy kernels need many. Unit 5.3 turns this into a rule:
+        Kernels with lots of arithmetic per memory load need fewer warps; memory-heavy kernels need many. Lesson 5.3 turns this into a rule:
         compute-bound vs memory-bound.
       </Insight>
-      <LabCard part="C" title="Watch latency hiding work"
+      <LabCard part="A" title="Watch latency hiding work"
         what="Run a simple memory-copy kernel while launching more and more threads, measure the bandwidth each time, and plot it."
         expect="bandwidth climbs steeply as threads are added, then levels off once there are enough warps to hide memory latency." />
     </div>
@@ -249,15 +250,15 @@ const RESULT = {
   perfect: "Perfect! You understand the GPU's secret weapon.",
   good: "Good. Replay 'Juggle the Warps' with long latencies.",
   low: "Revisit 'Juggle the Warps': many warps hide the wait.",
-  done: "Unit 3.3 Complete!",
+  done: "Lesson 3.3 Complete!",
   body: "You can explain memory latency, latency hiding by warp switching, why it's free on a GPU, and occupancy.",
-  next: "Next up: Unit 3.4 — GPU Memory & Bandwidth.",
+  next: "Next up: Lesson 3.4 — GPU Memory & Bandwidth.",
   teaser: "65 TFLOPS is useless if the numbers can't arrive fast enough. Meet the GPU's memory hierarchy.",
 };
 
 const UNIT_WORDS = [
-  ["latency", "waiting time", "How long one memory request takes to come back.", "from Unit 2.5"],
-  ["GDDR6", "Graphics Double Data Rate 6", "The T4's main (global) memory.", "from Unit 3.1"],
+  ["latency", "waiting time", "How long one memory request takes to come back.", "from Lesson 2.5"],
+  ["GDDR6", "Graphics Double Data Rate 6", "The T4's main (global) memory.", "from Lesson 3.1"],
   ["OS", "Operating System", "Windows, Linux, Android… It schedules threads on CPU cores.", "new here"],
   ["occupancy", "warps resident ÷ maximum warps", "How full an SM's warp slots are.", "new here"],
 ];
@@ -320,7 +321,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -341,9 +342,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -369,7 +370,7 @@ export default function Unit3_3({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📊 Occupancy — how many warps fit?</h3><OccWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 3.3.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 3.3.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -379,7 +380,7 @@ export default function Unit3_3({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🫖</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 3 › UNIT 3.3</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 3 › LESSON 3.3</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Hiding Latency</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

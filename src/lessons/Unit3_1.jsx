@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab3_Inside_a_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab06_Inside_the_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 3 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 6 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 3 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 6 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "H&P §4.4 (Graphics processing units) · Kirk & Hwu Ch 4 (Compute architecture and scheduling) · Hamacher §12.2.1";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 3.1";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 4 · H&P §4.4";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // NVIDIA T4 (Turing) published figures
@@ -214,7 +215,7 @@ function TensorWidget() {
         <Btn ghost onClick={() => setStep(0)}>↺ Reset</Btn>
       </div>
       <Insight color={C.orange} title="One Tensor Core does in one step what a CUDA core does in 64.">
-        Tensor Cores exist only because AI is matrix multiplication (Unit 1.5). They need lower-precision inputs (FP16 and smaller), which Unit 5.2
+        Tensor Cores exist only because AI is matrix multiplication (Lesson 1.5). They need lower-precision inputs (FP16 and smaller), which Lesson 5.2
         explains. PyTorch uses them automatically when the numbers are in FP16.
       </Insight>
     </div>
@@ -251,24 +252,82 @@ function PeakWidget() {
   );
 }
 
+// ── Section 5: GPU generations, T4 to today (from the book's table; NVIDIA datasheets and HGX pages, read 9 Nov 2026) ──
+const GENS = ["T4", "A100 (80 GB)", "H100", "B200", "Rubin"];
+const GEN_ROWS = [
+  { k: "Year, family", v: ["2018, Turing", "2020, Ampere", "2022, Hopper", "2024, Blackwell", "2026, ramping up"], note: "A new data-centre generation every two years or so." },
+  { k: "Memory", v: ["16 GB GDDR6", "80 GB HBM2e", "80 GB HBM3", "≈ 180 GB HBM3e", "288 GB HBM4"], n: [16, 80, 80, 180, 288], unit: "GB", note: "Decides which models fit at all (Lesson 5.7)." },
+  { k: "Memory bandwidth", v: ["320 GB/s", "2,039 GB/s", "3.35 TB/s", "8 TB/s", "22 TB/s"], n: [320, 2039, 3350, 8000, 22000], unit: "GB/s", note: "GDDR chips sit around the GPU on a 256-bit path; HBM stacks sit beside it with 1,024 bits (2,048 for HBM4) per stack. Often decides AI speed (Lesson 3.4, Step 5)." },
+  { k: "FP16 Tensor Cores (dense)", v: ["65 TFLOPS", "312 TFLOPS", "989 TFLOPS", "2,250 TFLOPS", "4,000 TFLOPS"], n: [65, 312, 989, 2250, 4000], unit: "TFLOPS", note: "The same Tensor Cores you just met, more of them, faster." },
+  { k: "Smallest number format", v: ["INT8: 130 TOPS", "INT8: 624 TOPS", "FP8: 1,979 TFLOPS", "FP4: 9,000 TFLOPS", "NVFP4 training: 35,000 TFLOPS"], note: "Each generation adds a smaller format: halving the bits roughly doubles the speed (Lesson 5.2)." },
+  { k: "GPU-to-GPU link", v: ["PCIe only", "NVLink 3: 600 GB/s", "NVLink 4: 900 GB/s", "NVLink 5: 1.8 TB/s", "NVLink 6: 3.6 TB/s"], note: "A direct link so many GPUs can share one training job (Lesson 5.9)." },
+  { k: "Power", v: ["70 W", "400 W", "up to 700 W", "higher again", "not listed"], note: "B200 and Rubin power are not listed on NVIDIA's HGX page." },
+];
+function GenerationsWidget() {
+  const [row, setRow] = useState(2);
+  const [a, setA] = useState(0);
+  const [b, setB] = useState(4);
+  const r = GEN_ROWS[row];
+  const cell = { padding: "5px 7px", fontSize: 12, borderBottom: `1px solid ${C.border}`, textAlign: "left" };
+  return (
+    <div>
+      <Frame>
+        Your T4 is from 2018. Every two years or so a new data-centre generation arrives, and the same few numbers tell you what changed. Each row is
+        one of the limits of this step. Click a row, then compare any two GPUs.
+      </Frame>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+          <thead><tr><th style={{ ...cell, color: C.muted }}></th>{GENS.map((g, i) => <th key={g} style={{ ...cell, color: i === 0 ? C.green : C.accent }}>{g}</th>)}</tr></thead>
+          <tbody>
+            {GEN_ROWS.map((x, i) => (
+              <tr key={x.k} onClick={() => setRow(i)} style={{ cursor: "pointer", background: row === i ? C.accent + "1A" : "transparent" }}>
+                <td style={{ ...cell, color: C.text, fontWeight: 600 }}>{x.k}</td>
+                {x.v.map((v, j) => <td key={j} style={{ ...cell, color: C.muted }}>{v}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}><b style={{ color: C.text }}>{r.k}:</b> {r.note}</div>
+      {r.n && (
+        <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", fontSize: 12.5, color: C.muted }}>
+            compare <select value={b} onChange={(e) => setB(+e.target.value)} style={{ background: C.surface, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4 }}>{GENS.map((g, i) => <option key={g} value={i}>{g}</option>)}</select>
+            with <select value={a} onChange={(e) => setA(+e.target.value)} style={{ background: C.surface, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4 }}>{GENS.map((g, i) => <option key={g} value={i}>{g}</option>)}</select>
+            <span>→ <b style={{ color: C.yellow }}>{(r.n[b] / r.n[a]).toFixed(1)}×</b> the {r.k.toLowerCase()}</span>
+          </div>
+        </div>
+      )}
+      <Insight color={C.purple} title="Bandwidth grew about 70× from the T4 to Rubin, and the formats keep shrinking: FP16 → FP8 → FP4.">
+        Wider memory paths (HBM), smaller numbers, faster links between GPUs, more memory. Every one of these is a limit you will measure yourself in this course.
+      </Insight>
+      <Insight color={C.orange} title="⚠️ Slippery step: read the small print on a spec sheet.">
+        Vendors print the biggest number they can: often <b>with sparsity</b> (skipping zero weights, counted as double), in the smallest format, and for a
+        whole system of 8 GPUs. To compare fairly, compare the same format, dense, per GPU. Real programs reach only part of any peak (Core Lab 6).
+        Figures: NVIDIA's T4, A100 and H100 datasheets and its HGX/DGX pages; check the vendor page before quoting.
+      </Insight>
+    </div>
+  );
+}
+
 const QUESTIONS = [
   { q: "What is a Streaming Multiprocessor (SM)?", options: ["A type of memory chip", "One of the GPU's mini-processors, with its own schedulers, registers and many cores", "A CPU core inside the GPU", "The PCIe connector"], answer: 1, explain: "The GPU is built from many SMs (40 on the T4); each SM has warp schedulers, a register file, shared memory and many CUDA and Tensor Cores." },
   { q: "40 SMs × 64 CUDA cores × 2 FLOPs per FMA × 1.5 GHz = ?", options: ["3.8 TFLOPS", "7.7 TFLOPS", "15.4 TFLOPS", "0.77 TFLOPS"], answer: 1, explain: "40 × 64 × 2 × 1.5 × 10⁹ = 7.68 × 10¹² FLOPS ≈ 7.7 TFLOPS." },
   { q: "What does a Tensor Core do in one step?", options: ["One addition", "A small matrix multiply-and-add, like 4×4 × 4×4 + 4×4", "Copies data from the CPU", "Schedules warps"], answer: 1, explain: "D = A × B + C on small matrices: 64 FMAs at once on Turing. That's why it's so much faster for AI." },
-  { q: "Why does a register file need to be so large (256 KB per SM)?", options: ["To store the whole dataset", "Every resident thread keeps its own private variables in registers", "To hold the operating system", "For graphics textures only"], answer: 1, explain: "Up to 1,024 threads live on an SM at once, each with its own registers. Unit 3.3 shows why keeping them all resident matters." },
+  { q: "Why does a register file need to be so large (256 KB per SM)?", options: ["To store the whole dataset", "Every resident thread keeps its own private variables in registers", "To hold the operating system", "For graphics textures only"], answer: 1, explain: "Up to 1,024 threads live on an SM at once, each with its own registers. Lesson 3.3 shows why keeping them all resident matters." },
 ];
 const RESULT = {
   perfect: "Perfect! You can read a GPU like a datasheet.",
   good: "Good. Replay 'Zoom In' and go through all three levels.",
   low: "Revisit 'Organising 2,560 Cores': chip → SM → block → core is the map for this module.",
-  done: "Unit 3.1 Complete!",
+  done: "Lesson 3.1 Complete!",
   body: "You can describe a GPU's organisation, explain Tensor Cores, and derive its peak FLOPS.",
-  next: "Next up: Unit 3.2 — Warps & Branch Divergence.",
+  next: "Next up: Lesson 3.2 — Warps & Branch Divergence.",
   teaser: "32 threads march in lock-step. What happens when an if-statement makes them disagree?",
 };
 
 const UNIT_WORDS = [
-  ["SM", "Streaming Multiprocessor", "One of the GPU's mini-processors; the T4 has 40.", "from Unit 2.7"],
+  ["SM", "Streaming Multiprocessor", "One of the GPU's mini-processors; the T4 has 40.", "from Lesson 2.7"],
   ["FMA", "Fused Multiply-Add", "a × b + c in one instruction = 2 FLOPs (the GPU's MAC).", "new here"],
   ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats (IEEE 754, COA). Tensor Cores work on FP16.", "from COA"],
   ["GDDR6", "Graphics Double Data Rate 6 memory", "The T4's fast off-chip memory, 16 GB.", "new here"],
@@ -333,7 +392,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -354,9 +413,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -367,6 +426,7 @@ export default function Unit3_1({ student, onUnitComplete }) {
     { id: "s1", label: "Zoom In" },
     { id: "s2", label: "Tensor Cores" },
     { id: "s3", label: "Work Out the Peak" },
+    { id: "s4", label: "GPU Generations" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -380,9 +440,10 @@ export default function Unit3_1({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔍 Zoom In — chip → SM → processing block</h3><ZoomWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🟧 Tensor Cores — a matrix multiply in one step</h3><TensorWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧮 Work Out the Peak — where 8.1 and 65 TFLOPS come from</h3><PeakWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>📅 GPU Generations — from the T4 to today</h3><GenerationsWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 3.1.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 3.1.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -392,7 +453,7 @@ export default function Unit3_1({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🔬</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 3 › UNIT 3.1</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 3 › LESSON 3.1</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>SMs, Cores & Tensor Cores</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

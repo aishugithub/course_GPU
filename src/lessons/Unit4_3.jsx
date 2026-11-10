@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab4_CPU_GPU_Teamwork.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab08_Hand_a_Job_to_the_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 4 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 8 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 4 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 8 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 2–3 (Kernel functions and threading; multidimensional grids)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 4.3";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 2–3";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Need — a million threads need an address system ──
@@ -100,7 +101,7 @@ function NeedWidget() {
         ))}
       </div>
       <Insight color={C.purple} title="Grid of blocks, block of threads: a two-level address system.">
-        Blocks are the unit the GPU hands to SMs (each block runs entirely on one SM); threads in a block can share 'shared memory' (Unit 3.4).
+        Blocks are the unit the GPU hands to SMs (each block runs entirely on one SM); threads in a block can share 'shared memory' (Lesson 3.4).
       </Insight>
     </div>
   );
@@ -156,6 +157,42 @@ relu<<<(n + 255) / 256, 256>>>(x, y, n);`}</Code>
       <Insight color={C.yellow} title="Round the number of blocks UP, then let the extra threads do nothing with if (i < n).">
         Forgetting the check is the classic beginner bug: the last block's extra threads write past the end of the array.
       </Insight>
+      <ErrorCheck />
+    </div>
+  );
+}
+
+// ── Why was there no error message? CUDA error checking (book 4.3) ──
+function ErrorCheck() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 14 }}>
+      <Btn ghost onClick={() => setOpen((v) => !v)}>{open ? "▲ Hide" : "▼ Nila asks: \"Why was there no error message?\""}</Btn>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <Frame>
+            In the lab, the extra threads wrote into spare slots that were our own memory, so the damage was silent. Past the end of a real array the GPU
+            may stop with "an illegal memory access was encountered". But a launch is <b style={{ color: C.text }}>asynchronous</b> (Lesson 4.4): the CPU
+            does not wait, so the error is reported at the <b style={{ color: C.text }}>next</b> CUDA call, often far from the real bug. Two habits help.
+          </Frame>
+          <Code color={C.accent} title="1 · IN CUDA C: CHECK STRAIGHT AFTER EVERY LAUNCH">{`// launch the kernel: the CPU queues it and does not wait
+relu<<<(n + 255) / 256, 256>>>(x, y, n);
+// did the launch itself fail (a bad block size, no GPU, ...)?
+cudaError_t err = cudaGetLastError();
+// if not, wait for the kernel and collect any error it hit while running
+if (err == cudaSuccess) err = cudaDeviceSynchronize();
+// turn the error code into words
+if (err != cudaSuccess) printf("CUDA error: %s\\n", cudaGetErrorString(err));`}</Code>
+          <div style={{ height: 8 }} />
+          <Code color={C.green} title="2 · IN PYTORCH OR CUPY: MAKE EVERY LAUNCH WAIT (DEBUGGING ONLY)">{`# set this before the first CUDA call (in Colab: in the first cell, then restart the session)
+import os
+# every launch now waits for its kernel, so an error appears at the line that caused it
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"`}</Code>
+          <Insight color={C.orange} title="CUDA_LAUNCH_BLOCKING=1 makes everything slower: use it only while hunting a bug.">
+            NVIDIA's compute-sanitizer tool goes further: it runs your program and reports every out-of-bounds read or write.
+          </Insight>
+        </div>
+      )}
     </div>
   );
 }
@@ -188,7 +225,7 @@ function BlockSizeWidget() {
       </div>
       <Insight color={C.green} title="Use a multiple of 32, typically 128–512. 256 is the common default.">
         Too small (32) hits the 16-blocks-per-SM limit, so half the warp slots stay empty. A non-multiple of 32 (100) wastes lanes in every
-        block. (Real kernels can be limited by registers too, Unit 3.3.)
+        block. (Real kernels can be limited by registers too, Lesson 3.3.)
       </Insight>
     </div>
   );
@@ -230,7 +267,7 @@ dim3 grid((width + 15) / 16, (height + 15) / 16);
 brighten<<<grid, block>>>(img, width, height, 0.2f);`}</Code>
       <Insight title="One thread per pixel, organised in 2-D tiles.">
         The same idea scales to a 4K photo (about 83 lakh pixels → 83 lakh threads) and to matrix multiplies, where each thread computes one output
-        cell. Unit 5.1 tiles a matrix multiply exactly like this.
+        cell. Lesson 5.1 tiles a matrix multiply exactly like this.
       </Insight>
       <LabCard part="C" title="Write and launch your first kernel"
         what="Write the ReLU kernel above in CuPy, launch it with block sizes 32, 100, 256 and 1024, check the answer against NumPy, and time each. Then remove the if (i < n) check on an array that isn't a multiple of the block size and see what happens."
@@ -249,9 +286,9 @@ const RESULT = {
   perfect: "Perfect! You can organise millions of GPU threads.",
   good: "Good. Replay 'The Index Formula' and switch off the safety check.",
   low: "Revisit 'Exam Halls': hall number × seats + seat = roll number.",
-  done: "Unit 4.3 Complete!",
+  done: "Lesson 4.3 Complete!",
   body: "You can compute global thread indices, launch enough blocks safely, choose good block sizes, and write 2-D kernels.",
-  next: "Next up: Unit 4.4 — Async Launch & Synchronization.",
+  next: "Next up: Lesson 4.4 — Async Launch & Synchronization.",
   teaser: "Your GPU timing says 0.02 ms for a huge matrix multiply. Too good to be true? It is. Find out why.",
 };
 
@@ -321,7 +358,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -342,9 +379,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -370,7 +407,7 @@ export default function Unit4_3({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🖼️ 2-D Grids — one thread per pixel</h3><Grid2DWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 4.3.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 4.3.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -380,7 +417,7 @@ export default function Unit4_3({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏟️</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 4 › UNIT 4.3</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 4 › LESSON 4.3</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Kernels, Grids, Blocks, Threads</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

@@ -10,45 +10,57 @@ Spec markers (each on its own line):
 import json, re, sys, pathlib
 
 
-# Textbook map. Abbreviations are expanded once in the strip itself.
-BOOKS = {
-  "1.1": "D2L Ch 1 (Introduction: the key parts of machine learning)",
-  "1.2": "D2L §2.1 (Data manipulation: tensors) · D2L §9.2 (turning text into tokens)",
-  "1.3": "D2L §3.1 (Linear regression: the neuron) · D2L §5.1 (Activation functions)",
-  "1.4": "D2L §3.1–3.4 (Loss and minibatch stochastic gradient descent)",
-  "1.5": "D2L §5.1–5.3 (Multilayer perceptrons, forward and backward propagation) · Kirk & Hwu Ch 16 (Deep learning)",
-  "1.C": "D2L Ch 4 (Classification) and Ch 5 (Multilayer perceptrons)",
-  "2.1": "Hamacher Ch 1 (Performance) · Stallings §2.4 (Basic measures of computer performance)",
-  "2.2": "D2L §5.3 (Forward and backward propagation) · D2L Ch 12 (Optimization: minibatches)",
-  "2.3": "Hamacher §12.2 (Vector (SIMD) processing: vectorization) · H&P §4.1 and §4.5 (Data-level and loop-level parallelism)",
-  "2.4": "D2L Ch 13 (Computational performance) · Hamacher Ch 1 (Performance)",
-  "2.5": "Stallings §2.2 (Multicore, MICs and GPGPUs) · H&P §4.4 (Graphics processing units) · Kirk & Hwu Ch 1",
-  "2.6": "H&P Ch 1 (Trends in power and energy) · Stallings §2.1 (Designing for performance)",
-  "2.7": "Hamacher §12.2 and §12.2.1 (Vector processing; GPUs) · H&P §4.2–4.4 · Mano Ch 9 (Vector and array processors)",
-  "2.8": "Hamacher §12.7 (Performance modelling) · Stallings §2.3 (Amdahl's law) · H&P Ch 1 (Amdahl's law)",
-  "2.C": "Hamacher §12.2.1 (GPUs) · H&P §4.4",
-  "3.1": "H&P §4.4 (Graphics processing units) · Kirk & Hwu Ch 4 (Compute architecture and scheduling) · Hamacher §12.2.1",
-  "3.2": "Kirk & Hwu Ch 4 (Warps and SIMD hardware; control divergence) · H&P §4.4",
-  "3.3": "Kirk & Hwu Ch 4 (Latency tolerance) · Hamacher §12.1 (Hardware multithreading)",
-  "3.4": "Kirk & Hwu Ch 5 (Memory architecture and data locality) · H&P §4.4 (GPU memory structures) · Hamacher Ch 8 (Memory)",
-  "3.C": "Kirk & Hwu Ch 4–5 · H&P §4.4",
-  "4.1": "Hamacher §12.2.1 (GPUs) and Ch 7 (PCI Express) · Kirk & Hwu Ch 2 (Heterogeneous data parallel computing)",
-  "4.2": "Kirk & Hwu Ch 2 (Device memory and data transfer) · Hamacher §12.2.1",
-  "4.3": "Kirk & Hwu Ch 2–3 (Kernel functions and threading; multidimensional grids)",
-  "4.4": "Kirk & Hwu Ch 2 · Hamacher Ch 3 (Interrupts: the same 'start it and carry on' idea)",
-  "4.C": "Kirk & Hwu Ch 2 · Hamacher §12.2.1",
-  "5.1": "Kirk & Hwu Ch 5 (Tiling for reduced memory traffic) · Hamacher Ch 8 (Cache memories: locality)",
-  "5.2": "Hamacher Ch 9 (Floating-point numbers) · Stallings Ch 10 (Computer arithmetic) · Kirk & Hwu Ch 16",
-  "5.3": "H&P Ch 4 (The roofline performance model) · Kirk & Hwu Ch 5 (Arithmetic intensity)",
-  "5.4": "D2L Ch 12 (Minibatch stochastic gradient descent) · D2L Ch 13 (Computational performance)",
-  "5.5": "Kirk & Hwu Ch 16 (Deep learning) · D2L Ch 13",
-  "5.6": "Kirk & Hwu Ch 1 (Libraries and frameworks) · D2L Ch 13",
-  "5.7": "D2L Ch 13 (Computational performance) · Hamacher Ch 8 (Memory)",
-  "5.8": "D2L Ch 13 · NVIDIA's nvidia-smi documentation",
-  "5.9": "D2L §13.5–13.6 (Training on multiple GPUs) · Hamacher §12.3–12.5 (Multiprocessors)",
-  "5.C": "Kirk & Hwu Ch 16 · D2L Ch 13",
+# The course book is A Billion Small Steps. SECTION = where each lesson lives in it;
+# BOOKS = the further reading, copied from the book's own section tables (Steps 1-5 and the Appendix).
+SECTION = {
+  **{u: f"Section {u}" for u in ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.C",
+                                 "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.C",
+                                 "3.1", "3.2", "3.3", "3.4", "4.1", "4.2", "4.3", "4.4", "4.C",
+                                 "5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "5.7", "5.8", "5.9", "5.C"]},
+  "3.C": "Appendix C (a Side Trail from Section 3.4)",
+  "5.10": "Appendix G (a Side Trail from Section 5.C)",
 }
-BOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)"
+BOOKS = {
+  "1.1": "D2L Ch 1",
+  "1.2": "D2L §2.1, §9.2",
+  "1.3": "D2L §3.1, §5.1",
+  "1.4": "D2L §3.1–3.4",
+  "1.5": "D2L §5.1–5.3 · Hwu, Kirk & El Hajj Ch 16",
+  "1.6": "D2L Ch 7",
+  "1.7": "D2L Ch 11",
+  "1.C": "D2L Ch 4, Ch 5",
+  "2.1": "Hamacher Ch 1",
+  "2.2": "D2L §5.3, Ch 12",
+  "2.3": "H&P §4.1",
+  "2.4": "Hamacher Ch 1",
+  "2.5": "Stallings §2.2",
+  "2.6": "H&P Ch 1",
+  "2.7": "Hamacher §12.2",
+  "2.8": "Stallings §2.3",
+  "2.C": "H&P §4.4",
+  "3.1": "Hwu, Kirk & El Hajj Ch 4 · H&P §4.4",
+  "3.2": "Hwu, Kirk & El Hajj Ch 4",
+  "3.3": "Hwu, Kirk & El Hajj Ch 4 · Hamacher §12.1",
+  "3.4": "Hwu, Kirk & El Hajj Ch 5 · Hamacher Ch 8",
+  "3.C": "Hwu, Kirk & El Hajj Ch 4–5 · H&P §4.4",
+  "4.1": "Hwu, Kirk & El Hajj Ch 2 · Hamacher Ch 7",
+  "4.2": "Hwu, Kirk & El Hajj Ch 2",
+  "4.3": "Hwu, Kirk & El Hajj Ch 2–3",
+  "4.4": "Hwu, Kirk & El Hajj Ch 2 · Hamacher Ch 3",
+  "4.C": "Hwu, Kirk & El Hajj Ch 2",
+  "5.1": "Hwu, Kirk & El Hajj Ch 5",
+  "5.2": "Hamacher Ch 9",
+  "5.3": "H&P §4.3",
+  "5.4": "D2L Ch 12–13",
+  "5.5": "Hwu, Kirk & El Hajj Ch 16",
+  "5.6": "Hwu, Kirk & El Hajj Ch 1",
+  "5.7": "D2L Ch 13",
+  "5.8": "D2L Ch 13",
+  "5.9": "D2L §13.5–13.6",
+  "5.C": "Hwu, Kirk & El Hajj Ch 16",
+  "5.10": "Hwu, Kirk & El Hajj Ch 2–3, Ch 17–18",
+}
+BOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e"
 
 HEAD = r'''import { useState, useEffect, useRef } from "react";
 
@@ -86,11 +98,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB __LABNO__ · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>__LABHEAD__ · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab __LABNO__ in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open __LABNO__ in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.__GPUNOTE__</div>
     </div>
   );
@@ -180,7 +192,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -203,9 +215,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -227,7 +239,7 @@ __SECTIONS__
 __CONTENT__
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit __UNIT__.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson __UNIT__.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -237,7 +249,7 @@ __CONTENT__
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>__ICON__</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE __MODULE__ › UNIT __UNIT__</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP __MODULE__ › LESSON __UNIT____TRAILTAG__</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>__TITLE__</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>
@@ -278,16 +290,21 @@ def build(spec_path, out_dir):
     sections = json.loads(blocks["SECTIONS"].strip())
     comp = "Unit" + meta["unit"].replace(".", "_")
     gpu_note = " Then choose <b>Runtime → Change runtime type → T4 GPU</b>." if meta.get("gpu") else ""
-    head = (HEAD.replace("__LAB__", meta["lab"]).replace("__LABNO__", str(meta["labNo"]))
-            .replace("__GPUNOTE__", gpu_note))
+    trail = bool(meta.get("trail"))
+    lab_head = (f"🥾 SIDE TRAIL (OPTIONAL) — {meta['labNo'].upper()}" if meta.get("labTrail", trail)
+                else f"⛰ TRY IT FOR REAL — {meta['labNo'].upper()}")
+    head = (HEAD.replace("__LAB__", meta["lab"]).replace("__LABHEAD__", lab_head)
+            .replace("__LABNO__", str(meta["labNo"])).replace("__GPUNOTE__", gpu_note))
     sec_lines = "\n".join(f'    {{ id: "s{i}", label: {json.dumps(s[0], ensure_ascii=False)} }},' for i, s in enumerate(sections))
     content = "\n".join(
         f'    <div><h3 style={{{{ color: C.text, marginBottom: 6 }}}}>{s[1]}</h3><{s[2]} /></div>,' for s in sections)
     main = (MAIN.replace("__COMP__", comp).replace("__SECTIONS__", sec_lines).replace("__CONTENT__", content)
             .replace("__UNIT__", meta["unit"]).replace("__MODULE__", str(meta["module"]))
-            .replace("__ICON__", meta["icon"]).replace("__TITLE__", meta["title"]))
+            .replace("__ICON__", meta["icon"]).replace("__TITLE__", meta["title"])
+            .replace("__TRAILTAG__", " · 🥾 SIDE TRAIL" if trail else ""))
     nl = chr(10)
-    book = (nl + "const TEXTBOOK = " + json.dumps(BOOKS[meta["unit"]], ensure_ascii=False) + ";" + nl
+    book = (nl + "const BOOK_SECTION = " + json.dumps(SECTION[meta["unit"]], ensure_ascii=False) + ";" + nl
+            + "const TEXTBOOK = " + json.dumps(BOOKS[meta["unit"]], ensure_ascii=False) + ";" + nl
             + "const TEXTBOOK_KEY = " + json.dumps(BOOK_KEY, ensure_ascii=False) + ";" + nl)
     out = head + book + blocks["WIDGETS"].rstrip() + "\n" + blocks["QUIZ"].rstrip() + "\n\n" + blocks["WORDS"].strip() + "\n" + QUIZ + NOTE + main
     p = pathlib.Path(out_dir) / f"{comp}.jsx"

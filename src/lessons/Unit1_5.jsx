@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab1_AI_Basics.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab03_Train_a_Real_Network.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 1 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 3 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 1 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 3 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L §5.1–5.3 (Multilayer perceptrons, forward and backward propagation) · Kirk & Hwu Ch 16 (Deep learning)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 1.5";
+const TEXTBOOK = "D2L §5.1–5.3 · Hwu, Kirk & El Hajj Ch 16";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Need — one neuron gives one cut-off; a B grade needs two ──
@@ -110,9 +111,9 @@ function GradeNeedWidget() {
   return (
     <div>
       <Frame>
-        Back to Nila's class, with a new question: <b style={{ color: C.text }}>who got a B?</b> In this school a B means marks from
+        Back to Nila's class, with a new question: <b style={{ color: C.text }}>who got a B?</b> In this college a B means marks from
         <b style={{ color: C.green }}> 60 to 75</b>. A neuron reading a student's marks m computes <code style={{ color: C.yellow }}>z = w × m + b</code> and
-        says YES when z ≥ 0. From Unit 1.3 you know two things: it switches at one cut-off (−b ÷ w), and the <b style={{ color: C.text }}>sign</b> of w
+        says YES when z ≥ 0. From Lesson 1.3 you know two things: it switches at one cut-off (−b ÷ w), and the <b style={{ color: C.text }}>sign</b> of w
         decides which side means YES. Make it say YES only for the green dots (the B students).
       </Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
@@ -330,7 +331,7 @@ function TrainWidget() {
       <Frame>
         In the last section <b style={{ color: C.text }}>we</b> chose the questions (60 and 75) so you could see how it works. A real network is
         different: the designer only decides <b style={{ color: C.text }}>how many</b> neurons (here, 2 in the hidden layer). Their weights and
-        biases start as random-looking numbers, so at first they ask meaningless questions. Then gradient descent (Unit 1.4) nudges every
+        biases start as random-looking numbers, so at first they ask meaningless questions. Then gradient descent (Lesson 1.4) nudges every
         weight and bias, using the 17 students' marks and grades. Press Train and watch each hidden neuron's cut-off, −b ÷ w, move.
       </Frame>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -357,7 +358,7 @@ function TrainWidget() {
         A neuron may ask its question the other way round ("above 75?") and let the last neuron subtract it; the cut-offs are what
         matter. That is what "the machine learns" really means: many small questions, which the network finds for itself.
       </Insight>
-      <LabCard part="E" title="Build the B-grade network, break it, then let training find the cut-offs"
+      <LabCard part="A" title="Build the B-grade network, break it, then let training find the cut-offs"
         what="Code the three grade neurons by hand and test 52, 68 and 81 marks. Remove the activation and print z₃ for several marks. Then train 2 hidden neurons in PyTorch from a random start and print each one's learned cut-off."
         expect="NOT B, B, NOT B; then z₃ = 13.5 every time without the activation; then learned cut-offs close to 60 and 75." />
     </div>
@@ -589,7 +590,7 @@ Y = X @ W.T + b`}</Code>
         A machine with one worker fills the grid cell by cell. A machine with thousands of workers fills it almost at once. Keep that
         thought: it is exactly the idea behind the GPU.
       </Insight>
-      <LabCard part="E" title="A layer is a matrix multiply: prove it"
+      <LabCard part="A" title="A layer is a matrix multiply: prove it"
         what="Make a random batch X and weights W in NumPy, compute X @ W.T + b, and check it matches PyTorch's nn.Linear with the same weights. Then count the MACs."
         expect="the two outputs match (difference ≈ 0) and shape (64, 128)." />
     </div>
@@ -606,16 +607,16 @@ const RESULT = {
   perfect: "Perfect! You see neural networks the way hardware does: as matrix multiplies.",
   good: "Good. Replay 'A Layer = A Matrix' and step through the rows again.",
   low: "Revisit 'A Layer = A Matrix': one row = one neuron is the key picture.",
-  done: "Unit 1.5 Complete!",
+  done: "Lesson 1.5 Complete!",
   body: "You can explain why a second neuron is needed, why the activation must sit between layers, how training picks each neuron's question, and write a layer as W @ x + b.",
-  next: "Next up: Unit 1.C — Capstone: Train a Tiny Network.",
-  teaser: "Put the neuron, the loss and gradient descent together, and watch a network learn in front of you.",
+  next: "Next up: Lesson 1.6 — Convolution: Looking at Pictures in Small Windows.",
+  teaser: "A photo is too big for one ordinary layer. Slide a small window across it instead: the same small dot product, thousands of times.",
 };
 
 const UNIT_WORDS = [
-  ["MAC", "Multiply-Accumulate", "Multiply, then add to a running total. A layer needs (inputs × neurons) of them.", "from Unit 1.3"],
+  ["MAC", "Multiply-Accumulate", "Multiply, then add to a running total. A layer needs (inputs × neurons) of them.", "from Lesson 1.3"],
   ["W @ x", "matrix multiplication", "Python's @ operator multiplies matrices: each output = one row of W dotted with x.", "new here"],
-  ["MNIST", "the handwritten-digit dataset", "28 × 28 grey images, so 784 inputs.", "from Unit 1.2"],
+  ["MNIST", "the handwritten-digit dataset", "28 × 28 grey images, so 784 inputs.", "from Lesson 1.2"],
 ];
 
 // ── Quiz ──
@@ -676,7 +677,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -697,9 +698,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -731,7 +732,7 @@ export default function Unit1_5({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>⚡ Batches — matrix × matrix, every cell independent</h3><BatchWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 1.5.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 1.5.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -741,7 +742,7 @@ export default function Unit1_5({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🧱</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 1 › UNIT 1.5</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 1 › LESSON 1.5</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Layers = Matrix Multiplication</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

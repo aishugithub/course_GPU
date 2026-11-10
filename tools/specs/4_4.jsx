@@ -1,5 +1,5 @@
 //@@META
-{"unit": "4.4", "module": 4, "title": "Async Launch & Synchronization", "icon": "📬", "lab": "Lab4_CPU_GPU_Teamwork.ipynb", "labNo": "4", "gpu": true}
+{"unit": "4.4", "module": 4, "title": "Async Launch & Synchronization", "icon": "📬", "lab": "CoreLab09_Keep_the_GPU_Busy.ipynb", "labNo": "Core Lab 9", "gpu": true}
 //@@WIDGETS
 
 // ── Section 1: Need — the impossible timing ──
@@ -106,7 +106,7 @@ function OverlapWidget() {
       </div>
       <Insight color={C.green} title="Overlap turns 'prep + train' into 'whichever is slower'.">
         This is what PyTorch's DataLoader does with <code>num_workers</code> (CPU processes preparing batches in the background) and
-        <code> pin_memory=True</code> + <code>.to("cuda", non_blocking=True)</code> (copies that run while the GPU computes). It's Amdahl's law (Unit 2.8)
+        <code> pin_memory=True</code> + <code>.to("cuda", non_blocking=True)</code> (copies that run while the GPU computes). It's Amdahl's law (Lesson 2.8)
         fought with parallelism.
       </Insight>
     </div>
@@ -149,7 +149,7 @@ function HiddenSyncWidget() {
         They're fine occasionally (say every 100 steps for logging), but harmful in every iteration. The standard fix: accumulate on the GPU, and fetch
         once at the end of the epoch.
       </Insight>
-      <LabCard part="D" title="Wrong vs right timing, and the cost of .item()"
+      <LabCard part="A" title="Wrong vs right timing, and the cost of .item()"
         what="Time a matrix multiply with and without torch.cuda.synchronize(), then train a small model for an epoch calling loss.item() every step vs only at the end, and compare."
         expect="an impossibly fast unsynchronised time, a realistic synchronised one, and the every-step .item() version measurably slower." />
     </div>
@@ -171,9 +171,9 @@ const RESULT = {
   perfect: "Perfect! You won't be fooled by GPU timings.",
   good: "Good. Replay 'Hidden Sync Points' and find all four.",
   low: "Revisit 'The Command Queue': launch and carry on, wait only when needed.",
-  done: "Unit 4.4 Complete!",
+  done: "Lesson 4.4 Complete!",
   body: "You can explain asynchronous launches, streams, synchronisation, overlap, and hidden sync points.",
-  next: "Next up: Unit 4.C — Capstone: Where Did the Time Go?",
+  next: "Next up: Lesson 4.C — Capstone: Where Did the Time Go?",
   teaser: "A team's GPU training is mysteriously slow. Profile it, find the culprits, fix them.",
 };
 //@@WORDS
@@ -182,5 +182,5 @@ const UNIT_WORDS = [
   ["stream", "a CUDA command queue", "GPU commands in one stream run in order; the CPU keeps going.", "new here"],
   ["sync", "synchronise", "Make the CPU wait until the GPU's queued work is finished.", "new here"],
   ["non_blocking", "a PyTorch copy option", "Lets a copy from pinned memory run without making the CPU wait.", "new here"],
-  ["DataLoader", "PyTorch's batch loader", "Prepares batches, optionally with background CPU workers.", "from Unit 2.8"],
+  ["DataLoader", "PyTorch's batch loader", "Prepares batches, optionally with background CPU workers.", "from Lesson 2.8"],
 ];

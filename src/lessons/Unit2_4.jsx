@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab2A_AI_Is_Hungry.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab04_How_Much_Work_Is_AI.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 2A · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 4 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 2A in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 4 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L Ch 13 (Computational performance) · Hamacher Ch 1 (Performance)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 2.4";
+const TEXTBOOK = "Hamacher Ch 1";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const fmt = (x) => {
@@ -80,11 +81,11 @@ const fmt = (x) => {
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["FLOPs per token ≈ 2 × parameters", "Unit 2.1"],
-  ["A token is about ¾ of a word", "Unit 2.1"],
-  ["time = work (FLOPs) ÷ speed (FLOPS)", "Unit 2.1"],
-  ["Inference only: no backward pass needed to answer questions", "Unit 2.2"],
-  ["Different students' questions are independent, so they can be answered in parallel", "Unit 2.3"],
+  ["FLOPs per token ≈ 2 × parameters", "Lesson 2.1"],
+  ["A token is about ¾ of a word", "Lesson 2.1"],
+  ["time = work (FLOPs) ÷ speed (FLOPS)", "Lesson 2.1"],
+  ["Inference only: no backward pass needed to answer questions", "Lesson 2.2"],
+  ["Different students' questions are independent, so they can be answered in parallel", "Lesson 2.3"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -201,7 +202,7 @@ function PlayWidget() {
         })}
       </div>
       <Stat label="T4 CLOUD COST PER DAY (FP16)" value={`₹${Math.round(perDay / (6.5e13 * util / 100) / 3600 * rate).toLocaleString("en-IN")}`} color={C.green} />
-      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Speeds are approximate published peaks; the price is an assumption, so check current rates. Unit 5.3 shows why chatbot answers often run slower than this FLOPs estimate (memory speed becomes the limit).</div>
+      <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Speeds are approximate published peaks; the price is an assumption, so check current rates. Lesson 5.3 shows why chatbot answers often run slower than this FLOPs estimate (memory speed becomes the limit).</div>
       <Insight color={C.green} title="The laptop CPU can't keep up with even a small college; a single GPU usually can.">
         Same arithmetic, same model. The difference is entirely how many operations the machine does per second. The rest of this module opens up that
         difference: CPU vs GPU.
@@ -214,7 +215,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete estimator, runnable in any Python. In Lab 2A Part D you'll replace the guessed "laptop CPU" speed with one you measure yourself.</Frame>
+      <Frame>The complete estimator, runnable in any Python. In Core Lab 4, Part D, you'll replace the guessed "laptop CPU" speed with one you measure yourself.</Frame>
       <Code color={C.green} title="🧾 compute_bill.py">{`params            = 7e9      # model size
 students          = 5000
 questions_each    = 4
@@ -236,12 +237,12 @@ t4 = flops_per_day / (65e12 * utilisation) / 3600
 print(f"T4 cloud cost: about ₹{t4 * rupees_per_hour:,.0f} per day")`}</Code>
       <div style={{ marginTop: 12, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
         <b style={{ color: C.text }}>Challenge upgrades:</b> (1) add a peak hour, when 40% of the day's questions arrive in one hour: how many GPUs do you need then?
-        (2) Add a one-time training cost using 6 × parameters × tokens (Unit 2.2).
+        (2) Add a one-time training cost using 6 × parameters × tokens (Lesson 2.2).
       </div>
       <LabCard part="D" title="Measure your own CPU's speed"
         what="Time matrix multiplication in plain Python and in NumPy for growing sizes, plot time against n, and compute your machine's real GFLOPS = 2n³ ÷ time. Then put that number into the estimator."
         expect="plain Python reaching only tens of MFLOPS, NumPy reaching tens to hundreds of GFLOPS, and time growing about 8× when n doubles." />
-      <Insight color={C.orange} title="Halfway up Module 2: you can now put a number on AI's hunger.">
+      <Insight color={C.orange} title="Halfway up Step 2: you can now put a number on AI's hunger.">
         Next you'll meet the machine built to feed it.
       </Insight>
     </div>
@@ -252,20 +253,20 @@ const QUESTIONS = [
   { q: "A 7-billion-parameter model writes a 300-token answer. About how many FLOPs is that?", options: ["2.1 × 10⁹", "4.2 × 10¹²", "2.1 × 10¹²", "7 × 10⁹"], answer: 1, explain: "2 × 7 × 10⁹ × 300 = 4.2 × 10¹² FLOPs." },
   { q: "A machine's peak is 10 TFLOPS but your program reaches 30% of it. What speed should you use in the estimate?", options: ["10 TFLOPS", "3 TFLOPS", "30 TFLOPS", "0.3 TFLOPS"], answer: 1, explain: "Effective speed = peak × utilisation = 10 × 0.3 = 3 TFLOPS." },
   { q: "The bot needs 48 GPU-hours of work every day. How many GPUs must run round the clock?", options: ["1", "2", "24", "48"], answer: 1, explain: "Each GPU gives 24 hours a day: 48 ÷ 24 = 2 GPUs. This only works because different students' questions are independent and can run in parallel." },
-  { q: "Why doesn't the helpdesk estimate include a backward pass?", options: ["It's too small to matter", "Answering questions is inference; the backward pass is only needed for training", "GPUs skip it automatically", "Chatbots have no layers"], answer: 1, explain: "Using a trained model is forward-only (Unit 2.2). Backward passes and updates belong to training." },
+  { q: "Why doesn't the helpdesk estimate include a backward pass?", options: ["It's too small to matter", "Answering questions is inference; the backward pass is only needed for training", "GPUs skip it automatically", "Chatbots have no layers"], answer: 1, explain: "Using a trained model is forward-only (Lesson 2.2). Backward passes and updates belong to training." },
 ];
 const RESULT = {
   perfect: "Perfect! You can size an AI deployment like an engineer.",
   good: "Good. Replay 'Play It' and push the sliders to extremes.",
   low: "Revisit 'Build in Steps': one answer → one day → machines.",
-  done: "Unit 2.4 Complete! 🍔",
+  done: "Lesson 2.4 Complete! 🍔",
   body: "You can count AI's work, separate training from inference, spot the parallelism, and estimate time and cost on real machines.",
-  next: "Next up: Unit 2.5 — Latency vs Throughput.",
+  next: "Next up: Lesson 2.5 — Latency vs Throughput.",
   teaser: "Why does a chip with thousands of 'slow' cores beat a CPU with a few fast ones? Time to race them.",
 };
 
 const UNIT_WORDS = [
-  ["FLOPS", "FLoating-point Operations Per Second", "A machine's speed.", "from Unit 2.1"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A machine's speed.", "from Lesson 2.1"],
   ["A100", "NVIDIA A100", "A data-centre GPU, much bigger than Colab's T4.", "new here"],
   ["GPU-hour", "one GPU used for one hour", "How cloud companies charge for GPUs.", "new here"],
 ];
@@ -328,7 +329,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -349,9 +350,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -377,7 +378,7 @@ export default function Unit2_4({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and measure your own CPU</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 2.4.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 2.4.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -387,7 +388,7 @@ export default function Unit2_4({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 2 › UNIT 2.4</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 2 › LESSON 2.4</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: The Compute Bill</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

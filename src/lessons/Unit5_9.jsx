@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5B_GPUs_in_Real_Projects.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/SideTrails_Step5_Stack_INT8_Parallel.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5B · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🥾 SIDE TRAIL (OPTIONAL) — STEP 5 SIDE TRAILS · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5B in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Step 5 Side Trails in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,21 +68,22 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L §13.5–13.6 (Training on multiple GPUs) · Hamacher §12.3–12.5 (Multiprocessors)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.9";
+const TEXTBOOK = "D2L §13.5–13.6";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Need — one GPU would take centuries ──
 function NeedWidget() {
   const [g, setG] = useState(1);
-  const flops = 3.14e23;                     // GPT-3 training estimate (Unit 2.2)
+  const flops = 3.14e23;                     // GPT-3 training estimate (Lesson 2.2)
   const per = 312e12 * 0.4;                  // A100 FP16 peak × 40% utilisation
   const eff = g === 1 ? 1 : Math.pow(0.97, Math.log2(g));   // illustrative: a little communication loss per doubling
   const days = flops / (per * g * eff) / 86400;
   return (
     <div>
       <Frame>
-        Training a GPT-3-sized model takes about 3 × 10²³ FLOPs (Unit 2.2). Even on one big data-centre GPU (an A100 at 40% of its FP16 peak), how long?
+        Training a GPT-3-sized model takes about 3 × 10²³ FLOPs (Lesson 2.2). Even on one big data-centre GPU (an A100 at 40% of its FP16 peak), how long?
         Now add GPUs.
       </Frame>
       <Slider label={<>GPUs = <b style={{ color: C.green }}>{g.toLocaleString("en-IN")}</b></>} value={g} min={1} max={4096} onChange={setG} color={C.green} />
@@ -92,6 +93,10 @@ function NeedWidget() {
       </div>
       <Insight color={C.orange} title="Big models are trained on thousands of GPUs at once, not because one is slow, but because the work is enormous.">
         The question is how to split ONE training job across many GPUs. There are two basic ways, plus a lot of fast networking.
+      </Insight>
+      <Insight color={C.purple} title="✏️ Where 'about 80 years' comes from: the assumptions.">
+        3 × 10²³ FLOPs ÷ (an A100's 312 TFLOPS × 40% utilisation ≈ 125 TFLOPS) ≈ 2.4 × 10⁹ seconds ≈ 76 years. Change the assumptions and the answer
+        changes: on a T4 at the same 40% it would be over 350 years; on 1,024 A100s, about 27 days.
       </Insight>
     </div>
   );
@@ -136,7 +141,7 @@ function DataParWidget() {
 # the training loop stays the same; backward() triggers the all-reduce`}</Code>
       <Insight title="Averaging the gradients of 4 slices gives exactly the gradient of the whole batch.">
         So 4 GPUs act like one GPU with a 4× bigger batch, at nearly 4× the speed, as long as the gradient exchange is fast. The exchange is the serial part
-        that Amdahl's law warns about (Unit 2.8).
+        that Amdahl's law warns about (Lesson 2.8).
       </Insight>
     </div>
   );
@@ -148,7 +153,7 @@ function ModelParWidget() {
   const MODES = {
     pipeline: { t: "Pipeline parallelism", d: "Split the LAYERS: GPU 0 holds layers 1–8, GPU 1 holds 9–16, and so on. Activations flow from GPU to GPU like an assembly line, and micro-batches keep every stage busy (the same idea as pipelining in COA Unit 3!).", draw: "layers" },
     tensor: { t: "Tensor parallelism", d: "Split each big MATRIX: each GPU holds a slice of every weight matrix and computes part of every layer, then the GPUs combine partial results. It needs very fast links, so it's used inside one server.", draw: "matrix" },
-    fsdp: { t: "Sharded data parallelism (FSDP / ZeRO)", d: "Like data parallelism, but each GPU stores only a SHARE of the weights, gradients and Adam states (the 16 bytes/param from Unit 5.7), fetching the rest just when needed. Memory per GPU drops by about the number of GPUs.", draw: "shard" },
+    fsdp: { t: "Sharded data parallelism (FSDP / ZeRO)", d: "Like data parallelism, but each GPU stores only a SHARE of the weights, gradients and Adam states (the 16 bytes/param from Lesson 5.7), fetching the rest just when needed. Memory per GPU drops by about the number of GPUs.", draw: "shard" },
   };
   const m = MODES[mode];
   return (
@@ -181,10 +186,10 @@ function ModelParWidget() {
 
 // ── Section 4: Beyond NVIDIA GPUs ──
 const ACCEL = [
-  { t: "Google TPU", c: C.green, d: "Tensor Processing Unit: built around a huge matrix-multiply unit (a 'systolic array') where numbers flow through a grid of multiply-add cells. Used through Google Cloud and Colab." },
-  { t: "NPUs in phones and laptops", c: C.teal, d: "Neural Processing Units: small, low-power AI engines (often INT8) on phone and laptop chips. They run face unlock, camera effects and on-device assistants without the cloud." },
-  { t: "AMD Instinct GPUs", c: C.red, d: "AMD's data-centre GPUs, programmed with ROCm/HIP (Unit 5.6). Same SIMT ideas, different company." },
-  { t: "Apple M-series", c: C.purple, d: "CPU, GPU and Neural Engine on one chip sharing unified memory: no PCIe copies (Unit 4.1). Great for running models locally." },
+  { t: "Google TPU", c: C.green, d: "Tensor Processing Unit, built around a systolic array: a square grid of simple multiply-add cells, each holding one weight and wired only to its neighbours. Inputs move one cell right every tick, running sums one cell down, like a heartbeat (systole). Each number is fetched once and reused by a whole row, and almost the whole chip is multiply-add hardware. The first TPU (2015) had a 256 × 256 grid: 65,536 8-bit multiply-adds per tick, 92 TOPS. The price is flexibility; GPU Tensor Cores are a small version of the same idea inside a general chip." },
+  { t: "NPUs and edge AI", c: C.teal, d: "An NPU is a small, low-power matrix engine in a phone, laptop or camera chip; boards such as NVIDIA Jetson put a small GPU and AI engines on a palm-sized module for robots and drones. AI on the device (edge AI) wins on latency (a drone cannot wait 200 ms for a server to say brake), privacy (the photo never leaves the device) and power and cost (no server; works offline). Edge chips are judged by TOPS per watt and lean on INT8 and INT4. As NVIDIA counts them (INT8, with sparsity): Jetson Orin Nano Super 67 TOPS at 25 W ≈ 2.7 TOPS/W; Jetson AGX Orin 275 TOPS at 60 W ≈ 4.6; the T4 130 TOPS at 70 W ≈ 1.9." },
+  { t: "AMD Instinct GPUs", c: C.red, d: "AMD's data-centre GPUs, programmed with ROCm/HIP (Lesson 5.6). Same SIMT ideas, different company." },
+  { t: "Apple M-series", c: C.purple, d: "CPU, GPU and Neural Engine on one chip sharing one physical memory: no PCIe copies (Lesson 4.1). Great for running models locally." },
   { t: "Cloud GPUs", c: C.yellow, d: "Rent instead of buy: T4, L4, A100, H100 by the hour from cloud providers. Colab's free T4 is the entry point; prices vary a lot, so always check current rates." },
 ];
 function AccelWidget() {
@@ -201,7 +206,10 @@ function AccelWidget() {
       <Insight color={C.green} title="Every AI chip is the same bargain: huge numbers of multiply-adds in parallel, low precision, and a memory system to feed them.">
         Learn the principles in this course (SIMD, memory bandwidth, precision, the roofline, host-device copies) and you can understand any of them.
       </Insight>
-      <LabCard part="D" title="Prove data parallelism on one GPU"
+      <LabCard part="B" title="Shrink the MNIST model to INT8"
+        what="Train the Core Lab 3 network, then store every weight as an 8-bit whole number plus one scale factor per layer, and compare size, speed and accuracy on the CPU, as on a phone."
+        expect="the model about a quarter of the size, with the same accuracy; on Colab's 2-core CPU the speed hardly changes." />
+      <LabCard part="C" title="Prove data parallelism on one GPU"
         what="Colab gives you one GPU, but you can still check the key idea: split a batch into 4 slices, compute each slice's gradient separately, average them, and compare with the gradient of the whole batch."
         expect="the averaged gradient matching the full-batch gradient (difference ≈ 0), exactly what all-reduce relies on." />
     </div>
@@ -218,9 +226,9 @@ const RESULT = {
   perfect: "Perfect! You understand AI computing at scale.",
   good: "Good. Replay 'Data Parallelism' and step through the all-reduce.",
   low: "Revisit 'Data Parallelism': full model per GPU, split batch, average gradients.",
-  done: "Unit 5.9 Complete!",
+  done: "Lesson 5.9 Complete!",
   body: "You can explain data, pipeline, tensor and sharded parallelism, and how TPUs, NPUs and other accelerators relate to GPUs.",
-  next: "Next up: Unit 5.C — Grand Capstone: Plan an AI Project.",
+  next: "Next up: Lesson 5.C — Grand Capstone: Plan an AI Project.",
   teaser: "Put the whole course to work: plan the GPU side of a real AI project, then run a real language model.",
 };
 
@@ -229,7 +237,7 @@ const UNIT_WORDS = [
   ["DDP", "DistributedDataParallel", "PyTorch's data-parallel wrapper: one process per GPU.", "new here"],
   ["FSDP / ZeRO", "Fully Sharded Data Parallel / Zero Redundancy Optimizer", "Store only a share of the weights, gradients and optimiser state on each GPU.", "new here"],
   ["TPU / NPU", "Tensor / Neural Processing Unit", "AI accelerators from Google / in phones and laptops.", "new here"],
-  ["NVLink", "NVIDIA's GPU-to-GPU link", "Much faster than PCIe (Unit 4.1).", "from Unit 4.1"],
+  ["NVLink", "NVIDIA's GPU-to-GPU link", "Much faster than PCIe (Lesson 4.1).", "from Lesson 4.1"],
 ];
 
 // ── Quiz ──
@@ -290,7 +298,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -311,9 +319,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -339,7 +347,7 @@ export default function Unit5_9({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🌐 Beyond NVIDIA — TPUs, NPUs and more</h3><AccelWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.9.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.9.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -349,7 +357,7 @@ export default function Unit5_9({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🌐</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.9</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.9</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Many GPUs & Other Accelerators</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

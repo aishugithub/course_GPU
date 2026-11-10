@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5B_GPUs_in_Real_Projects.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/SideTrails_Step5_Stack_INT8_Parallel.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5B · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🥾 SIDE TRAIL (OPTIONAL) — STEP 5 SIDE TRAILS · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5B in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Step 5 Side Trails in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,18 +68,19 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 1 (Libraries and frameworks) · D2L Ch 13";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.6";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 1";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: Need — where does one line go? ──
 const LAYERS = [
   { k: "py", t: "Your Python code", c: C.accent, d: "y = model(x). You think in layers and tensors; you never mention SMs, warps or memory copies.", ex: "y = model(x)" },
   { k: "pt", t: "PyTorch (the framework)", c: C.purple, d: "Breaks the model into operations (matmul, add, relu…), records them for autograd (loss.backward), manages GPU memory with a caching allocator, and picks a kernel for each operation.", ex: "aten::linear → aten::addmm" },
-  { k: "lib", t: "Libraries: cuBLAS, cuDNN, …", c: C.green, d: "NVIDIA's expert-tuned kernels: cuBLAS for matrix multiplies (Unit 5.1), cuDNN for neural-network layers. PyTorch also has its own kernels for simpler operations, and torch.compile can generate fused ones.", ex: "cublasSgemm(…)" },
-  { k: "rt", t: "CUDA runtime", c: C.teal, d: "The API from Module 4: allocate (cudaMalloc), copy (cudaMemcpy), launch kernels <<<grid, block>>>, streams and synchronisation.", ex: "cudaLaunchKernel(…)" },
+  { k: "lib", t: "Libraries: cuBLAS, cuDNN, …", c: C.green, d: "NVIDIA's expert-tuned kernels: cuBLAS for matrix multiplies (Lesson 5.1), cuDNN for neural-network layers. PyTorch also has its own kernels for simpler operations, and torch.compile can generate fused ones.", ex: "cublasSgemm(…)" },
+  { k: "rt", t: "CUDA runtime", c: C.teal, d: "The API from Step 4: allocate (cudaMalloc), copy (cudaMemcpy), launch kernels <<<grid, block>>>, streams and synchronisation.", ex: "cudaLaunchKernel(…)" },
   { k: "drv", t: "NVIDIA driver", c: C.yellow, d: "Part of the operating system. It talks to the hardware: puts commands in the GPU's queue, sets up the DMA copies over PCIe, handles interrupts when work finishes (COA Unit 5).", ex: "driver 5xx.xx" },
-  { k: "hw", t: "The GPU hardware", c: C.orange, d: "The SMs, warps, Tensor Cores and GDDR6 memory from Module 3 finally do the work.", ex: "40 SMs on a T4" },
+  { k: "hw", t: "The GPU hardware", c: C.orange, d: "The SMs, warps, Tensor Cores and GDDR6 memory from Step 3 finally do the work.", ex: "40 SMs on a T4" },
 ];
 function StackWidget() {
   const [k, setK] = useState(0);
@@ -149,7 +150,7 @@ print(torch.__version__, torch.version.cuda, torch.backends.cudnn.version())
 const DEVICES = {
   cuda: { t: "NVIDIA GPU", s: "cuda", stack: "CUDA · cuBLAS · cuDNN", note: "The most widely used. Everything in this course." },
   rocm: { t: "AMD GPU", s: "cuda (via ROCm/HIP)", stack: "ROCm · HIP · rocBLAS · MIOpen", note: "AMD's stack. PyTorch's ROCm build reuses the 'cuda' device name, so most code runs unchanged." },
-  mps: { t: "Apple M-series", s: "mps", stack: "Metal Performance Shaders", note: "On Mac laptops. Unified memory: no PCIe copies (Unit 4.1)." },
+  mps: { t: "Apple M-series", s: "mps", stack: "Metal Performance Shaders", note: "On Mac laptops. Unified memory: no PCIe copies (Lesson 4.1)." },
   cpu: { t: "CPU only", s: "cpu", stack: "oneDNN · MKL / OpenBLAS", note: "Always available. Slow for big models, fine for learning and small jobs." },
 };
 function DeviceWidget() {
@@ -187,15 +188,15 @@ const PROF = [
   ["aten::addmm", "PyTorch", "'add + matrix multiply': y = b + x·Wᵀ"],
   ["turing_s1688gemm_fp16_128x128_ldg8_relu_f2f_tn", "cuBLAS", "a GEMM kernel for Turing (T4), using FP16 Tensor Cores on 128 × 128 tiles"],
   ["volta_sgemm_128x64_nn", "cuBLAS", "an FP32 single-precision GEMM ('sgemm') on 128 × 64 tiles"],
-  ["vectorized_elementwise_kernel<…relu…>", "PyTorch", "the ReLU: one thread per element, branch-free (Unit 3.2)"],
-  ["Memcpy HtoD (Pageable -> Device)", "CUDA runtime", "a host-to-device copy over PCIe from pageable memory (Unit 4.1)"],
+  ["vectorized_elementwise_kernel<…relu…>", "PyTorch", "the ReLU: one thread per element, branch-free (Lesson 3.2)"],
+  ["Memcpy HtoD (Pageable -> Device)", "CUDA runtime", "a host-to-device copy over PCIe from pageable memory (Lesson 4.1)"],
 ];
 function KernelWidget() {
   const [i, setI] = useState(2);
   return (
     <div>
       <Frame>
-        The PyTorch profiler (Unit 4.C) shows the stack in action. Here are typical entries from profiling a small model on a T4. Click each one
+        The PyTorch profiler (Lesson 4.C) shows the stack in action. Here are typical entries from profiling a small model on a T4. Click each one
         and decode it with what you've learned.
       </Frame>
       <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, padding: 8 }}>
@@ -211,7 +212,11 @@ function KernelWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Exact kernel names vary between GPUs and library versions. 'GEMM' = GEneral Matrix Multiply.</div>
       <Insight color={C.green} title="Under every model are a few kinds of kernels: matrix multiplies, element-wise operations, and copies.">
-        You now understand all three: tiling and Tensor Cores (Module 5), branch-free element-wise kernels (Module 3), and PCIe copies (Module 4).
+        You now understand all three: tiling and Tensor Cores (Step 5), branch-free element-wise kernels (Step 3), and PCIe copies (Step 4).
+      </Insight>
+      <Insight color={C.purple} title="The professional profilers show the same names.">
+        NVIDIA's Nsight Systems (<code>nsys profile python train.py</code>: a timeline of the whole run, layer by layer) and Nsight Compute
+        (<code>ncu</code>: a detailed report on one kernel). They are the next step after torch.profiler (Lesson 4.C).
       </Insight>
       <LabCard part="A" title="Inspect the stack on Colab"
         what="Print the PyTorch, CUDA and cuDNN versions and the driver from nvidia-smi, write a portable device picker, then profile a small model and identify the cuBLAS GEMM kernels, element-wise kernels and memory copies."
@@ -230,14 +235,14 @@ const RESULT = {
   perfect: "Perfect! You can see through the whole software stack.",
   good: "Good. Replay 'Down the Stack' and click every layer.",
   low: "Revisit 'Down the Stack': Python → PyTorch → libraries → CUDA → driver → GPU.",
-  done: "Unit 5.6 Complete!",
+  done: "Lesson 5.6 Complete!",
   body: "You can name every layer between your code and the GPU, fix version problems, write portable device code, and read kernel names.",
-  next: "Next up: Unit 5.7 — Will It Fit? Sizing GPU Memory.",
+  next: "Next up: Lesson 5.7 — Will It Fit? Sizing GPU Memory.",
   teaser: "Weights, gradients, optimiser states and activations: do the memory maths before the GPU does it for you.",
 };
 
 const UNIT_WORDS = [
-  ["cuBLAS / cuDNN", "CUDA Basic Linear Algebra Subprograms / CUDA Deep Neural Network library", "NVIDIA's tuned kernel libraries.", "from Units 5.1, 5.4"],
+  ["cuBLAS / cuDNN", "CUDA Basic Linear Algebra Subprograms / CUDA Deep Neural Network library", "NVIDIA's tuned kernel libraries.", "from Lessons 5.1, 5.4"],
   ["GEMM", "GEneral Matrix Multiply", "The standard name for C = αAB + βC kernels.", "new here"],
   ["ROCm / HIP", "AMD's GPU software platform / its CUDA-like language", "AMD's equivalent of CUDA.", "new here"],
   ["MPS", "Metal Performance Shaders", "Apple's GPU framework; PyTorch device 'mps'.", "new here"],
@@ -302,7 +307,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -323,9 +328,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -351,7 +356,7 @@ export default function Unit5_6({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🔍 Decode Real Kernel Names</h3><KernelWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.6.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.6.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -361,7 +366,7 @@ export default function Unit5_6({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🥞</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.6</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.6</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>The Software Stack</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

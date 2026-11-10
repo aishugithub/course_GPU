@@ -1,5 +1,5 @@
 //@@META
-{"unit": "5.C", "module": 5, "title": "Grand Capstone: Plan an AI Project", "icon": "🏆", "lab": "Lab5B_GPUs_in_Real_Projects.ipynb", "labNo": "5B", "gpu": true}
+{"unit": "5.C", "module": 5, "title": "Grand Capstone: Plan an AI Project", "icon": "🏆", "lab": "CoreLab12_Will_It_Fit.ipynb", "labNo": "Core Lab 12", "gpu": true}
 //@@WIDGETS
 
 // Published peak figures (dense FP16 Tensor Core), memory and bandwidth; prices are ASSUMPTIONS for illustration
@@ -21,12 +21,12 @@ function planFor(pk, params, amount, prec, g) {
     const bytes = prec === "int8" ? 1 : 2;
     memGB = P * bytes * 1.2 / 1e9 + 0.5;
     const tokPerAnswer = 270;
-    const secPerToken = (P * bytes) / (g.bw * 0.6);          // memory-bound decoding (Unit 5.3), 60% of bandwidth
+    const secPerToken = (P * bytes) / (g.bw * 0.6);          // memory-bound decoding (Lesson 5.3), 60% of bandwidth
     hours = (amount * tokPerAnswer * secPerToken) / 3600 / 8; // assume 8 answers batched together
   } else {
-    memGB = P * 16 / 1e9 + P * 2 / 1e9 + 0.5;                 // mixed-precision Adam + rough activations (Unit 5.7)
+    memGB = P * 16 / 1e9 + P * 2 / 1e9 + 0.5;                 // mixed-precision Adam + rough activations (Lesson 5.7)
     const tokens = pk === "tune" ? amount * 1e6 : amount * 1e5;
-    hours = (6 * P * tokens) / (g.tf * 0.35) / 3600;          // 6·N·D at 35% of peak (Unit 2.2)
+    hours = (6 * P * tokens) / (g.tf * 0.35) / 3600;          // 6·N·D at 35% of peak (Lesson 2.2)
   }
   const n = Math.max(1, Math.ceil(memGB / g.mem));
   return { memGB, n, hours: hours / n, cost: (hours / n) * n * g.rs };
@@ -34,12 +34,12 @@ function planFor(pk, params, amount, prec, g) {
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Bytes per parameter: 2 to run (FP16), ~16 to train", "Unit 5.7"],
-  ["Training FLOPs ≈ 6 × parameters × tokens", "Unit 2.2"],
-  ["Chatbot decoding is memory-bound: time per token ≈ model bytes ÷ bandwidth", "Unit 5.3"],
-  ["Real code reaches only part of the peak; Amdahl applies", "Units 2.4, 2.8"],
-  ["FP16 / INT8 to save memory and time", "Unit 5.2"],
-  ["Several GPUs when it doesn't fit on one", "Unit 5.9"],
+  ["Bytes per parameter: 2 to run (FP16), ~16 to train", "Lesson 5.7"],
+  ["Training FLOPs ≈ 6 × parameters × tokens", "Lesson 2.2"],
+  ["Chatbot decoding is memory-bound: time per token ≈ model bytes ÷ bandwidth", "Lesson 5.3"],
+  ["Real code reaches only part of the peak; Amdahl applies", "Lessons 2.4, 2.8"],
+  ["FP16 / INT8 to save memory and time", "Lesson 5.2"],
+  ["Several GPUs when it doesn't fit on one", "Lesson 5.9"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -68,7 +68,7 @@ function MissionWidget() {
 
 // ── Section 2: Build in Steps ──
 const VERSIONS = [
-  { tag: "v1", title: "Does it fit?", color: C.teal, why: "Memory first, because a plan that doesn't fit is no plan. Use bytes per parameter for the task (Unit 5.7).", code: `def memory_gb(params, task, precision="fp16"):
+  { tag: "v1", title: "Does it fit?", color: C.teal, why: "Memory first, because a plan that doesn't fit is no plan. Use bytes per parameter for the task (Lesson 5.7).", code: `def memory_gb(params, task, precision="fp16"):
     if task == "infer":
         per = {"fp16": 2, "int8": 1, "int4": 0.5}[precision]
         return params * per * 1.2 / 1e9 + 0.5      # +20% activations, +0.5 GB context
@@ -77,7 +77,7 @@ const VERSIONS = [
 gpus = {"T4": 16, "L4": 24, "A100-40": 40, "A100-80": 80}
 need = memory_gb(1e9, "train")
 print({g: "fits" if need <= m else f"needs {int(-(-need // m))}" for g, m in gpus.items()})` },
-  { tag: "v2", title: "+ how long?", color: C.yellow, why: "Training is compute-bound: 6·N·D FLOPs at a realistic share of peak. Chatbot answers are memory-bound: each token reads all the weights (Unit 5.3).", code: `def train_hours(params, tokens, peak_flops, util=0.35):
+  { tag: "v2", title: "+ how long?", color: C.yellow, why: "Training is compute-bound: 6·N·D FLOPs at a realistic share of peak. Chatbot answers are memory-bound: each token reads all the weights (Lesson 5.3).", code: `def train_hours(params, tokens, peak_flops, util=0.35):
     return 6 * params * tokens / (peak_flops * util) / 3600
 
 def chat_hours(params, answers, bandwidth, bytes_per_param=2, tokens=270, batch=8):
@@ -161,10 +161,10 @@ function CodeWidget() {
   return (
     <div>
       <Frame>
-        In Lab 5B Part E you'll run your planner, then put it to a real test: load a real (small) language model, generate text on the CPU and on the T4,
+        In Core Lab 12, Part C, you'll run your planner, then put it to a real test: load a real (small) language model, generate text on the CPU and on the T4,
         and compare the measured speed and memory with your predictions.
       </Frame>
-      <Code color={C.green} title="🤖 A real language model on the GPU (Lab 5B Part E)">{`from transformers import AutoTokenizer, AutoModelForCausalLM
+      <Code color={C.green} title="🤖 A real language model on the GPU (Core Lab 12, Part C)">{`from transformers import AutoTokenizer, AutoModelForCausalLM
 name = "distilgpt2"                                   # 82 million parameters
 tok = AutoTokenizer.from_pretrained(name)
 model = AutoModelForCausalLM.from_pretrained(name, torch_dtype=torch.float16).to("cuda")
@@ -180,12 +180,12 @@ print(f"{100 / dt:.0f} tokens/s, memory {torch.cuda.max_memory_allocated() / 1e6
         <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
           Choose one small AI task (image classification, text sentiment, or running a small pretrained model). Using the
           <b style={{ color: C.text }}> Mini-Project template notebook</b>: (1) plan it with your planner, (2) run it on the CPU and on the GPU, (3) measure the speed-up,
-          where the time goes (data vs copy vs compute), and the GPU memory used, (4) apply at least one optimisation from Module 5, and (5) write a one-page report.
+          where the time goes (data vs copy vs compute), and the GPU memory used, (4) apply at least one optimisation from Step 5, and (5) write a one-page report.
         </div>
         <a href="https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/MiniProject_Template.ipynb" target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", borderRadius: 8, background: C.purple, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open the Mini-Project template in Colab ↗</a>
       </div>
-      <LabCard part="E" title="Plan it, then run a real language model"
-        what="Run the planner for the three projects; then load distilgpt2, generate 100 tokens on the CPU and on the T4 in FP16, and compare tokens per second and memory with the bandwidth-based prediction from Unit 5.3."
+      <LabCard part="C" title="Plan it, then run a real language model"
+        what="Run the planner for the three projects; then load distilgpt2, generate 100 tokens on the CPU and on the T4 in FP16, and compare tokens per second and memory with the bandwidth-based prediction from Lesson 5.3."
         expect="a big GPU speed-up, memory of a few hundred MB, and real tokens/s well below the bandwidth limit: for a model this small, overheads (Amdahl again) dominate." />
       <Insight color={C.orange} title="🎓 Course complete: from a single neuron to planning real AI on GPUs.">
         You can explain why AI needs GPUs, how a GPU is built, how the CPU hands it work, how to make it fast, and how to plan real projects. Get your footing.
@@ -210,16 +210,16 @@ const RESULT = {
   perfect: "Perfect! You're ready to plan and run AI on GPUs for real.",
   good: "Great work. Replay 'Play It' with different projects.",
   low: "Revisit 'Build in Steps': fit → time → cost, using units from the whole course.",
-  done: "Course Complete! 🎓🏆",
+  done: "Step 5 Complete: you have reached the summit! 🏔️",
   body: "From rules vs learning to multi-GPU training: you understand how AI uses GPUs, and you can measure, speed up and plan GPU work yourself.",
   next: "What next?",
-  teaser: "Do your mini-project, keep the notebooks, and try a bigger model on a bigger GPU when you get the chance. Get your footing. Keep climbing.",
+  teaser: "Your mini-project (you can do it with the Core Labs alone). And an optional 🥾 Side Trail: Lesson 5.10, the same GPU pattern drawing 3-D pictures, pricing shares and reading DNA. Get your footing. Keep climbing.",
 };
 //@@WORDS
 const UNIT_WORDS = [
   ["L4", "NVIDIA L4", "A newer, efficient data-centre GPU: 24 GB, FP16 Tensor Cores.", "new here"],
-  ["A100", "NVIDIA A100", "A large data-centre GPU: 40 or 80 GB, very high bandwidth.", "from Unit 2.4"],
+  ["A100", "NVIDIA A100", "A large data-centre GPU: 40 or 80 GB, very high bandwidth.", "from Lesson 2.4"],
   ["distilgpt2", "a small GPT-2-style language model", "82 million parameters, small enough to run anywhere.", "new here"],
   ["transformers", "Hugging Face's model library", "Downloads and runs thousands of pretrained models.", "new here"],
-  ["GPU-hour", "one GPU used for one hour", "How cloud GPUs are priced.", "from Unit 2.4"],
+  ["GPU-hour", "one GPU used for one hour", "How cloud GPUs are priced.", "from Lesson 2.4"],
 ];

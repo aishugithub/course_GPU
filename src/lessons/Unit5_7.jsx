@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5B_GPUs_in_Real_Projects.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab12_Will_It_Fit.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5B · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 12 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5B in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "D2L Ch 13 (Computational performance) · Hamacher Ch 8 (Memory)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.7";
+const TEXTBOOK = "D2L Ch 13";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const GPUS = [["T4 (Colab)", 16], ["L4", 24], ["A100 40 GB", 40], ["A100 80 GB", 80]];
@@ -79,7 +80,7 @@ function NeedWidget() {
   const [mode, setMode] = useState("infer");
   const parts = mode === "infer"
     ? [["Weights", 2, C.accent, "the model itself"]]
-    : [["Weights (FP16)", 2, C.accent, "used in forward and backward"], ["Gradients (FP16)", 2, C.orange, "one per weight, from backward"], ["Master weights (FP32)", 4, C.purple, "exact copy for safe updates (Unit 5.2)"], ["Adam state m (FP32)", 4, C.teal, "running average of gradients"], ["Adam state v (FP32)", 4, C.green, "running average of squared gradients"]];
+    : [["Weights (FP16)", 2, C.accent, "used in forward and backward"], ["Gradients (FP16)", 2, C.orange, "one per weight, from backward"], ["Master weights (FP32)", 4, C.purple, "exact copy for safe updates (Lesson 5.2)"], ["Adam state m (FP32)", 4, C.teal, "running average of gradients"], ["Adam state v (FP32)", 4, C.green, "running average of squared gradients"]];
   const total = parts.reduce((s, p) => s + p[1], 0);
   return (
     <div>
@@ -106,7 +107,60 @@ function NeedWidget() {
   );
 }
 
-// ── Section 2: The calculator ──
+// ── Section 2: Adam — why it needs two extra numbers per weight (book 5.7) ──
+function AdamWidget() {
+  const [opt, setOpt] = useState("sgd");
+  const [steps, setSteps] = useState(10);
+  const lr = 0.001;
+  // two weights with steady slopes: A always 100, B always 0.01
+  const run = (g) => {
+    let w = 0, m = 0, v = 0;
+    for (let t = 1; t <= steps; t++) {
+      if (opt === "sgd") { w -= lr * g; continue; }
+      m = 0.9 * m + 0.1 * g;
+      v = 0.999 * v + 0.001 * g * g;
+      const mh = m / (1 - 0.9 ** t), vh = v / (1 - 0.999 ** t);   // real Adam's correction for the first few steps
+      w -= lr * mh / (Math.sqrt(vh) + 1e-8);
+    }
+    return -w;
+  };
+  const a = run(100), b = run(0.01);
+  const fmt = (x) => (x >= 0.0005 ? x.toFixed(4) : x.toExponential(1));
+  return (
+    <div>
+      <Frame>
+        Plain gradient descent (Lesson 1.4) uses one rule for every weight: <code style={{ color: C.yellow }}>w ← w − lr × slope</code>. Adam, the optimiser most
+        AI models are trained with, keeps <b style={{ color: C.text }}>two running numbers for every weight</b>: <b style={{ color: C.accent }}>momentum</b>
+        (m ← 0.9 m + 0.1 × slope: keep going the way the slopes mostly point) and a <b style={{ color: C.purple }}>running size</b> (v ← 0.999 v + 0.001 × slope²).
+        The step is lr × m ÷ √v. Weight A always gets the slope 100; weight B always gets 0.01. Learning rate 0.001.
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <Btn ghost={opt !== "sgd"} onClick={() => setOpt("sgd")}>Plain gradient descent</Btn>
+        <Btn ghost={opt !== "adam"} onClick={() => setOpt("adam")} color={C.purple}>Adam</Btn>
+      </div>
+      <Slider label={<>steps: <b style={{ color: C.accent }}>{steps}</b></>} value={steps} min={1} max={100} onChange={setSteps} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="WEIGHT A HAS MOVED (slope 100)" value={fmt(a)} color={C.accent} />
+        <Stat label="WEIGHT B HAS MOVED (slope 0.01)" value={fmt(b)} color={b / a < 0.01 ? C.red : C.green} />
+        <Stat label="A ÷ B" value={`${(a / b).toLocaleString("en-IN", { maximumFractionDigits: 0 })}×`} color={C.yellow} />
+      </div>
+      <Insight color={opt === "sgd" ? C.red : C.green} title={opt === "sgd" ? "Plain gradient descent: B moves 10,000 times slower than A, so B hardly learns." : "Adam: both weights move about lr = 0.001 per step, whatever the size of their slopes."}>
+        Dividing by the usual size of each weight's slopes gives every weight a step of about the same size. That is why Adam is the default.
+        (Real Adam also adds a tiny number to √v so it never divides by 0, and corrects m and v for their first few steps, as this widget does.)
+      </Insight>
+      <div style={{ marginTop: 12, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px", fontFamily: "monospace", fontSize: 12.5, color: C.muted }}>
+        the price, in FP32: weight <b style={{ color: C.accent }}>4</b> + gradient <b style={{ color: C.orange }}>4</b> + m <b style={{ color: C.purple }}>4</b> + v <b style={{ color: C.purple }}>4</b> = <b style={{ color: C.text }}>16 bytes per parameter</b>
+        <br />mixed precision: 2 + 2 + FP32 master copy 4 + m 4 + v 4 = also <b style={{ color: C.text }}>16</b>
+      </div>
+      <Insight color={C.purple} title="A chatbot has one more memory cost that grows: the KV cache (Lesson 5.3).">
+        While running, a 7B model in FP16 needs 14 GB of weights plus about 0.5 MB of saved keys and values for every token of the chat: 2 GB more after 4,000 tokens.
+        Long chats fill a GPU even when the weights fit.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 3: The calculator ──
 function CalcWidget() {
   const [params, setParams] = useState(1);
   const [mode, setMode] = useState("train16");
@@ -158,7 +212,7 @@ function ActWidget() {
   return (
     <div>
       <Frame>
-        Activations are the layer outputs saved for the backward pass (Unit 2.2). Their size is <b style={{ color: C.text }}>batch × (sum of layer widths) × bytes</b>, so
+        Activations are the layer outputs saved for the backward pass (Lesson 2.2). Their size is <b style={{ color: C.text }}>batch × (sum of layer widths) × bytes</b>, so
         they grow with the batch, unlike the weights. Here's a 4-hidden-layer network like the ones in this course.
       </Frame>
       <Slider label={<>Batch size = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={8192} onChange={setB} color={C.orange} />
@@ -187,11 +241,11 @@ const TRICKS = [
     loss.backward()                           # gradients ADD up
     if (i + 1) % 4 == 0:
         opt.step(); opt.zero_grad()` },
-  { t: "Mixed precision", c: C.green, d: "FP16 activations and weights for compute: about half the activation memory (Unit 5.2).", code: `with torch.autocast("cuda", dtype=torch.float16):
+  { t: "Mixed precision", c: C.green, d: "FP16 activations and weights for compute: about half the activation memory (Lesson 5.2).", code: `with torch.autocast("cuda", dtype=torch.float16):
     loss = loss_fn(model(x), y)` },
   { t: "Gradient checkpointing", c: C.purple, d: "Save only some layers' outputs and recompute the rest during backward: much less activation memory, for about 30% more compute.", code: `from torch.utils.checkpoint import checkpoint
 h = checkpoint(block, h, use_reentrant=False)   # recomputed in backward` },
-  { t: "Quantised inference (INT8 / INT4)", c: C.teal, d: "Store weights in 8 or 4 bits for running a model: 2–4× smaller than FP16 (Unit 5.2). Common for running chatbots on small GPUs.", code: `# e.g. with the bitsandbytes library through Hugging Face:
+  { t: "Quantised inference (INT8 / INT4)", c: C.teal, d: "Store weights in 8 or 4 bits for running a model: 2–4× smaller than FP16 (Lesson 5.2). Common for running chatbots on small GPUs.", code: `# e.g. with the bitsandbytes library through Hugging Face:
 from transformers import BitsAndBytesConfig
 model = AutoModelForCausalLM.from_pretrained(
     name, quantization_config=BitsAndBytesConfig(load_in_8bit=True))` },
@@ -214,7 +268,7 @@ function TricksWidget() {
         Pick based on the calculator: if the model state is the problem, quantise or use LoRA; if activations are the problem, shrink the batch,
         accumulate gradients, or checkpoint.
       </Insight>
-      <LabCard part="B" title="Measure memory step by step"
+      <LabCard part="A" title="Measure memory step by step"
         what="Use torch.cuda.memory_allocated() to watch memory grow as you create a model, run a forward pass, call backward, and take an Adam step; then compare with the 16-bytes-per-parameter estimate, and measure activations at several batch sizes."
         expect="memory jumping at each stage (weights → activations → gradients → Adam states), close to your estimate, and activations growing in step with the batch size." />
     </div>
@@ -231,17 +285,17 @@ const RESULT = {
   perfect: "Perfect! You can size any AI project's memory.",
   good: "Good. Replay 'The Calculator' with inference vs training.",
   low: "Revisit 'Where the Memory Goes': 2 bytes to run, about 16 to train.",
-  done: "Unit 5.7 Complete!",
+  done: "Lesson 5.7 Complete!",
   body: "You can estimate weights, gradients, optimiser states and activations, decide whether a project fits, and choose tricks to make it fit.",
-  next: "Next up: Unit 5.8 — nvidia-smi & Out-of-Memory.",
+  next: "Next up: Lesson 5.8 — nvidia-smi & Out-of-Memory.",
   teaser: "Read the GPU's dashboard, decode the dreaded OOM message, and hunt down memory leaks.",
 };
 
 const UNIT_WORDS = [
   ["Adam", "Adaptive Moment Estimation", "A popular optimiser that keeps two running averages (m, v) per parameter.", "new here"],
-  ["activations", "saved layer outputs", "Stored in forward, used in backward (Unit 2.2).", "from Unit 2.2"],
+  ["activations", "saved layer outputs", "Stored in forward, used in backward (Lesson 2.2).", "from Lesson 2.2"],
   ["LoRA", "Low-Rank Adaptation", "Fine-tuning by training small add-on matrices while the big model stays frozen.", "new here"],
-  ["OOM", "Out Of Memory", "The 'CUDA out of memory' error.", "from Unit 5.4"],
+  ["OOM", "Out Of Memory", "The 'CUDA out of memory' error.", "from Lesson 5.4"],
   ["CUDA context", "the driver's per-process setup", "Takes a few hundred MB of GPU memory before any tensor exists.", "new here"],
 ];
 
@@ -303,7 +357,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -324,9 +378,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -334,9 +388,10 @@ function TextbookNote() {
 export default function Unit5_7({ student, onUnitComplete }) {
   const sections = [
     { id: "s0", label: "Where Memory Goes" },
-    { id: "s1", label: "The Calculator" },
-    { id: "s2", label: "Activations" },
-    { id: "s3", label: "Tricks to Fit" },
+    { id: "s1", label: "Why 16 Bytes?" },
+    { id: "s2", label: "The Calculator" },
+    { id: "s3", label: "Activations" },
+    { id: "s4", label: "Tricks to Fit" },
     { id: "quiz", label: "Quiz & Wrap-up" },
   ];
   const [activeSection, setActiveSection] = useState(0);
@@ -347,12 +402,13 @@ export default function Unit5_7({ student, onUnitComplete }) {
 
   const content = [
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📏 Where the Memory Goes — bytes per parameter</h3><NeedWidget /></div>,
+    <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧠 Why 16 Bytes? — Adam keeps two extra numbers per weight</h3><AdamWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧮 Will It Fit? — the calculator</h3><CalcWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📈 Activations — the part that grows with the batch</h3><ActWidget /></div>,
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🧰 Tricks to Make It Fit</h3><TricksWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.7.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.7.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -362,7 +418,7 @@ export default function Unit5_7({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📏</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.7</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.7</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Will It Fit? Sizing GPU Memory</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab4_CPU_GPU_Teamwork.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab08_Hand_a_Job_to_the_GPU.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 4 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 8 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 4 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 8 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,16 +68,17 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 2 (Device memory and data transfer) · Hamacher §12.2.1";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 4.2";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 2";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const STEPS = [
   { k: "alloc", t: "1 · Allocate", c: C.purple, d: "The CPU asks the GPU driver to reserve space in GPU memory for the inputs and the output. Nothing is copied yet; it's like booking seats.", cuda: [2, 3], torch: [1] },
   { k: "in", t: "2 · Copy in", c: C.yellow, d: "The input data travels from host RAM to device memory over PCIe, moved by the GPU's DMA engine (COA Unit 5).", cuda: [5, 6], torch: [2] },
-  { k: "launch", t: "3 · Launch the kernel", c: C.green, d: "The CPU tells the GPU: run THIS function on THIS many threads. The thousands of threads (Modules 2–3) do the work. The CPU doesn't wait; it carries on (Unit 4.4).", cuda: [8], torch: [3] },
+  { k: "launch", t: "3 · Launch the kernel", c: C.green, d: "The CPU tells the GPU: run THIS function on THIS many threads. The thousands of threads (Steps 2–3) do the work. The CPU doesn't wait; it carries on (Lesson 4.4).", cuda: [8], torch: [3] },
   { k: "out", t: "4 · Copy out", c: C.yellow, d: "The result travels back from device memory to host RAM over PCIe, so the CPU can print it, save it, or use it in decisions.", cuda: [10], torch: [4] },
-  { k: "free", t: "5 · Free", c: C.purple, d: "The GPU memory is released so other data can use it. Forget this in a loop and GPU memory slowly fills up (Unit 5.8).", cuda: [12, 13], torch: [5] },
+  { k: "free", t: "5 · Free", c: C.purple, d: "The GPU memory is released so other data can use it. Forget this in a loop and GPU memory slowly fills up (Lesson 5.8).", cuda: [12, 13], torch: [5] },
 ];
 const CUDA_LINES = [
   "// host code (runs on the CPU), CUDA C",
@@ -163,7 +164,7 @@ function StepWidget() {
         <Btn ghost onClick={() => setI(-1)}>↺ Reset</Btn>
       </div>
       <Insight color={C.yellow} title="Two of the five steps cross PCIe, and only one is the actual computing.">
-        That's why Unit 4.1's rule matters: copy once, compute many times.
+        That's why Lesson 4.1's rule matters: copy once, compute many times.
       </Insight>
     </div>
   );
@@ -195,7 +196,7 @@ function CodeMapWidget() {
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>{s.d}</div>
       <Insight title="PyTorch hides the five steps; it doesn't remove them.">
         <code>.to("cuda")</code> = allocate + copy in. Every operation = a kernel launch. <code>.cpu()</code> = copy out. When a tensor is no longer used,
-        PyTorch frees it, but keeps the memory cached for reuse, which is why nvidia-smi can show memory 'in use' (Unit 5.8).
+        PyTorch frees it, but keeps the memory cached for reuse, which is why nvidia-smi can show memory 'in use' (Lesson 5.8).
       </Insight>
     </div>
   );
@@ -242,9 +243,9 @@ const RESULT = {
   perfect: "Perfect! You know exactly how a CPU hands work to a GPU.",
   good: "Good. Replay 'CUDA C vs PyTorch' and match each step.",
   low: "Revisit 'Watch It Happen': allocate, copy in, launch, copy out, free.",
-  done: "Unit 4.2 Complete!",
+  done: "Lesson 4.2 Complete!",
   body: "You can list and explain the five offloading steps, map them to CUDA C and PyTorch, and see where the time goes.",
-  next: "Next up: Unit 4.3 — Kernels, Grids, Blocks, Threads.",
+  next: "Next up: Lesson 4.3 — Kernels, Grids, Blocks, Threads.",
   teaser: "Step 3 says 'launch on this many threads'. How do you organise a million of them? Exam halls and roll numbers.",
 };
 
@@ -252,7 +253,7 @@ const UNIT_WORDS = [
   ["cudaMalloc", "CUDA memory allocate", "Reserves space in GPU memory.", "new here"],
   ["cudaMemcpy", "CUDA memory copy", "Copies between host and device, in the direction you name.", "new here"],
   ["cudaFree", "CUDA free", "Releases GPU memory.", "new here"],
-  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Unit 2.7).", "from Unit 2.7"],
+  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Lesson 2.7).", "from Lesson 2.7"],
   ["DMA", "Direct Memory Access", "Moves the data over PCIe (COA Unit 5).", "from COA"],
 ];
 
@@ -314,7 +315,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -335,9 +336,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -363,7 +364,7 @@ export default function Unit4_2({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>⏱️ Where the Time Goes — copies vs computing</h3><TimelineWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 4.2.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 4.2.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -373,7 +374,7 @@ export default function Unit4_2({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🖐️</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 4 › UNIT 4.2</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 4 › LESSON 4.2</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>The Five Steps of Offloading</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

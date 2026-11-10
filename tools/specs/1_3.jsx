@@ -1,5 +1,5 @@
 //@@META
-{"unit": "1.3", "module": 1, "title": "The Neuron", "icon": "⚡", "lab": "Lab1_AI_Basics.ipynb", "labNo": "1"}
+{"unit": "1.3", "module": 1, "title": "The Neuron", "icon": "⚡", "lab": "CoreLab02_How_a_Neuron_Learns.ipynb", "labNo": "Core Lab 2"}
 //@@WIDGETS
 
 const PEOPLE = [
@@ -15,7 +15,7 @@ function NeedWidget() {
   return (
     <div>
       <Frame>
-        Back in Nila's class. In Unit 1.1 the machine learned a rule from <b style={{ color: C.text }}>one</b> input, study hours. But results also depend on
+        Back in Nila's class. In Lesson 1.1 the machine learned a rule from <b style={{ color: C.text }}>one</b> input, study hours. But results also depend on
         attendance. Look at KAVYA (4 hours, rarely in class) and RAVI (2 hours, almost never absent). Toggle the rule and watch who it gets wrong.
       </Frame>
       <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
@@ -139,7 +139,7 @@ function BiasWidget() {
   return (
     <div>
       <Frame>
-        In Unit 1.1 the machine learned the rule <b style={{ color: C.text }}>"PASS if hours ≥ 3"</b>. Can a neuron with one input do the same?
+        In Lesson 1.1 the machine learned the rule <b style={{ color: C.text }}>"PASS if hours ≥ 3"</b>. Can a neuron with one input do the same?
         It computes <code style={{ color: C.yellow }}>z = w × hours + b</code> and says PASS when z ≥ 0. Move w and b and watch where the
         neuron switches from FAIL to PASS. Then switch the bias off.
       </Frame>
@@ -221,13 +221,13 @@ function ActivationWidget() {
         <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Why not skip the activation?</div>
         <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
           With one neuron it looks optional: "z ≥ 0" and "z" carry the same information. It starts to matter when one neuron's answer
-          feeds into another. <b style={{ color: C.text }}>Unit 1.5</b> shows it with a real example (who got a B grade?): take the
+          feeds into another. <b style={{ color: C.text }}>Lesson 1.5</b> shows it with a real example (who got a B grade?): take the
           activation out and two neurons quietly merge back into one, and the second neuron becomes useless.
         </div>
       </div>
       <Insight color={C.green} title="The activation turns z into a firm answer, and it is what makes a second neuron worth having.">
-        Step gives a hard YES/NO, sigmoid a smooth "how sure", ReLU a cheap "negative becomes 0". Unit 1.4 shows why real networks
-        prefer the smooth ones, and Unit 1.5 shows what goes wrong with no activation at all.
+        Step gives a hard YES/NO, sigmoid a smooth "how sure", ReLU a cheap "negative becomes 0". Lesson 1.4 shows why real networks
+        prefer the smooth ones, and Lesson 1.5 shows what goes wrong with no activation at all.
       </Insight>
     </div>
   );
@@ -276,7 +276,7 @@ function TuneWidget() {
         Each multiply-and-add pair is called a <b>MAC</b> (multiply-accumulate). Tuning 3 knobs by hand was fun; a real model has
         billions of knobs. Next unit: how the machine turns them by itself.
       </Insight>
-      <LabCard part="C" title="Build a neuron in NumPy"
+      <LabCard part="A" title="Build a neuron in NumPy"
         what="Write the weighted sum by hand with a loop, then again with np.dot, and check that you get the same answer. Then feed it the six students from this section."
         expect="the loop and np.dot give identical z values, and your weights score 6 / 6." />
     </div>
@@ -299,9 +299,9 @@ const RESULT = {
   perfect: "Perfect! You can compute a neuron by hand.",
   good: "Good. Replay 'Anatomy' and redo the z calculation yourself.",
   low: "Revisit 'Anatomy': z = w₁x₁ + w₂x₂ + … + b is the heart of this unit.",
-  done: "Unit 1.3 Complete!",
+  done: "Lesson 1.3 Complete!",
   body: "You can build a neuron from weights, a bias and an activation, place its cut-off with the bias (−b ÷ w), and count its multiply-adds.",
-  next: "Next up: Unit 1.4 — Learning = Reducing Error.",
+  next: "Next up: Lesson 1.4 — Learning = Reducing Error.",
   teaser: "You set w and b by hand. How does a machine find them by itself, even when there are a million of them?",
 };
 //@@WORDS

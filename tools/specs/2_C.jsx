@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.C", "module": 2, "title": "Capstone: CPU or GPU?", "icon": "🏆", "lab": "Lab2B_CPU_vs_GPU.ipynb", "labNo": "2B", "gpu": true}
+{"unit": "2.C", "module": 2, "title": "Capstone: CPU or GPU?", "icon": "🏆", "lab": "CoreLab05_CPU_or_GPU.ipynb", "labNo": "Core Lab 5", "gpu": true}
 //@@WIDGETS
 
 // Simple, labelled timing model (all figures approximate):
@@ -10,17 +10,17 @@ const tfmt = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : s < 1 ? `${(s * 
 
 const JOBS = [
   { id: "tiny", t: "Add two lists of 100 numbers", parallel: true, flops: 100, bytes: 1200, serial: 0, ans: "cpu",
-    why: "The GPU's 20 µs launch cost is thousands of times longer than the work itself. Tiny jobs stay on the CPU (Unit 2.5)." },
+    why: "The GPU's 20 µs launch cost is thousands of times longer than the work itself. Tiny jobs stay on the CPU (Lesson 2.5)." },
   { id: "matmul", t: "Multiply two 4096 × 4096 matrices", parallel: true, flops: 2 * 4096 ** 3, bytes: 3 * 4096 * 4096 * 4, serial: 0, ans: "gpu",
-    why: "1.4 × 10¹¹ FLOPs of perfectly independent work (Unit 2.3). Even after copying 200 MB over PCIe, the GPU wins clearly." },
+    why: "1.4 × 10¹¹ FLOPs of perfectly independent work (Lesson 2.3). Even after copying 200 MB over PCIe, the GPU wins clearly." },
   { id: "csv", t: "Parse 10,000 lines of a messy CSV with lots of if/else in Python", parallel: false, flops: 0, bytes: 0, serial: 0.08, ans: "cpu",
-    why: "Branchy, one-line-at-a-time Python string work isn't SIMD work at all. p ≈ 0, so Amdahl gives no speed-up (Unit 2.8). This is the CPU's home ground." },
+    why: "Branchy, one-line-at-a-time Python string work isn't SIMD work at all. p ≈ 0, so Amdahl gives no speed-up (Lesson 2.8). This is the CPU's home ground." },
   { id: "relu_cpu", t: "Apply ReLU to 5 crore numbers that are in CPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: true, ans: "cpu",
-    why: "A trap! Only one comparison per number, but 400 MB must cross PCIe and come back. Copying takes longer than the CPU needs to just do it. Where the data lives matters (Module 4)." },
+    why: "A trap! Only one comparison per number, but 400 MB must cross PCIe and come back. Copying takes longer than the CPU needs to just do it. Where the data lives matters (Step 4)." },
   { id: "relu_gpu", t: "Apply ReLU to 5 crore numbers already in GPU memory", parallel: true, flops: 5e7, bytes: 4e8, serial: 0, copy: false, ans: "gpu",
     why: "Same job, but the data is already on the GPU, so there's no copy. The GPU's fast memory makes it about 15× quicker. Keep data on the GPU between steps!" },
   { id: "chat", t: "A 7-billion-parameter chatbot writes one 200-word answer", parallel: true, flops: 3.7e12, bytes: 0, serial: 0, ans: "gpu",
-    why: "3.7 × 10¹² FLOPs of matrix multiplies: about 18 s of arithmetic on the CPU, under a second on the GPU (even faster with FP16, Unit 5.2). This is exactly why AI runs on GPUs." },
+    why: "3.7 × 10¹² FLOPs of matrix multiplies: about 18 s of arithmetic on the CPU, under a second on the GPU (even faster with FP16, Lesson 5.2). This is exactly why AI runs on GPUs." },
 ];
 function times(j) {
   if (!j.parallel) return { cpu: j.serial, gpu: j.serial + LAUNCH, note: "no parallel work to offload" };
@@ -32,11 +32,11 @@ function times(j) {
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Latency vs throughput, and the GPU's start-up cost", "Unit 2.5"],
-  ["time = work ÷ speed", "Unit 2.1"],
-  ["Is the work independent (SIMD/SIMT-friendly)?", "Units 2.3, 2.7"],
-  ["Amdahl: the serial part sets the ceiling", "Unit 2.8"],
-  ["Data must be copied to the GPU before it can work on it", "preview of Module 4"],
+  ["Latency vs throughput, and the GPU's start-up cost", "Lesson 2.5"],
+  ["time = work ÷ speed", "Lesson 2.1"],
+  ["Is the work independent (SIMD/SIMT-friendly)?", "Lessons 2.3, 2.7"],
+  ["Amdahl: the serial part sets the ceiling", "Lesson 2.8"],
+  ["Data must be copied to the GPU before it can work on it", "preview of Step 4"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -148,7 +148,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete decision tool. In Lab 2B Part E you'll test its predictions against real timings on Colab's T4.</Frame>
+      <Frame>The complete decision tool. In Core Lab 5, Part C, you'll test its predictions against real timings on Colab's T4.</Frame>
       <Code color={C.green} title="🧭 cpu_or_gpu.py">{`CPU_FLOPS, CPU_BW = 0.2e12, 20e9     # effective speed, memory bandwidth (approx.)
 GPU_FLOPS, GPU_BW = 4e12, 300e9
 LAUNCH, PCIE = 20e-6, 12e9
@@ -173,10 +173,10 @@ decide("ReLU 5 crore, data on GPU", 5e7, 4e8, data_on_gpu=True)`}</Code>
         <b style={{ color: C.text }}>Challenge upgrades:</b> (1) find the matrix size where the decision flips from CPU to GPU; (2) add a
         "number of times the job repeats" parameter: copying once and computing 100 times changes the answer.
       </div>
-      <LabCard part="E" title="The real race: CPU vs GPU matrix multiply"
+      <LabCard part="C" title="The real race: CPU vs GPU matrix multiply"
         what="Time NumPy (CPU) against PyTorch on the T4 for matrix sizes from 64 to 4096, plot both, find the crossover, and measure the copy cost separately."
         expect="the CPU wins for small sizes; somewhere in the low hundreds the GPU takes over, and at 4096 it is many times faster." />
-      <Insight color={C.orange} title="Module 2 complete: you know when and why the GPU wins.">
+      <Insight color={C.orange} title="Step 2 complete: you know when and why the GPU wins.">
         Next: open the GPU up and look inside: multiprocessors, warps, and its special memory.
       </Insight>
     </div>
@@ -192,15 +192,15 @@ const QUESTIONS = [
   { q: "Why can a GPU lose to a CPU on a very small job?", options: ["GPUs can't add", "The fixed launch and copy costs are larger than the work itself", "GPU cores are broken for small numbers", "The CPU has more cores"], answer: 1, explain: "Tens of microseconds to start, plus copying, swamp a job that takes nanoseconds on the CPU." },
   { q: "ReLU on 5 crore numbers: the GPU loses when the data starts in CPU memory but wins when it's already in GPU memory. Why?", options: ["ReLU is different on each", "The PCIe copy dominates when data must be moved", "The GPU is faster at night", "CPU memory is faster than GPU memory"], answer: 1, explain: "Simple work per byte + an expensive copy = CPU wins. Remove the copy and the GPU's fast memory wins." },
   { q: "Which job belongs on the CPU?", options: ["A 8192 × 8192 matrix multiply", "Training a neural network on images", "Branch-heavy Python code that processes text one line at a time", "Running a large chatbot"], answer: 2, explain: "Serial, branchy work has p ≈ 0: there's nothing for thousands of cores to share." },
-  { q: "The best habit for GPU programs is to…", options: ["Copy data to the GPU before every operation", "Copy data once, do many operations on it on the GPU, then copy results back", "Avoid the GPU for matrix work", "Use the CPU for all multiply-adds"], answer: 1, explain: "Copies are expensive. Keep data on the GPU across many operations; Module 4 is built around this idea." },
+  { q: "The best habit for GPU programs is to…", options: ["Copy data to the GPU before every operation", "Copy data once, do many operations on it on the GPU, then copy results back", "Avoid the GPU for matrix work", "Use the CPU for all multiply-adds"], answer: 1, explain: "Copies are expensive. Keep data on the GPU across many operations; Step 4 is built around this idea." },
 ];
 const RESULT = {
   perfect: "Perfect! You'd make an excellent AI lab coordinator.",
   good: "Good. Replay 'Play It' and read each reason carefully.",
   low: "Revisit 'Build in Steps': launch and copy costs plus Amdahl decide everything.",
-  done: "Module 2 Complete! ⚔️",
+  done: "Step 2 Complete! ⚔️",
   body: "You can explain why GPUs exist, how SIMD/SIMT work, apply Amdahl's law, and decide where any job should run.",
-  next: "Next up: Module 3 — Inside a GPU.",
+  next: "Next up: Step 3 — Inside a GPU.",
   teaser: "Streaming multiprocessors, Tensor Cores, warps and their secret weapon for hiding slow memory.",
 };
 //@@WORDS
@@ -208,5 +208,5 @@ const UNIT_WORDS = [
   ["PCIe", "Peripheral Component Interconnect Express", "The bus the GPU card plugs into, about 12 GB/s in practice for the T4. Hamacher Ch 7.", "from COA"],
   ["GB/s", "gigabytes per second", "How fast data moves.", "new here"],
   ["µs", "microsecond", "One millionth of a second.", "new here"],
-  ["FLOPS", "FLoating-point Operations Per Second", "A machine's arithmetic speed.", "from Unit 2.1"],
+  ["FLOPS", "FLoating-point Operations Per Second", "A machine's arithmetic speed.", "from Lesson 2.1"],
 ];

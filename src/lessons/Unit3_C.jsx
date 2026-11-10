@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab3_Inside_a_GPU.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/SideTrails_Step3_Map_a_Job.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 3 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🥾 SIDE TRAIL (OPTIONAL) — STEP 3 SIDE TRAILS · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 3 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Step 3 Side Trails in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 4–5 · H&P §4.4";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Appendix C (a Side Trail from Section 3.4)";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 4–5 · H&P §4.4";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const T4 = { sms: 40, warpsPerSM: 32, peak: 8.1e12, bw: 320e9 };
@@ -87,12 +88,12 @@ const tf = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : `${(s * 1e3).toFix
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["One thread per output element (SIMT)", "Unit 2.7"],
-  ["Threads are grouped into warps of 32", "Units 2.7, 3.2"],
-  ["The T4 has 40 SMs, each holding up to 32 warps at once", "Units 3.1, 3.3"],
-  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Units 2.1, 3.1"],
-  ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Unit 3.4"],
-  ["Keep warps from diverging", "Unit 3.2"],
+  ["One thread per output element (SIMT)", "Lesson 2.7"],
+  ["Threads are grouped into warps of 32", "Lessons 2.7, 3.2"],
+  ["The T4 has 40 SMs, each holding up to 32 warps at once", "Lessons 3.1, 3.3"],
+  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Lessons 2.1, 3.1"],
+  ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Lesson 3.4"],
+  ["Keep warps from diverging", "Lesson 3.2"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -151,7 +152,7 @@ function BuildWidget() {
       </div>
       <Code color={cur.color}>{cur.code}</Code>
       <Insight title="Two lower bounds, compute and memory. The larger one wins.">
-        You'll meet this "whichever is slower" idea again as the roofline model in Unit 5.3.
+        You'll meet this "whichever is slower" idea again as the roofline model in Lesson 5.3.
       </Insight>
     </div>
   );
@@ -187,10 +188,10 @@ function PlayWidget() {
         <Stat label="MEMORY TIME ≥" value={tf(p.tMemory)} color={p.bound === "memory" ? C.red : C.green} />
         <Stat label="LIMITED BY" value={p.bound.toUpperCase()} color={C.yellow} />
       </div>
-      <div style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{p.warps < 1280 ? "⚠️ Fewer warps than slots: some SMs are idle or can't hide latency well (Unit 3.3). Bigger batches help." : "✓ Enough warps to fill every SM and hide memory latency."}</div>
+      <div style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{p.warps < 1280 ? "⚠️ Fewer warps than slots: some SMs are idle or can't hide latency well (Lesson 3.3). Bigger batches help." : "✓ Enough warps to fill every SM and hide memory latency."}</div>
       <Insight color={C.yellow} title="Try the matmul at B = 1, then B = 1024: the same layer switches from memory-bound to compute-bound.">
         With one input, the whole 64 MB weight matrix is read to do very little maths per byte. With a big batch, each weight is reused many
-        times (Unit 3.4's reuse). ReLU is always memory-bound. Module 5 builds on exactly this.
+        times (Lesson 3.4's reuse). ReLU is always memory-bound. Step 5 builds on exactly this.
       </Insight>
     </div>
   );
@@ -200,7 +201,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete planner. In Lab 3 Part E you'll time these exact jobs on the T4 and see how close the plan comes.</Frame>
+      <Frame>The complete planner. In the Step 3 Side Trails notebook (Part C) you'll time these exact jobs on the T4 and see how close the plan comes.</Frame>
       <Code color={C.green} title="🗺️ gpu_planner.py">{`SMS, WARPS_PER_SM = 40, 32
 PEAK, BW = 8.1e12, 320e9          # T4: FP32 FLOPS, bytes/s
 
@@ -219,10 +220,10 @@ for B in [1, 64, 1024]:
         <b style={{ color: C.text }}>Challenge upgrades:</b> (1) switch the matmul to FP16 Tensor Cores (peak 65 TFLOPS, 2 bytes per number): which jobs change
         their limit? (2) Fuse the ReLU into the matmul so Y is written only once: how much memory time does that save?
       </div>
-      <LabCard part="E" title="Plan vs reality on the T4"
+      <LabCard part="C" title="Plan vs reality on the T4"
         what="Time the matmul and the ReLU on the GPU for B = 1, 64 and 1024, compute the TFLOPS and GB/s you actually achieved, and compare with the planner."
         expect="ReLU reaching a good fraction of the bandwidth; the B = 1 matmul limited by memory; the B = 1024 matmul reaching several TFLOPS." />
-      <Insight color={C.orange} title="Module 3 complete: you can see inside the GPU.">
+      <Insight color={C.orange} title="Step 3 complete: you can see inside the GPU.">
         Next, the other half of the story: how the CPU actually hands this work to the GPU, step by step, across PCIe.
       </Insight>
     </div>
@@ -233,20 +234,20 @@ const QUESTIONS = [
   { q: "A job has 100,000 output elements, one thread each. How many warps is that?", options: ["3,125", "3,200", "100,000", "32"], answer: 0, explain: "100,000 ÷ 32 = 3,125 warps." },
   { q: "The T4 holds 40 SMs × 32 warps = 1,280 warps at once. A job with 3,000 warps runs in how many waves?", options: ["1", "2", "3", "40"], answer: 2, explain: "3,000 ÷ 1,280 = 2.3, rounded up to 3 waves." },
   { q: "A job needs 1 ms of compute time and 5 ms of memory time (at peak). It is…", options: ["compute-bound, about 1 ms", "memory-bound, at least 5 ms", "6 ms exactly", "impossible"], answer: 1, explain: "Time is at least the larger lower bound: memory, 5 ms. Faster arithmetic wouldn't help." },
-  { q: "Why does a bigger batch make a matmul layer compute-bound?", options: ["Bigger batches use less memory", "Each weight read from memory is reused for more inputs, so FLOPs grow faster than bytes", "The GPU clocks up", "Warps diverge less"], answer: 1, explain: "The weights are read once but used B times: more maths per byte (Unit 3.4's reuse)." },
+  { q: "Why does a bigger batch make a matmul layer compute-bound?", options: ["Bigger batches use less memory", "Each weight read from memory is reused for more inputs, so FLOPs grow faster than bytes", "The GPU clocks up", "Warps diverge less"], answer: 1, explain: "The weights are read once but used B times: more maths per byte (Lesson 3.4's reuse)." },
 ];
 const RESULT = {
   perfect: "Perfect! You can plan GPU work like an engineer.",
   good: "Good. Replay 'Play It' and move the batch slider from 1 to 2048.",
   low: "Revisit 'Build in Steps': threads → warps → waves → compute vs memory.",
-  done: "Module 3 Complete! 🔬",
+  done: "Side Trail complete! 🥾",
   body: "You can describe SMs, warps, divergence, latency hiding, the memory hierarchy, and plan a job's threads, waves and limits.",
-  next: "Next up: Module 4 — CPU–GPU Teamwork.",
+  next: "Back to the Main Climb: Step 4 — CPU–GPU Teamwork.",
   teaser: "How does the CPU actually hand a job to the GPU? Allocate, copy, launch, copy back, free: you'll do every step yourself.",
 };
 
 const UNIT_WORDS = [
-  ["SM", "Streaming Multiprocessor", "The T4 has 40, each holding up to 32 warps.", "from Unit 3.1"],
+  ["SM", "Streaming Multiprocessor", "The T4 has 40, each holding up to 32 warps.", "from Lesson 3.1"],
   ["wave", "one round of work", "As many warps as the chip can hold at once; big jobs need several waves.", "new here"],
   ["compute-bound", "limited by arithmetic", "FLOPs ÷ peak is the bigger time.", "new here"],
   ["memory-bound", "limited by memory", "Bytes ÷ bandwidth is the bigger time.", "new here"],
@@ -310,7 +311,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -331,9 +332,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -359,7 +360,7 @@ export default function Unit3_C({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and plan vs reality</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 3.C.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 3.C.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -369,7 +370,7 @@ export default function Unit3_C({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 3 › UNIT 3.C</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 3 › LESSON 3.C · 🥾 SIDE TRAIL</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: Map a Job onto a GPU</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

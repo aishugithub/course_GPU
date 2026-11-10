@@ -1,5 +1,5 @@
 //@@META
-{"unit": "3.2", "module": 3, "title": "Warps & Branch Divergence", "icon": "🔀", "lab": "Lab3_Inside_a_GPU.ipynb", "labNo": "3", "gpu": true}
+{"unit": "3.2", "module": 3, "title": "Warps & Branch Divergence", "icon": "🔀", "lab": "CoreLab06_Inside_the_GPU.ipynb", "labNo": "Core Lab 6", "gpu": true}
 //@@WIDGETS
 
 const PATTERNS = {
@@ -159,7 +159,7 @@ y[i] = mask[i] ? pa : pb;   // a 'select', not a jump`, note: "When both paths a
       </div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>{f.note}</div>
       <Insight title="Good news: PyTorch's built-in operations are already written this way.">
-        You'll meet divergence when you write your own kernels (Module 4), and it's the reason AI's regular "same thing to every number"
+        You'll meet divergence when you write your own kernels (Step 4), and it's the reason AI's regular "same thing to every number"
         operations suit GPUs so well.
       </Insight>
       <LabCard part="B" title="Measure branch divergence for real"
@@ -184,14 +184,14 @@ const RESULT = {
   perfect: "Perfect! You think like a GPU programmer.",
   good: "Good. Replay 'The Cost' and switch between the two layouts.",
   low: "Revisit 'The Marching Band': lock-step is the key idea.",
-  done: "Unit 3.2 Complete!",
+  done: "Lesson 3.2 Complete!",
   body: "You can explain warp lock-step execution, branch divergence and its cost, and three ways to avoid it.",
-  next: "Next up: Unit 3.3 — Hiding Latency.",
+  next: "Next up: Lesson 3.3 — Hiding Latency.",
   teaser: "GPU memory takes hundreds of cycles to answer. So why aren't the cores always waiting?",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["warp", "a group of 32 threads", "They share one instruction stream and move in lock-step.", "from Unit 2.7"],
+  ["warp", "a group of 32 threads", "They share one instruction stream and move in lock-step.", "from Lesson 2.7"],
   ["mask", "active mask", "Which lanes of a warp are switched on for the current instruction.", "new here"],
   ["fmaxf", "floating-point maximum (CUDA C)", "Returns the larger of two floats, with no branch.", "new here"],
   ["CuPy", "a NumPy-like library for NVIDIA GPUs", "Lets Python run small CUDA kernels, used in the lab.", "new here"],

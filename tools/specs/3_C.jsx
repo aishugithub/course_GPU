@@ -1,5 +1,5 @@
 //@@META
-{"unit": "3.C", "module": 3, "title": "Capstone: Map a Job onto a GPU", "icon": "🏆", "lab": "Lab3_Inside_a_GPU.ipynb", "labNo": "3", "gpu": true}
+{"unit": "3.C", "module": 3, "title": "Capstone: Map a Job onto a GPU", "icon": "🏆", "lab": "SideTrails_Step3_Map_a_Job.ipynb", "labNo": "Step 3 Side Trails", "gpu": true, "trail": true}
 //@@WIDGETS
 
 const T4 = { sms: 40, warpsPerSM: 32, peak: 8.1e12, bw: 320e9 };
@@ -17,12 +17,12 @@ const tf = (s) => (s < 1e-3 ? `${(s * 1e6).toFixed(1)} µs` : `${(s * 1e3).toFix
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["One thread per output element (SIMT)", "Unit 2.7"],
-  ["Threads are grouped into warps of 32", "Units 2.7, 3.2"],
-  ["The T4 has 40 SMs, each holding up to 32 warps at once", "Units 3.1, 3.3"],
-  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Units 2.1, 3.1"],
-  ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Unit 3.4"],
-  ["Keep warps from diverging", "Unit 3.2"],
+  ["One thread per output element (SIMT)", "Lesson 2.7"],
+  ["Threads are grouped into warps of 32", "Lessons 2.7, 3.2"],
+  ["The T4 has 40 SMs, each holding up to 32 warps at once", "Lessons 3.1, 3.3"],
+  ["Compute time ≥ FLOPs ÷ peak FLOPS", "Lessons 2.1, 3.1"],
+  ["Memory time ≥ bytes ÷ bandwidth (if coalesced)", "Lesson 3.4"],
+  ["Keep warps from diverging", "Lesson 3.2"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -81,7 +81,7 @@ function BuildWidget() {
       </div>
       <Code color={cur.color}>{cur.code}</Code>
       <Insight title="Two lower bounds, compute and memory. The larger one wins.">
-        You'll meet this "whichever is slower" idea again as the roofline model in Unit 5.3.
+        You'll meet this "whichever is slower" idea again as the roofline model in Lesson 5.3.
       </Insight>
     </div>
   );
@@ -117,10 +117,10 @@ function PlayWidget() {
         <Stat label="MEMORY TIME ≥" value={tf(p.tMemory)} color={p.bound === "memory" ? C.red : C.green} />
         <Stat label="LIMITED BY" value={p.bound.toUpperCase()} color={C.yellow} />
       </div>
-      <div style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{p.warps < 1280 ? "⚠️ Fewer warps than slots: some SMs are idle or can't hide latency well (Unit 3.3). Bigger batches help." : "✓ Enough warps to fill every SM and hide memory latency."}</div>
+      <div style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{p.warps < 1280 ? "⚠️ Fewer warps than slots: some SMs are idle or can't hide latency well (Lesson 3.3). Bigger batches help." : "✓ Enough warps to fill every SM and hide memory latency."}</div>
       <Insight color={C.yellow} title="Try the matmul at B = 1, then B = 1024: the same layer switches from memory-bound to compute-bound.">
         With one input, the whole 64 MB weight matrix is read to do very little maths per byte. With a big batch, each weight is reused many
-        times (Unit 3.4's reuse). ReLU is always memory-bound. Module 5 builds on exactly this.
+        times (Lesson 3.4's reuse). ReLU is always memory-bound. Step 5 builds on exactly this.
       </Insight>
     </div>
   );
@@ -130,7 +130,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The complete planner. In Lab 3 Part E you'll time these exact jobs on the T4 and see how close the plan comes.</Frame>
+      <Frame>The complete planner. In the Step 3 Side Trails notebook (Part C) you'll time these exact jobs on the T4 and see how close the plan comes.</Frame>
       <Code color={C.green} title="🗺️ gpu_planner.py">{`SMS, WARPS_PER_SM = 40, 32
 PEAK, BW = 8.1e12, 320e9          # T4: FP32 FLOPS, bytes/s
 
@@ -149,10 +149,10 @@ for B in [1, 64, 1024]:
         <b style={{ color: C.text }}>Challenge upgrades:</b> (1) switch the matmul to FP16 Tensor Cores (peak 65 TFLOPS, 2 bytes per number): which jobs change
         their limit? (2) Fuse the ReLU into the matmul so Y is written only once: how much memory time does that save?
       </div>
-      <LabCard part="E" title="Plan vs reality on the T4"
+      <LabCard part="C" title="Plan vs reality on the T4"
         what="Time the matmul and the ReLU on the GPU for B = 1, 64 and 1024, compute the TFLOPS and GB/s you actually achieved, and compare with the planner."
         expect="ReLU reaching a good fraction of the bandwidth; the B = 1 matmul limited by memory; the B = 1024 matmul reaching several TFLOPS." />
-      <Insight color={C.orange} title="Module 3 complete: you can see inside the GPU.">
+      <Insight color={C.orange} title="Step 3 complete: you can see inside the GPU.">
         Next, the other half of the story: how the CPU actually hands this work to the GPU, step by step, across PCIe.
       </Insight>
     </div>
@@ -168,20 +168,20 @@ const QUESTIONS = [
   { q: "A job has 100,000 output elements, one thread each. How many warps is that?", options: ["3,125", "3,200", "100,000", "32"], answer: 0, explain: "100,000 ÷ 32 = 3,125 warps." },
   { q: "The T4 holds 40 SMs × 32 warps = 1,280 warps at once. A job with 3,000 warps runs in how many waves?", options: ["1", "2", "3", "40"], answer: 2, explain: "3,000 ÷ 1,280 = 2.3, rounded up to 3 waves." },
   { q: "A job needs 1 ms of compute time and 5 ms of memory time (at peak). It is…", options: ["compute-bound, about 1 ms", "memory-bound, at least 5 ms", "6 ms exactly", "impossible"], answer: 1, explain: "Time is at least the larger lower bound: memory, 5 ms. Faster arithmetic wouldn't help." },
-  { q: "Why does a bigger batch make a matmul layer compute-bound?", options: ["Bigger batches use less memory", "Each weight read from memory is reused for more inputs, so FLOPs grow faster than bytes", "The GPU clocks up", "Warps diverge less"], answer: 1, explain: "The weights are read once but used B times: more maths per byte (Unit 3.4's reuse)." },
+  { q: "Why does a bigger batch make a matmul layer compute-bound?", options: ["Bigger batches use less memory", "Each weight read from memory is reused for more inputs, so FLOPs grow faster than bytes", "The GPU clocks up", "Warps diverge less"], answer: 1, explain: "The weights are read once but used B times: more maths per byte (Lesson 3.4's reuse)." },
 ];
 const RESULT = {
   perfect: "Perfect! You can plan GPU work like an engineer.",
   good: "Good. Replay 'Play It' and move the batch slider from 1 to 2048.",
   low: "Revisit 'Build in Steps': threads → warps → waves → compute vs memory.",
-  done: "Module 3 Complete! 🔬",
+  done: "Side Trail complete! 🥾",
   body: "You can describe SMs, warps, divergence, latency hiding, the memory hierarchy, and plan a job's threads, waves and limits.",
-  next: "Next up: Module 4 — CPU–GPU Teamwork.",
+  next: "Back to the Main Climb: Step 4 — CPU–GPU Teamwork.",
   teaser: "How does the CPU actually hand a job to the GPU? Allocate, copy, launch, copy back, free: you'll do every step yourself.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["SM", "Streaming Multiprocessor", "The T4 has 40, each holding up to 32 warps.", "from Unit 3.1"],
+  ["SM", "Streaming Multiprocessor", "The T4 has 40, each holding up to 32 warps.", "from Lesson 3.1"],
   ["wave", "one round of work", "As many warps as the chip can hold at once; big jobs need several waves.", "new here"],
   ["compute-bound", "limited by arithmetic", "FLOPs ÷ peak is the bigger time.", "new here"],
   ["memory-bound", "limited by memory", "Bytes ÷ bandwidth is the bigger time.", "new here"],

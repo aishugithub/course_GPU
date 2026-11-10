@@ -158,7 +158,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
         <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 18, marginBottom: 26 }}>
           <div style={{ fontSize: 26 }}>🎯</div>
           <div>
-            <div style={{ color: D.ink, fontWeight: 600, fontSize: 14.5 }}>{doneCount} of {totalUnits} units completed · {pct}%</div>
+            <div style={{ color: D.ink, fontWeight: 600, fontSize: 14.5 }}>{doneCount} of {totalUnits} Main Climb lessons completed · {pct}%</div>
             <div style={{ color: D.inkSoft, fontSize: 13 }}>
               {doneCount === 0 ? 'Your climb starts with one click. Pick a foothold below.'
                 : pct === 100 ? 'Summit reached. The Crucibles still burn, if you dare. 🔥'
@@ -193,7 +193,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ color: accent, fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', fontWeight: 700 }}>
-                        {mod.moduleId.replace('M', 'MODULE ')}
+                        {mod.moduleId.replace('M', 'STEP ')}
                       </span>
                       <span style={{ color: D.ink, fontSize: 15.5, fontWeight: 700 }}>{mod.moduleTitle}</span>
                       {isNextModule && !modComplete && (
@@ -230,7 +230,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
                               borderLeftColor: isNext ? D.amber : 'transparent',
                             }}>
                             <span style={{ fontSize: 15, lineHeight: '20px', flexShrink: 0 }}>
-                              {done ? '✅' : isBonus ? '🔥' : '▶️'}
+                              {done ? '✅' : unit.trail ? '🥾' : isBonus ? '🔥' : '▶️'}
                             </span>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -238,7 +238,8 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
                                   {unit.title}
                                 </span>
                                 <span style={{ color: isBonus ? D.bronze : D.inkMuted, fontFamily: MONO, fontSize: 10.5 }}>
-                                  {isBonus ? 'BONUS · CHALLENGE' : unit.unitId.replace('Unit', '').replace('_', '.')}
+                                  {unit.trail ? `SIDE TRAIL · OPTIONAL · ${unit.unitId.replace('Unit', '').replace('_', '.')}`
+                                    : isBonus ? 'BONUS · CHALLENGE' : unit.unitId.replace('Unit', '').replace('_', '.')}
                                 </span>
                                 {isNext && (
                                   <span style={{ color: '#111A2E', background: D.amber, fontFamily: MONO, fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>

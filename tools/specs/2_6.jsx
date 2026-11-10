@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.6", "module": 2, "title": "Why Clocks Stopped Getting Faster", "icon": "🔥", "lab": "Lab2B_CPU_vs_GPU.ipynb", "labNo": "2B", "gpu": true}
+{"unit": "2.6", "module": 2, "title": "Why Clocks Stopped Getting Faster", "icon": "🔥", "lab": "SideTrails_Step2_Power_SIMD_Decision.ipynb", "labNo": "Step 2 Side Trails", "gpu": true, "labTrail": true}
 //@@WIDGETS
 
 // Approximate top desktop CPU clock (GHz) and transistor counts, for illustration
@@ -136,9 +136,9 @@ function ManyWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>Simplified model: power ∝ V² × f, with voltage dropping as frequency drops (down to a minimum). Real chips differ, but the trend is real.</div>
       <Insight color={C.green} title="Many slow cores do the same work for a fraction of the power, as long as the work is parallel.">
-        That's the GPU bargain: thousands of modest cores at about 1–2 GHz. And from Unit 2.3 you know AI's work is exactly the parallel kind.
+        That's the GPU bargain: thousands of modest cores at about 1–2 GHz. And from Lesson 2.3 you know AI's work is exactly the parallel kind.
       </Insight>
-      <LabCard part="B" title="Read your GPU's clock and power"
+      <LabCard part="A" title="Read your GPU's clock and power"
         what="Ask nvidia-smi for the T4's clock speed, power draw and power limit, and compare them with a typical CPU's clock speed."
         expect="a GPU clock of roughly 0.6–1.6 GHz (slower than a CPU core!) and a power limit of about 70 W." />
     </div>
@@ -160,9 +160,9 @@ const RESULT = {
   perfect: "Perfect! You know why the whole industry went parallel.",
   good: "Good. Replay 'The Power Wall' and push the clock to 10 GHz.",
   low: "Revisit 'The Flat Line' and 'The Power Wall': the reason GPUs matter starts there.",
-  done: "Unit 2.6 Complete!",
+  done: "Lesson 2.6 Complete!",
   body: "You can explain the power wall, P ∝ C·V²·f, and why many slow cores are the energy-efficient way to get throughput.",
-  next: "Next up: Unit 2.7 — SIMD → SIMT.",
+  next: "Next up: Lesson 2.7 — SIMD → SIMT.",
   teaser: "One instruction, many data. From the CPU's vector units to the GPU's thousands of threads.",
 };
 //@@WORDS

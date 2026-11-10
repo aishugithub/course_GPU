@@ -1,13 +1,13 @@
 //@@META
-{"unit": "4.2", "module": 4, "title": "The Five Steps of Offloading", "icon": "🖐️", "lab": "Lab4_CPU_GPU_Teamwork.ipynb", "labNo": "4", "gpu": true}
+{"unit": "4.2", "module": 4, "title": "The Five Steps of Offloading", "icon": "🖐️", "lab": "CoreLab08_Hand_a_Job_to_the_GPU.ipynb", "labNo": "Core Lab 8", "gpu": true}
 //@@WIDGETS
 
 const STEPS = [
   { k: "alloc", t: "1 · Allocate", c: C.purple, d: "The CPU asks the GPU driver to reserve space in GPU memory for the inputs and the output. Nothing is copied yet; it's like booking seats.", cuda: [2, 3], torch: [1] },
   { k: "in", t: "2 · Copy in", c: C.yellow, d: "The input data travels from host RAM to device memory over PCIe, moved by the GPU's DMA engine (COA Unit 5).", cuda: [5, 6], torch: [2] },
-  { k: "launch", t: "3 · Launch the kernel", c: C.green, d: "The CPU tells the GPU: run THIS function on THIS many threads. The thousands of threads (Modules 2–3) do the work. The CPU doesn't wait; it carries on (Unit 4.4).", cuda: [8], torch: [3] },
+  { k: "launch", t: "3 · Launch the kernel", c: C.green, d: "The CPU tells the GPU: run THIS function on THIS many threads. The thousands of threads (Steps 2–3) do the work. The CPU doesn't wait; it carries on (Lesson 4.4).", cuda: [8], torch: [3] },
   { k: "out", t: "4 · Copy out", c: C.yellow, d: "The result travels back from device memory to host RAM over PCIe, so the CPU can print it, save it, or use it in decisions.", cuda: [10], torch: [4] },
-  { k: "free", t: "5 · Free", c: C.purple, d: "The GPU memory is released so other data can use it. Forget this in a loop and GPU memory slowly fills up (Unit 5.8).", cuda: [12, 13], torch: [5] },
+  { k: "free", t: "5 · Free", c: C.purple, d: "The GPU memory is released so other data can use it. Forget this in a loop and GPU memory slowly fills up (Lesson 5.8).", cuda: [12, 13], torch: [5] },
 ];
 const CUDA_LINES = [
   "// host code (runs on the CPU), CUDA C",
@@ -93,7 +93,7 @@ function StepWidget() {
         <Btn ghost onClick={() => setI(-1)}>↺ Reset</Btn>
       </div>
       <Insight color={C.yellow} title="Two of the five steps cross PCIe, and only one is the actual computing.">
-        That's why Unit 4.1's rule matters: copy once, compute many times.
+        That's why Lesson 4.1's rule matters: copy once, compute many times.
       </Insight>
     </div>
   );
@@ -125,7 +125,7 @@ function CodeMapWidget() {
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7, marginTop: 10 }}>{s.d}</div>
       <Insight title="PyTorch hides the five steps; it doesn't remove them.">
         <code>.to("cuda")</code> = allocate + copy in. Every operation = a kernel launch. <code>.cpu()</code> = copy out. When a tensor is no longer used,
-        PyTorch frees it, but keeps the memory cached for reuse, which is why nvidia-smi can show memory 'in use' (Unit 5.8).
+        PyTorch frees it, but keeps the memory cached for reuse, which is why nvidia-smi can show memory 'in use' (Lesson 5.8).
       </Insight>
     </div>
   );
@@ -177,9 +177,9 @@ const RESULT = {
   perfect: "Perfect! You know exactly how a CPU hands work to a GPU.",
   good: "Good. Replay 'CUDA C vs PyTorch' and match each step.",
   low: "Revisit 'Watch It Happen': allocate, copy in, launch, copy out, free.",
-  done: "Unit 4.2 Complete!",
+  done: "Lesson 4.2 Complete!",
   body: "You can list and explain the five offloading steps, map them to CUDA C and PyTorch, and see where the time goes.",
-  next: "Next up: Unit 4.3 — Kernels, Grids, Blocks, Threads.",
+  next: "Next up: Lesson 4.3 — Kernels, Grids, Blocks, Threads.",
   teaser: "Step 3 says 'launch on this many threads'. How do you organise a million of them? Exam halls and roll numbers.",
 };
 //@@WORDS
@@ -187,6 +187,6 @@ const UNIT_WORDS = [
   ["cudaMalloc", "CUDA memory allocate", "Reserves space in GPU memory.", "new here"],
   ["cudaMemcpy", "CUDA memory copy", "Copies between host and device, in the direction you name.", "new here"],
   ["cudaFree", "CUDA free", "Releases GPU memory.", "new here"],
-  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Unit 2.7).", "from Unit 2.7"],
+  ["kernel", "a function that runs on the GPU", "Launched on many threads at once (Lesson 2.7).", "from Lesson 2.7"],
   ["DMA", "Direct Memory Access", "Moves the data over PCIe (COA Unit 5).", "from COA"],
 ];

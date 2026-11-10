@@ -1,5 +1,5 @@
 //@@META
-{"unit": "5.7", "module": 5, "title": "Will It Fit? Sizing GPU Memory", "icon": "📏", "lab": "Lab5B_GPUs_in_Real_Projects.ipynb", "labNo": "5B", "gpu": true}
+{"unit": "5.7", "module": 5, "title": "Will It Fit? Sizing GPU Memory", "icon": "📏", "lab": "CoreLab12_Will_It_Fit.ipynb", "labNo": "Core Lab 12", "gpu": true}
 //@@WIDGETS
 
 const GPUS = [["T4 (Colab)", 16], ["L4", 24], ["A100 40 GB", 40], ["A100 80 GB", 80]];
@@ -9,7 +9,7 @@ function NeedWidget() {
   const [mode, setMode] = useState("infer");
   const parts = mode === "infer"
     ? [["Weights", 2, C.accent, "the model itself"]]
-    : [["Weights (FP16)", 2, C.accent, "used in forward and backward"], ["Gradients (FP16)", 2, C.orange, "one per weight, from backward"], ["Master weights (FP32)", 4, C.purple, "exact copy for safe updates (Unit 5.2)"], ["Adam state m (FP32)", 4, C.teal, "running average of gradients"], ["Adam state v (FP32)", 4, C.green, "running average of squared gradients"]];
+    : [["Weights (FP16)", 2, C.accent, "used in forward and backward"], ["Gradients (FP16)", 2, C.orange, "one per weight, from backward"], ["Master weights (FP32)", 4, C.purple, "exact copy for safe updates (Lesson 5.2)"], ["Adam state m (FP32)", 4, C.teal, "running average of gradients"], ["Adam state v (FP32)", 4, C.green, "running average of squared gradients"]];
   const total = parts.reduce((s, p) => s + p[1], 0);
   return (
     <div>
@@ -36,7 +36,60 @@ function NeedWidget() {
   );
 }
 
-// ── Section 2: The calculator ──
+// ── Section 2: Adam — why it needs two extra numbers per weight (book 5.7) ──
+function AdamWidget() {
+  const [opt, setOpt] = useState("sgd");
+  const [steps, setSteps] = useState(10);
+  const lr = 0.001;
+  // two weights with steady slopes: A always 100, B always 0.01
+  const run = (g) => {
+    let w = 0, m = 0, v = 0;
+    for (let t = 1; t <= steps; t++) {
+      if (opt === "sgd") { w -= lr * g; continue; }
+      m = 0.9 * m + 0.1 * g;
+      v = 0.999 * v + 0.001 * g * g;
+      const mh = m / (1 - 0.9 ** t), vh = v / (1 - 0.999 ** t);   // real Adam's correction for the first few steps
+      w -= lr * mh / (Math.sqrt(vh) + 1e-8);
+    }
+    return -w;
+  };
+  const a = run(100), b = run(0.01);
+  const fmt = (x) => (x >= 0.0005 ? x.toFixed(4) : x.toExponential(1));
+  return (
+    <div>
+      <Frame>
+        Plain gradient descent (Lesson 1.4) uses one rule for every weight: <code style={{ color: C.yellow }}>w ← w − lr × slope</code>. Adam, the optimiser most
+        AI models are trained with, keeps <b style={{ color: C.text }}>two running numbers for every weight</b>: <b style={{ color: C.accent }}>momentum</b>
+        (m ← 0.9 m + 0.1 × slope: keep going the way the slopes mostly point) and a <b style={{ color: C.purple }}>running size</b> (v ← 0.999 v + 0.001 × slope²).
+        The step is lr × m ÷ √v. Weight A always gets the slope 100; weight B always gets 0.01. Learning rate 0.001.
+      </Frame>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <Btn ghost={opt !== "sgd"} onClick={() => setOpt("sgd")}>Plain gradient descent</Btn>
+        <Btn ghost={opt !== "adam"} onClick={() => setOpt("adam")} color={C.purple}>Adam</Btn>
+      </div>
+      <Slider label={<>steps: <b style={{ color: C.accent }}>{steps}</b></>} value={steps} min={1} max={100} onChange={setSteps} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="WEIGHT A HAS MOVED (slope 100)" value={fmt(a)} color={C.accent} />
+        <Stat label="WEIGHT B HAS MOVED (slope 0.01)" value={fmt(b)} color={b / a < 0.01 ? C.red : C.green} />
+        <Stat label="A ÷ B" value={`${(a / b).toLocaleString("en-IN", { maximumFractionDigits: 0 })}×`} color={C.yellow} />
+      </div>
+      <Insight color={opt === "sgd" ? C.red : C.green} title={opt === "sgd" ? "Plain gradient descent: B moves 10,000 times slower than A, so B hardly learns." : "Adam: both weights move about lr = 0.001 per step, whatever the size of their slopes."}>
+        Dividing by the usual size of each weight's slopes gives every weight a step of about the same size. That is why Adam is the default.
+        (Real Adam also adds a tiny number to √v so it never divides by 0, and corrects m and v for their first few steps, as this widget does.)
+      </Insight>
+      <div style={{ marginTop: 12, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px", fontFamily: "monospace", fontSize: 12.5, color: C.muted }}>
+        the price, in FP32: weight <b style={{ color: C.accent }}>4</b> + gradient <b style={{ color: C.orange }}>4</b> + m <b style={{ color: C.purple }}>4</b> + v <b style={{ color: C.purple }}>4</b> = <b style={{ color: C.text }}>16 bytes per parameter</b>
+        <br />mixed precision: 2 + 2 + FP32 master copy 4 + m 4 + v 4 = also <b style={{ color: C.text }}>16</b>
+      </div>
+      <Insight color={C.purple} title="A chatbot has one more memory cost that grows: the KV cache (Lesson 5.3).">
+        While running, a 7B model in FP16 needs 14 GB of weights plus about 0.5 MB of saved keys and values for every token of the chat: 2 GB more after 4,000 tokens.
+        Long chats fill a GPU even when the weights fit.
+      </Insight>
+    </div>
+  );
+}
+
+// ── Section 3: The calculator ──
 function CalcWidget() {
   const [params, setParams] = useState(1);
   const [mode, setMode] = useState("train16");
@@ -88,7 +141,7 @@ function ActWidget() {
   return (
     <div>
       <Frame>
-        Activations are the layer outputs saved for the backward pass (Unit 2.2). Their size is <b style={{ color: C.text }}>batch × (sum of layer widths) × bytes</b>, so
+        Activations are the layer outputs saved for the backward pass (Lesson 2.2). Their size is <b style={{ color: C.text }}>batch × (sum of layer widths) × bytes</b>, so
         they grow with the batch, unlike the weights. Here's a 4-hidden-layer network like the ones in this course.
       </Frame>
       <Slider label={<>Batch size = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={8192} onChange={setB} color={C.orange} />
@@ -117,11 +170,11 @@ const TRICKS = [
     loss.backward()                           # gradients ADD up
     if (i + 1) % 4 == 0:
         opt.step(); opt.zero_grad()` },
-  { t: "Mixed precision", c: C.green, d: "FP16 activations and weights for compute: about half the activation memory (Unit 5.2).", code: `with torch.autocast("cuda", dtype=torch.float16):
+  { t: "Mixed precision", c: C.green, d: "FP16 activations and weights for compute: about half the activation memory (Lesson 5.2).", code: `with torch.autocast("cuda", dtype=torch.float16):
     loss = loss_fn(model(x), y)` },
   { t: "Gradient checkpointing", c: C.purple, d: "Save only some layers' outputs and recompute the rest during backward: much less activation memory, for about 30% more compute.", code: `from torch.utils.checkpoint import checkpoint
 h = checkpoint(block, h, use_reentrant=False)   # recomputed in backward` },
-  { t: "Quantised inference (INT8 / INT4)", c: C.teal, d: "Store weights in 8 or 4 bits for running a model: 2–4× smaller than FP16 (Unit 5.2). Common for running chatbots on small GPUs.", code: `# e.g. with the bitsandbytes library through Hugging Face:
+  { t: "Quantised inference (INT8 / INT4)", c: C.teal, d: "Store weights in 8 or 4 bits for running a model: 2–4× smaller than FP16 (Lesson 5.2). Common for running chatbots on small GPUs.", code: `# e.g. with the bitsandbytes library through Hugging Face:
 from transformers import BitsAndBytesConfig
 model = AutoModelForCausalLM.from_pretrained(
     name, quantization_config=BitsAndBytesConfig(load_in_8bit=True))` },
@@ -144,7 +197,7 @@ function TricksWidget() {
         Pick based on the calculator: if the model state is the problem, quantise or use LoRA; if activations are the problem, shrink the batch,
         accumulate gradients, or checkpoint.
       </Insight>
-      <LabCard part="B" title="Measure memory step by step"
+      <LabCard part="A" title="Measure memory step by step"
         what="Use torch.cuda.memory_allocated() to watch memory grow as you create a model, run a forward pass, call backward, and take an Adam step; then compare with the 16-bytes-per-parameter estimate, and measure activations at several batch sizes."
         expect="memory jumping at each stage (weights → activations → gradients → Adam states), close to your estimate, and activations growing in step with the batch size." />
     </div>
@@ -152,6 +205,7 @@ function TricksWidget() {
 }
 //@@SECTIONS
 [["Where Memory Goes", "📏 Where the Memory Goes — bytes per parameter", "NeedWidget"],
+ ["Why 16 Bytes?", "🧠 Why 16 Bytes? — Adam keeps two extra numbers per weight", "AdamWidget"],
  ["The Calculator", "🧮 Will It Fit? — the calculator", "CalcWidget"],
  ["Activations", "📈 Activations — the part that grows with the batch", "ActWidget"],
  ["Tricks to Fit", "🧰 Tricks to Make It Fit", "TricksWidget"]]
@@ -166,16 +220,16 @@ const RESULT = {
   perfect: "Perfect! You can size any AI project's memory.",
   good: "Good. Replay 'The Calculator' with inference vs training.",
   low: "Revisit 'Where the Memory Goes': 2 bytes to run, about 16 to train.",
-  done: "Unit 5.7 Complete!",
+  done: "Lesson 5.7 Complete!",
   body: "You can estimate weights, gradients, optimiser states and activations, decide whether a project fits, and choose tricks to make it fit.",
-  next: "Next up: Unit 5.8 — nvidia-smi & Out-of-Memory.",
+  next: "Next up: Lesson 5.8 — nvidia-smi & Out-of-Memory.",
   teaser: "Read the GPU's dashboard, decode the dreaded OOM message, and hunt down memory leaks.",
 };
 //@@WORDS
 const UNIT_WORDS = [
   ["Adam", "Adaptive Moment Estimation", "A popular optimiser that keeps two running averages (m, v) per parameter.", "new here"],
-  ["activations", "saved layer outputs", "Stored in forward, used in backward (Unit 2.2).", "from Unit 2.2"],
+  ["activations", "saved layer outputs", "Stored in forward, used in backward (Lesson 2.2).", "from Lesson 2.2"],
   ["LoRA", "Low-Rank Adaptation", "Fine-tuning by training small add-on matrices while the big model stays frozen.", "new here"],
-  ["OOM", "Out Of Memory", "The 'CUDA out of memory' error.", "from Unit 5.4"],
+  ["OOM", "Out Of Memory", "The 'CUDA out of memory' error.", "from Lesson 5.4"],
   ["CUDA context", "the driver's per-process setup", "Takes a few hundred MB of GPU memory before any tensor exists.", "new here"],
 ];

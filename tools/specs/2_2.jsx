@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.2", "module": 2, "title": "Training vs Inference, Epochs & Batches", "icon": "🏋️", "lab": "Lab2A_AI_Is_Hungry.ipynb", "labNo": "2A"}
+{"unit": "2.2", "module": 2, "title": "Training vs Inference, Epochs & Batches", "icon": "🏋️", "lab": "CoreLab04_How_Much_Work_Is_AI.ipynb", "labNo": "Core Lab 4"}
 //@@WIDGETS
 
 const fmt = (x) => {
@@ -82,7 +82,7 @@ function TraceWidget() {
       </div>
       <Insight color={C.teal} title="Training needs extra memory as well as extra arithmetic.">
         Every layer's output from the forward pass is stored until the backward pass uses it. Big batches × big layers = lots of saved numbers.
-        In Module 5 this is the reason for the famous "CUDA out of memory" error.
+        In Step 5 this is the reason for the famous "CUDA out of memory" error.
       </Insight>
     </div>
   );
@@ -124,8 +124,8 @@ function EpochWidget() {
         ))}
       </div>
       <Insight color={C.purple} title="Batches turn many small sums into one big matrix multiply.">
-        From Unit 1.5: a batch makes the layer X @ W with many rows. Bigger, fewer matrix multiplies suit parallel hardware far better than
-        thousands of tiny ones. Unit 5.4 measures this on a real GPU.
+        From Lesson 1.5: a batch makes the layer X @ W with many rows. Bigger, fewer matrix multiplies suit parallel hardware far better than
+        thousands of tiny ones. Lesson 5.4 measures this on a real GPU.
       </Insight>
     </div>
   );
@@ -158,11 +158,11 @@ function BillWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 6 }}>Assumes the T4's 65 TFLOPS FP16 peak and 40% average use (approximate). Real projects use thousands of bigger GPUs at once.</div>
       <Insight color={C.orange} title="Training is a one-time mountain; inference is a daily river.">
-        A big model's training run would take a single GPU centuries, so companies split it across thousands of GPUs (Unit 5.9). Serving
+        A big model's training run would take a single GPU centuries, so companies split it across thousands of GPUs (Lesson 5.9). Serving
         crores of users adds up too. Either way the answer is the same: more parallel arithmetic.
       </Insight>
       <LabCard part="B" title="Time inference vs training on the CPU"
-        what="Take your Lab 1 network, time 100 forward passes on a batch, then time 100 full training iterations (forward + backward + update), and compute the ratio."
+        what="Take your Core Lab 3 network, time 100 forward passes on a batch, then time 100 full training iterations (forward + backward + update), and compute the ratio."
         expect="a training iteration takes roughly 2–4× as long as a forward pass alone." />
     </div>
   );
@@ -183,15 +183,15 @@ const RESULT = {
   perfect: "Perfect! You can read a training log and estimate its cost.",
   good: "Good. Replay 'Forward & Backward' and watch the saved outputs.",
   low: "Revisit 'Use vs Teach' and 'Epochs & Batches': they're the vocabulary for the rest of the course.",
-  done: "Unit 2.2 Complete!",
+  done: "Lesson 2.2 Complete!",
   body: "You can explain inference vs training, forward vs backward, and epochs vs batches vs iterations, and estimate a training bill.",
-  next: "Next up: Unit 2.3 — Every Output Is Independent.",
+  next: "Next up: Lesson 2.3 — Every Output Is Independent.",
   teaser: "All this work has a hidden gift: most of it doesn't have to wait in a queue.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["FLOP", "FLoating-point OPeration", "One add or multiply on decimal numbers.", "from Unit 2.1"],
-  ["lr", "learning rate", "The size of each update step.", "from Unit 1.4"],
-  ["CUDA", "Compute Unified Device Architecture", "NVIDIA's system for programming its GPUs. Used properly from Module 4.", "new here"],
+  ["FLOP", "FLoating-point OPeration", "One add or multiply on decimal numbers.", "from Lesson 2.1"],
+  ["lr", "learning rate", "The size of each update step.", "from Lesson 1.4"],
+  ["CUDA", "Compute Unified Device Architecture", "NVIDIA's system for programming its GPUs. Used properly from Step 4.", "new here"],
   ["T4", "NVIDIA Tesla T4", "The GPU you get free in Google Colab.", "new here"],
 ];

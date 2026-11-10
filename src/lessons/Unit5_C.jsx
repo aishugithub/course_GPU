@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5B_GPUs_in_Real_Projects.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab12_Will_It_Fit.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5B · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 12 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5B in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 16 · D2L Ch 13";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.C";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 16";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // Published peak figures (dense FP16 Tensor Core), memory and bandwidth; prices are ASSUMPTIONS for illustration
@@ -91,12 +92,12 @@ function planFor(pk, params, amount, prec, g) {
     const bytes = prec === "int8" ? 1 : 2;
     memGB = P * bytes * 1.2 / 1e9 + 0.5;
     const tokPerAnswer = 270;
-    const secPerToken = (P * bytes) / (g.bw * 0.6);          // memory-bound decoding (Unit 5.3), 60% of bandwidth
+    const secPerToken = (P * bytes) / (g.bw * 0.6);          // memory-bound decoding (Lesson 5.3), 60% of bandwidth
     hours = (amount * tokPerAnswer * secPerToken) / 3600 / 8; // assume 8 answers batched together
   } else {
-    memGB = P * 16 / 1e9 + P * 2 / 1e9 + 0.5;                 // mixed-precision Adam + rough activations (Unit 5.7)
+    memGB = P * 16 / 1e9 + P * 2 / 1e9 + 0.5;                 // mixed-precision Adam + rough activations (Lesson 5.7)
     const tokens = pk === "tune" ? amount * 1e6 : amount * 1e5;
-    hours = (6 * P * tokens) / (g.tf * 0.35) / 3600;          // 6·N·D at 35% of peak (Unit 2.2)
+    hours = (6 * P * tokens) / (g.tf * 0.35) / 3600;          // 6·N·D at 35% of peak (Lesson 2.2)
   }
   const n = Math.max(1, Math.ceil(memGB / g.mem));
   return { memGB, n, hours: hours / n, cost: (hours / n) * n * g.rs };
@@ -104,12 +105,12 @@ function planFor(pk, params, amount, prec, g) {
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Bytes per parameter: 2 to run (FP16), ~16 to train", "Unit 5.7"],
-  ["Training FLOPs ≈ 6 × parameters × tokens", "Unit 2.2"],
-  ["Chatbot decoding is memory-bound: time per token ≈ model bytes ÷ bandwidth", "Unit 5.3"],
-  ["Real code reaches only part of the peak; Amdahl applies", "Units 2.4, 2.8"],
-  ["FP16 / INT8 to save memory and time", "Unit 5.2"],
-  ["Several GPUs when it doesn't fit on one", "Unit 5.9"],
+  ["Bytes per parameter: 2 to run (FP16), ~16 to train", "Lesson 5.7"],
+  ["Training FLOPs ≈ 6 × parameters × tokens", "Lesson 2.2"],
+  ["Chatbot decoding is memory-bound: time per token ≈ model bytes ÷ bandwidth", "Lesson 5.3"],
+  ["Real code reaches only part of the peak; Amdahl applies", "Lessons 2.4, 2.8"],
+  ["FP16 / INT8 to save memory and time", "Lesson 5.2"],
+  ["Several GPUs when it doesn't fit on one", "Lesson 5.9"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -138,7 +139,7 @@ function MissionWidget() {
 
 // ── Section 2: Build in Steps ──
 const VERSIONS = [
-  { tag: "v1", title: "Does it fit?", color: C.teal, why: "Memory first, because a plan that doesn't fit is no plan. Use bytes per parameter for the task (Unit 5.7).", code: `def memory_gb(params, task, precision="fp16"):
+  { tag: "v1", title: "Does it fit?", color: C.teal, why: "Memory first, because a plan that doesn't fit is no plan. Use bytes per parameter for the task (Lesson 5.7).", code: `def memory_gb(params, task, precision="fp16"):
     if task == "infer":
         per = {"fp16": 2, "int8": 1, "int4": 0.5}[precision]
         return params * per * 1.2 / 1e9 + 0.5      # +20% activations, +0.5 GB context
@@ -147,7 +148,7 @@ const VERSIONS = [
 gpus = {"T4": 16, "L4": 24, "A100-40": 40, "A100-80": 80}
 need = memory_gb(1e9, "train")
 print({g: "fits" if need <= m else f"needs {int(-(-need // m))}" for g, m in gpus.items()})` },
-  { tag: "v2", title: "+ how long?", color: C.yellow, why: "Training is compute-bound: 6·N·D FLOPs at a realistic share of peak. Chatbot answers are memory-bound: each token reads all the weights (Unit 5.3).", code: `def train_hours(params, tokens, peak_flops, util=0.35):
+  { tag: "v2", title: "+ how long?", color: C.yellow, why: "Training is compute-bound: 6·N·D FLOPs at a realistic share of peak. Chatbot answers are memory-bound: each token reads all the weights (Lesson 5.3).", code: `def train_hours(params, tokens, peak_flops, util=0.35):
     return 6 * params * tokens / (peak_flops * util) / 3600
 
 def chat_hours(params, answers, bandwidth, bytes_per_param=2, tokens=270, batch=8):
@@ -231,10 +232,10 @@ function CodeWidget() {
   return (
     <div>
       <Frame>
-        In Lab 5B Part E you'll run your planner, then put it to a real test: load a real (small) language model, generate text on the CPU and on the T4,
+        In Core Lab 12, Part C, you'll run your planner, then put it to a real test: load a real (small) language model, generate text on the CPU and on the T4,
         and compare the measured speed and memory with your predictions.
       </Frame>
-      <Code color={C.green} title="🤖 A real language model on the GPU (Lab 5B Part E)">{`from transformers import AutoTokenizer, AutoModelForCausalLM
+      <Code color={C.green} title="🤖 A real language model on the GPU (Core Lab 12, Part C)">{`from transformers import AutoTokenizer, AutoModelForCausalLM
 name = "distilgpt2"                                   # 82 million parameters
 tok = AutoTokenizer.from_pretrained(name)
 model = AutoModelForCausalLM.from_pretrained(name, torch_dtype=torch.float16).to("cuda")
@@ -250,12 +251,12 @@ print(f"{100 / dt:.0f} tokens/s, memory {torch.cuda.max_memory_allocated() / 1e6
         <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>
           Choose one small AI task (image classification, text sentiment, or running a small pretrained model). Using the
           <b style={{ color: C.text }}> Mini-Project template notebook</b>: (1) plan it with your planner, (2) run it on the CPU and on the GPU, (3) measure the speed-up,
-          where the time goes (data vs copy vs compute), and the GPU memory used, (4) apply at least one optimisation from Module 5, and (5) write a one-page report.
+          where the time goes (data vs copy vs compute), and the GPU memory used, (4) apply at least one optimisation from Step 5, and (5) write a one-page report.
         </div>
         <a href="https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/MiniProject_Template.ipynb" target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", borderRadius: 8, background: C.purple, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open the Mini-Project template in Colab ↗</a>
       </div>
-      <LabCard part="E" title="Plan it, then run a real language model"
-        what="Run the planner for the three projects; then load distilgpt2, generate 100 tokens on the CPU and on the T4 in FP16, and compare tokens per second and memory with the bandwidth-based prediction from Unit 5.3."
+      <LabCard part="C" title="Plan it, then run a real language model"
+        what="Run the planner for the three projects; then load distilgpt2, generate 100 tokens on the CPU and on the T4 in FP16, and compare tokens per second and memory with the bandwidth-based prediction from Lesson 5.3."
         expect="a big GPU speed-up, memory of a few hundred MB, and real tokens/s well below the bandwidth limit: for a model this small, overheads (Amdahl again) dominate." />
       <Insight color={C.orange} title="🎓 Course complete: from a single neuron to planning real AI on GPUs.">
         You can explain why AI needs GPUs, how a GPU is built, how the CPU hands it work, how to make it fast, and how to plan real projects. Get your footing.
@@ -275,18 +276,18 @@ const RESULT = {
   perfect: "Perfect! You're ready to plan and run AI on GPUs for real.",
   good: "Great work. Replay 'Play It' with different projects.",
   low: "Revisit 'Build in Steps': fit → time → cost, using units from the whole course.",
-  done: "Course Complete! 🎓🏆",
+  done: "Step 5 Complete: you have reached the summit! 🏔️",
   body: "From rules vs learning to multi-GPU training: you understand how AI uses GPUs, and you can measure, speed up and plan GPU work yourself.",
   next: "What next?",
-  teaser: "Do your mini-project, keep the notebooks, and try a bigger model on a bigger GPU when you get the chance. Get your footing. Keep climbing.",
+  teaser: "Your mini-project (you can do it with the Core Labs alone). And an optional 🥾 Side Trail: Lesson 5.10, the same GPU pattern drawing 3-D pictures, pricing shares and reading DNA. Get your footing. Keep climbing.",
 };
 
 const UNIT_WORDS = [
   ["L4", "NVIDIA L4", "A newer, efficient data-centre GPU: 24 GB, FP16 Tensor Cores.", "new here"],
-  ["A100", "NVIDIA A100", "A large data-centre GPU: 40 or 80 GB, very high bandwidth.", "from Unit 2.4"],
+  ["A100", "NVIDIA A100", "A large data-centre GPU: 40 or 80 GB, very high bandwidth.", "from Lesson 2.4"],
   ["distilgpt2", "a small GPT-2-style language model", "82 million parameters, small enough to run anywhere.", "new here"],
   ["transformers", "Hugging Face's model library", "Downloads and runs thousands of pretrained models.", "new here"],
-  ["GPU-hour", "one GPU used for one hour", "How cloud GPUs are priced.", "from Unit 2.4"],
+  ["GPU-hour", "one GPU used for one hour", "How cloud GPUs are priced.", "from Lesson 2.4"],
 ];
 
 // ── Quiz ──
@@ -347,7 +348,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -368,9 +369,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -396,7 +397,7 @@ export default function Unit5_C({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🤖 A Real Language Model — and your mini-project</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.C.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.C.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -406,7 +407,7 @@ export default function Unit5_C({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.C</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.C</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Grand Capstone: Plan an AI Project</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

@@ -1,5 +1,5 @@
 //@@META
-{"unit": "5.4", "module": 5, "title": "Batch Size & Training on GPU", "icon": "🏋️", "lab": "Lab5A_Why_GPUs_Make_AI_Fast.ipynb", "labNo": "5A", "gpu": true}
+{"unit": "5.4", "module": 5, "title": "Batch Size & Training on GPU", "icon": "🏋️", "lab": "CoreLab11_Batch_Size_and_the_Ladder.ipynb", "labNo": "Core Lab 11", "gpu": true}
 //@@WIDGETS
 
 // ── Section 1: Need — "only 3× faster?" ──
@@ -7,14 +7,14 @@ function NeedWidget() {
   const [width, setWidth] = useState(128);
   const [B, setB] = useState(64);
   const params = 784 * width + width * width + width * 10;
-  const flops = 6 * params * B;                          // training FLOPs per step (Unit 2.2)
+  const flops = 6 * params * B;                          // training FLOPs per step (Lesson 2.2)
   const prep = 0.004 * B;                                // ms of CPU data work per step (same on both)
   const cpu = flops / 8e10 * 1000 + 0.15 + prep;         // Colab's 2-core CPU
   const gpu = flops / 4e12 * 1000 + 0.3 + prep;          // 0.3 ms of launch overheads per step
   return (
     <div>
       <Frame>
-        Students run Lab 1's digit network on the GPU and are disappointed: "only about 2× faster!" Explore why with this simple model of one
+        Students run Core Lab 3's digit network on the GPU and are disappointed: "only about 2× faster!" Explore why with this simple model of one
         training step. Make the network wider and the batch bigger.
       </Frame>
       <Slider label={<>Hidden layer width = <b style={{ color: C.accent }}>{width}</b> ({params.toLocaleString("en-IN")} parameters)</>} value={width} min={64} max={4096} step={64} onChange={setWidth} />
@@ -45,7 +45,7 @@ function ThroughputWidget() {
     <div>
       <Frame>
         Bigger batches spread the fixed per-step costs over more images, so <b style={{ color: C.green }}>throughput</b> (images per second) rises. But
-        every image in the batch needs memory for its saved activations (Unit 2.2), so <b style={{ color: C.red }}>memory</b> rises too, up to the T4's limit.
+        every image in the batch needs memory for its saved activations (Lesson 2.2), so <b style={{ color: C.red }}>memory</b> rises too, up to the T4's limit.
       </Frame>
       <Slider label={<>Batch size = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={1024} onChange={setB} color={C.orange} />
       <svg viewBox="0 0 520 190" style={{ width: "100%", background: C.card, borderRadius: 10, border: `1px solid ${C.border}` }}>
@@ -63,7 +63,7 @@ function ThroughputWidget() {
         <Stat label="LARGEST BATCH THAT FITS" value={maxB} color={C.purple} />
       </div>
       <Insight color={C.green} title="Throughput rises steeply at first, then flattens once the GPU is full. Memory just keeps climbing.">
-        A good batch size sits on the flat part of the green curve, safely below the red line. Mixed precision (Unit 5.2) halves the activation memory,
+        A good batch size sits on the flat part of the green curve, safely below the red line. Mixed precision (Lesson 5.2) halves the activation memory,
         so batches can be bigger.
       </Insight>
     </div>
@@ -82,7 +82,7 @@ function TradeoffWidget() {
   return (
     <div>
       <Frame>
-        A bigger batch makes each <b style={{ color: C.text }}>epoch</b> faster, but it also makes <b style={{ color: C.text }}>fewer weight updates</b> per epoch (Unit 2.2), so the model may
+        A bigger batch makes each <b style={{ color: C.text }}>epoch</b> faster, but it also makes <b style={{ color: C.text }}>fewer weight updates</b> per epoch (Lesson 2.2), so the model may
         need more epochs to learn as well. What matters is the total time to reach a good accuracy. (Illustrative curves; the usual fix for big batches is
         a proportionally larger learning rate.)
       </Frame>
@@ -125,7 +125,7 @@ function RecipeWidget() {
   const [open, setOpen] = useState(0);
   return (
     <div>
-      <Frame>Everything from Modules 4 and 5 as one checklist: the GPU training recipe. Click each item to see the code, and tick it off.</Frame>
+      <Frame>Everything from Steps 4 and 5 as one checklist: the GPU training recipe. Click each item to see the code, and tick it off.</Frame>
       {RECIPE.map((r, i) => {
         const on = done.includes(i);
         return (
@@ -143,7 +143,7 @@ function RecipeWidget() {
       <Insight color={C.green} title="Eight lines turn 'it runs on the GPU' into 'it runs WELL on the GPU'.">
         None of them changes the model or the maths, only how the work is fed to the hardware. That's the practical skill this course set out to build.
       </Insight>
-      <LabCard part="D" title="Real training on the T4: CPU vs GPU, batch sweep, mixed precision"
+      <LabCard part="A" title="Real training on the T4: CPU vs GPU, batch sweep, mixed precision"
         what="Train a wider MNIST network for one epoch on the CPU and on the GPU, sweep the batch size and plot images per second, then switch on autocast and compare speed and accuracy."
         expect="a big GPU speed-up for the wide network, throughput rising then levelling off with batch size, and autocast faster at the same accuracy." />
     </div>
@@ -165,15 +165,15 @@ const RESULT = {
   perfect: "Perfect! You can train models efficiently on a GPU.",
   good: "Good. Replay 'Throughput vs Memory' and find the largest batch that fits.",
   low: "Revisit 'Only 3× Faster?': fixed costs vs work per step is the key idea.",
-  done: "Unit 5.4 Complete!",
+  done: "Lesson 5.4 Complete!",
   body: "You can choose batch sizes, reason about throughput, memory and learning speed, and apply the full GPU training recipe.",
-  next: "Next up: Unit 5.5 — Capstone: Speed Up a Training Run.",
+  next: "Next up: Lesson 5.5 — Capstone: Speed Up a Training Run.",
   teaser: "Take a slow image-classifier training run and apply every trick, measuring each one's effect.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["throughput", "work per second", "Here: images processed per second during training.", "from Unit 2.5"],
-  ["OOM", "Out Of Memory", "The 'CUDA out of memory' error when tensors don't fit in GPU memory (Unit 5.8).", "new here"],
+  ["throughput", "work per second", "Here: images processed per second during training.", "from Lesson 2.5"],
+  ["OOM", "Out Of Memory", "The 'CUDA out of memory' error when tensors don't fit in GPU memory (Lesson 5.8).", "new here"],
   ["cuDNN", "CUDA Deep Neural Network library", "NVIDIA's library of fast kernels for neural-network layers.", "new here"],
-  ["AMP", "Automatic Mixed Precision", "autocast + GradScaler (Unit 5.2).", "from Unit 5.2"],
+  ["AMP", "Automatic Mixed Precision", "autocast + GradScaler (Lesson 5.2).", "from Lesson 5.2"],
 ];

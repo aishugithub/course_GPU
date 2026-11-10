@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab4_CPU_GPU_Teamwork.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab09_Keep_the_GPU_Busy.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 4 · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 9 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 4 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 9 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 2 · Hamacher §12.2.1";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 4.C";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 2";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // Illustrative per-epoch model for a small image classifier on a T4 (50,000 small colour images).
@@ -90,11 +91,11 @@ function epochModel(f) {
 
 // ── Section 1: The Mission ──
 const CLUES = [
-  ["The five steps: copies cross the slow PCIe bus", "Units 4.1, 4.2"],
-  ["Small jobs waste time on launch overhead", "Units 2.5, 3.C"],
-  ["Overlap CPU prep with GPU work; avoid sync points", "Unit 4.4"],
-  ["The slowest part sets the ceiling (Amdahl)", "Unit 2.8"],
-  ["Measure with synchronisation, or with a profiler", "Unit 4.4"],
+  ["The five steps: copies cross the slow PCIe bus", "Lessons 4.1, 4.2"],
+  ["Small jobs waste time on launch overhead", "Lessons 2.5, 3.C"],
+  ["Overlap CPU prep with GPU work; avoid sync points", "Lesson 4.4"],
+  ["The slowest part sets the ceiling (Amdahl)", "Lesson 2.8"],
+  ["Measure with synchronisation, or with a profiler", "Lesson 4.4"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -132,7 +133,7 @@ for images, labels in loader:
 
 // ── Section 2: Build in Steps — how to measure ──
 const VERSIONS = [
-  { tag: "v1", title: "Time the epoch (correctly)", color: C.teal, why: "First get one honest number. Synchronise before stopping the clock, otherwise queued GPU work is missed (Unit 4.4).", code: `torch.cuda.synchronize(); t0 = time.perf_counter()
+  { tag: "v1", title: "Time the epoch (correctly)", color: C.teal, why: "First get one honest number. Synchronise before stopping the clock, otherwise queued GPU work is missed (Lesson 4.4).", code: `torch.cuda.synchronize(); t0 = time.perf_counter()
 train_one_epoch()
 torch.cuda.synchronize(); print(f"epoch: {time.perf_counter() - t0:.1f} s")` },
   { tag: "v2", title: "+ time each phase", color: C.yellow, why: "Split the step into waiting for data, copying, and computing. Synchronising after each phase makes the split honest (though a little slower overall).", code: `phase = {"data": 0, "copy": 0, "compute": 0}
@@ -145,7 +146,7 @@ for images, labels in loader:
     torch.cuda.synchronize()
     now = time.perf_counter(); phase["compute"] += now - t; t = now
 print(phase)` },
-  { tag: "v3", title: "+ the PyTorch profiler", color: C.green, why: "The profiler records every CPU operation and GPU kernel with exact timings. It's the professional tool.", code: `from torch.profiler import profile, ProfilerActivity
+  { tag: "v3", title: "+ the PyTorch profiler", color: C.green, why: "The profiler records every CPU operation and GPU kernel with exact timings. It's the professional tool. After it, professionals reach for NVIDIA's free Nsight Systems (a timeline of the whole program: CPU threads, copies and kernels side by side) and Nsight Compute (a close look inside one kernel).", code: `from torch.profiler import profile, ProfilerActivity
 with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
     train_some_steps(20)
 print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))` },
@@ -215,7 +216,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The fixed training loop, every lesson of Module 4 applied. In Lab 4 Part E you'll profile the slow and fast versions for real on the T4.</Frame>
+      <Frame>The fixed training loop, every lesson of Step 4 applied. In Core Lab 9, Part B, you'll profile the slow and fast versions for real on the T4.</Frame>
       <Code color={C.green} title="🚀 fast_training_loop.py">{`loader = DataLoader(train_data, batch_size=256, shuffle=True,
                     num_workers=2, pin_memory=True)        # overlap + fast copies
 model = model.to("cuda")
@@ -237,10 +238,10 @@ for epoch in range(epochs):
         <b style={{ color: C.text }}>Challenge upgrades:</b> (1) load the whole dataset onto the GPU as one tensor and slice batches from it; (2) watch
         <code> !nvidia-smi</code> in a second cell while training to see the GPU's busy % rise.
       </div>
-      <LabCard part="E" title="Profile the slow loop and the fast loop"
+      <LabCard part="B" title="Profile the slow loop and the fast loop"
         what="Run the team's slow loop and the fixed loop on MNIST for one epoch each, time them correctly, and print the PyTorch profiler table for 20 steps of each."
         expect="the fixed loop several times faster, with the profiler showing far fewer memory copies and much less time where the CPU waits." />
-      <Insight color={C.orange} title="Module 4 complete: you understand the whole CPU–GPU partnership.">
+      <Insight color={C.orange} title="Step 4 complete: you understand the whole CPU–GPU partnership.">
         Next: why GPUs are so astonishingly good at AI specifically. Tiling, Tensor Cores, low precision and the roofline.
       </Insight>
     </div>
@@ -251,23 +252,23 @@ const QUESTIONS = [
   { q: "Why is computing accuracy with labels.cpu().numpy() and scikit-learn at every step slow?", options: ["scikit-learn gives wrong answers", "It copies data out of the GPU and forces a sync every step, then runs slow Python code", "It deletes the gradients", "It's not slow"], answer: 1, explain: "Each step: copy out + wait for the GPU + Python work. Computing (scores.argmax(1) == labels).sum() on the GPU and reading it once per epoch avoids all three." },
   { q: "nvidia-smi shows the GPU only 10% busy during training. The most likely problem is…", options: ["The GPU is too slow", "The GPU is starved: data loading, copies or sync points keep it waiting", "Too many SMs", "The learning rate"], answer: 1, explain: "Low utilisation means the GPU is waiting. Feed it better: workers, pinned memory, bigger batches, fewer sync points." },
   { q: "Which change lets CPU data preparation overlap with GPU training?", options: ["batch_size=1", "DataLoader(num_workers=2) with no per-step .item()", "Calling torch.cuda.synchronize() every step", "Moving the model inside the loop"], answer: 1, explain: "Background workers prepare the next batch while the GPU works, as long as no sync point forces the CPU to wait each step." },
-  { q: "Why does a bigger batch (256 vs 16) speed up an epoch on a GPU?", options: ["Fewer images to process", "Fewer, larger kernel launches, so less overhead per image and better use of the SMs", "It uses less memory", "It skips the backward pass"], answer: 1, explain: "Each step has fixed launch costs; bigger batches spread them over more images and give the GPU enough threads (Unit 3.C)." },
+  { q: "Why does a bigger batch (256 vs 16) speed up an epoch on a GPU?", options: ["Fewer images to process", "Fewer, larger kernel launches, so less overhead per image and better use of the SMs", "It uses less memory", "It skips the backward pass"], answer: 1, explain: "Each step has fixed launch costs; bigger batches spread them over more images and give the GPU enough threads (Lesson 3.C)." },
 ];
 const RESULT = {
   perfect: "Perfect! You're a qualified GPU detective.",
   good: "Good. Replay 'Play It' and get the GPU above 90%.",
   low: "Revisit 'Build in Steps': measure honestly, then fix the biggest cost first.",
-  done: "Module 4 Complete! 🤝",
+  done: "Step 4 Complete! 🤝",
   body: "You know the whole CPU–GPU partnership: host and device, the five steps, kernels and grids, async queues, and how to profile and fix a pipeline.",
-  next: "Next up: Module 5 — Making AI Fast & Real Projects.",
+  next: "Next up: Step 5 — Making AI Fast, and Making It Fit.",
   teaser: "Tiling, Tensor Cores, FP16 and the roofline: the tricks that make a GPU hundreds of times faster at AI.",
 };
 
 const UNIT_WORDS = [
   ["profiler", "a performance-measuring tool", "Records how long every operation and kernel takes.", "new here"],
   ["utilisation", "busy share", "The percentage of time the GPU is actually computing.", "new here"],
-  ["pin_memory", "page-locked memory option", "Makes host-to-GPU copies faster and able to overlap (Unit 4.1).", "from Unit 4.1"],
-  ["sync", "synchronisation", "The CPU waiting for the GPU (Unit 4.4).", "from Unit 4.4"],
+  ["pin_memory", "page-locked memory option", "Makes host-to-GPU copies faster and able to overlap (Lesson 4.1).", "from Lesson 4.1"],
+  ["sync", "synchronisation", "The CPU waiting for the GPU (Lesson 4.4).", "from Lesson 4.4"],
 ];
 
 // ── Quiz ──
@@ -328,7 +329,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -349,9 +350,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -377,7 +378,7 @@ export default function Unit4_C({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and profile it for real</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 4.C.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 4.C.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -387,7 +388,7 @@ export default function Unit4_C({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 4 › UNIT 4.C</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 4 › LESSON 4.C</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: Where Did the Time Go?</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

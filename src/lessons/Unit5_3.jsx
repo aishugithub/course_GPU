@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5A_Why_GPUs_Make_AI_Fast.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab10_Make_It_Fast.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5A · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 10 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5A in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 10 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,8 +68,9 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "H&P Ch 4 (The roofline performance model) · Kirk & Hwu Ch 5 (Arithmetic intensity)";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.3";
+const TEXTBOOK = "H&P §4.3";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 const PEAK32 = 8.1e12, PEAK16 = 65e12, BW = 320e9;
@@ -131,7 +132,7 @@ function IntensityWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>{o.note}</div>
       <Insight color={C.purple} title="Element-wise operations: far below 1 FLOP per byte. Big matrix multiplies: hundreds or thousands.">
-        Intensity depends on reuse, the same idea as Unit 3.4 and tiling in Unit 5.1. Note that a layer with batch size 1 is as poor as ReLU: every weight
+        Intensity depends on reuse, the same idea as Lesson 3.4 and tiling in Lesson 5.1. Note that a layer with batch size 1 is as poor as ReLU: every weight
         is fetched for just one multiply-add.
       </Insight>
     </div>
@@ -195,7 +196,7 @@ function ActWidget() {
           <b style={{ color: C.teal, fontSize: 13 }}>If memory-bound</b>
           <ul style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, margin: "6px 0 0", paddingLeft: 18 }}>
             <li><b style={{ color: C.text }}>Fuse operations</b>: do matmul + bias + ReLU in one kernel, so the intermediate never goes to memory (torch.compile does this)</li>
-            <li><b style={{ color: C.text }}>Fewer bytes</b>: FP16 / INT8 (Unit 5.2)</li>
+            <li><b style={{ color: C.text }}>Fewer bytes</b>: FP16 / INT8 (Lesson 5.2)</li>
             <li><b style={{ color: C.text }}>More reuse</b>: bigger batches, tiling</li>
           </ul>
         </div>
@@ -203,7 +204,7 @@ function ActWidget() {
           <b style={{ color: C.green, fontSize: 13 }}>If compute-bound</b>
           <ul style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, margin: "6px 0 0", paddingLeft: 18 }}>
             <li><b style={{ color: C.text }}>Tensor Cores</b>: FP16 / BF16 matmuls</li>
-            <li><b style={{ color: C.text }}>A bigger GPU</b> or several (Unit 5.9)</li>
+            <li><b style={{ color: C.text }}>A bigger GPU</b> or several (Lesson 5.9)</li>
             <li><b style={{ color: C.text }}>Fewer FLOPs</b>: a smaller or smarter model</li>
           </ul>
         </div>
@@ -219,12 +220,39 @@ function ActWidget() {
         </div>
       </div>
       <Insight color={C.teal} title="Chatbot speed is set by memory bandwidth, not FLOPS. That's why INT8/INT4 quantisation makes chatbots faster.">
-        Halve the bytes per weight and you double the tokens per second. This is also why Unit 2.4's FLOPs-only estimate was too optimistic, as
+        Halve the bytes per weight and you double the tokens per second. This is also why Lesson 2.4's FLOPs-only estimate was too optimistic, as
         promised.
       </Insight>
+      <KVCacheBox />
       <LabCard part="C" title="Plot your own roofline"
         what="Measure vector add, ReLU, a batch-1 layer and matrix multiplies of several sizes on the T4, compute each one's intensity and achieved FLOPS, and plot them under the T4's roofline."
         expect="element-wise operations hugging the slanted memory roof, and large matrix multiplies close to the flat compute roof." />
+    </div>
+  );
+}
+// ── The KV cache (attention cache): the book's Llama-2-7B example ──
+function KVCacheBox() {
+  const [tok, setTok] = useState(4000);
+  const cacheGB = tok * 0.5 / 1000;                  // 2 × 32 layers × 4,096 numbers × 2 bytes ≈ 0.5 MB per token
+  const ms = (14 + cacheGB) / 320 * 1000;
+  return (
+    <div style={{ marginTop: 14, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
+      <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>📖 New words: the KV cache (attention cache)</div>
+      <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginBottom: 8 }}>
+        Each new token must attend to every token before it (Lesson 1.7), so it needs their keys and values. Recomputing them for the whole chat at every
+        token would repeat almost all the work, so the model computes each token's key and value once and <b style={{ color: C.text }}>keeps them in GPU memory</b>:
+        the KV cache. A 7B model (32 layers, lists of 4,096 numbers) keeps 2 × 32 × 4,096 × 2 bytes ≈ <b style={{ color: C.text }}>0.5 MB per token</b> in FP16,
+        and reads the whole cache for every new token.
+      </div>
+      <Slider label={<>chat so far: <b style={{ color: C.accent }}>{tok.toLocaleString("en-IN")} tokens</b></>} value={tok} min={0} max={32000} step={500} onChange={setTok} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="KV CACHE" value={`${cacheGB.toFixed(1)} GB`} color={C.purple} />
+        <Stat label="READ PER TOKEN" value={`14 GB weights + ${cacheGB.toFixed(1)} GB cache`} color={C.teal} />
+        <Stat label="TIME PER TOKEN (320 GB/s)" value={`${ms.toFixed(0)} ms ≈ ${(1000 / ms).toFixed(0)} tokens/s`} color={C.green} />
+      </div>
+      <Insight color={C.purple} title="The longer the chat, the more memory the cache takes and the slower each new token comes.">
+        After a 4,000-token chat the cache is about 2 GB: 16 GB ÷ 320 GB/s ≈ 50 ms per token, about 20 tokens per second. The KV cache is what fills a GPU during long chats (Lesson 5.7).
+      </Insight>
     </div>
   );
 }
@@ -239,9 +267,9 @@ const RESULT = {
   perfect: "Perfect! You can predict any operation's speed limit.",
   good: "Good. Replay 'The Roofline' and toggle FP16.",
   low: "Revisit 'Arithmetic Intensity': FLOPs per byte decides everything.",
-  done: "Unit 5.3 Complete!",
+  done: "Lesson 5.3 Complete!",
   body: "You can compute arithmetic intensity, read a roofline, classify operations as compute- or memory-bound, and pick the right fix.",
-  next: "Next up: Unit 5.4 — Batch Size & Training on GPU.",
+  next: "Next up: Lesson 5.4 — Batch Size & Training on GPU.",
   teaser: "Put it all together in real training: batch size, throughput, memory, and mixed precision.",
 };
 
@@ -311,7 +339,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -332,9 +360,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -360,7 +388,7 @@ export default function Unit5_3({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>🛠️ What To Do — and why chatbots are memory-bound</h3><ActWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.3.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.3.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -370,7 +398,7 @@ export default function Unit5_3({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏠</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.3</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.3</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Compute-bound vs Memory-bound</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

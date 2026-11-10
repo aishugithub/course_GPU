@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.5", "module": 2, "title": "Latency vs Throughput", "icon": "⚔️", "lab": "Lab2B_CPU_vs_GPU.ipynb", "labNo": "2B", "gpu": true}
+{"unit": "2.5", "module": 2, "title": "Latency vs Throughput", "icon": "⚔️", "lab": "CoreLab05_CPU_or_GPU.ipynb", "labNo": "Core Lab 5", "gpu": true}
 //@@WIDGETS
 
 // ── Section 1: Need — one professor or 1000 students? ──
@@ -91,7 +91,7 @@ const AREAS = {
 const WHY = {
   ctrl: "Control logic makes ONE instruction stream run fast: predicting branches, running instructions out of order, all the pipeline tricks from COA. Great for latency, but it takes a lot of chip area.",
   alu: "ALUs (arithmetic logic units) do the actual multiply-adds. More ALUs means more arithmetic per second, which is throughput.",
-  cache: "Caches keep data close so ONE core rarely waits for slow memory (COA Unit 4). A GPU keeps caches small and hides memory waits a different way (Unit 3.3).",
+  cache: "Caches keep data close so ONE core rarely waits for slow memory (COA Unit 4). A GPU keeps caches small and hides memory waits a different way (Lesson 3.3).",
 };
 function DieWidget() {
   const [k, setK] = useState("alu");
@@ -160,7 +160,7 @@ function RaceWidget() {
         <Stat label="WINNER" value={cpu < gpu ? "CPU" : `GPU, ${(cpu / gpu).toFixed(1)}× faster`} color={cpu < gpu ? C.orange : C.green} />
       </div>
       <Insight color={C.yellow} title="Small jobs: the CPU wins. Big parallel jobs: the GPU wins by miles.">
-        The GPU's start-up cost (sending data and work across, Module 4) means tiny jobs aren't worth it. In Lab 2B you'll find the real
+        The GPU's start-up cost (sending data and work across, Step 4) means tiny jobs aren't worth it. In Core Lab 5 you'll find the real
         crossover on Colab's T4.
       </Insight>
       <LabCard part="A" title="Meet your GPU"
@@ -185,9 +185,9 @@ const RESULT = {
   perfect: "Perfect! You know the two kinds of 'fast'.",
   good: "Good. Replay 'The Race' and find the crossover point.",
   low: "Revisit 'Latency vs Throughput': car vs bus is the key picture.",
-  done: "Unit 2.5 Complete!",
+  done: "Lesson 2.5 Complete!",
   body: "You can explain latency vs throughput and why CPUs and GPUs spend their transistors so differently.",
-  next: "Next up: Unit 2.6 — Why Clocks Stopped Getting Faster.",
+  next: "Next up: Lesson 2.6 — Why Clocks Stopped Getting Faster.",
   teaser: "Why not just make the CPU core faster and faster? Physics said no, around 2005.",
 };
 //@@WORDS

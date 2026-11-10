@@ -68,9 +68,10 @@ export default function Landing({ onExploreGuest, onGoToLogin }) {
         </p>
 
         <p style={{ color: D.inkSoft, fontSize: 17, lineHeight: 1.65, margin: '22px auto 0', maxWidth: 580 }}>
-          Have you got your foothold on the machine behind AI? A free, self-paced course on
-          GPU computing for AI — from a single neuron to thousands of GPU cores working together. No prior
-          AI knowledge, no cost, and no account required to start.
+          Have you got your foothold on the machine behind AI? <b>Hardware for AI</b> is a free, self-paced
+          course, and the interactive companion to the course book <i>A Billion Small Steps</i>: from a single
+          neuron to thousands of GPU cores working together. No prior AI knowledge, no cost, and no account
+          required to start.
         </p>
 
         <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginTop: 34, flexWrap: 'wrap' }}>
@@ -107,10 +108,11 @@ export default function Landing({ onExploreGuest, onGoToLogin }) {
             Curious what happens beneath the code? Perfect.
           </h2>
           <p style={{ color: D.inkSoft, fontSize: 15.5, lineHeight: 1.7, margin: 0 }}>
-            Foothold is for anyone curious about what happens beneath the code — how bits, registers,
-            memory and buses come together into a working machine. Students, self-learners, curious
-            minds, wherever you are. {totalUnits}+ interactive lessons, each built around a single
-            idea you can click, drag, or step through rather than just read.
+            Foothold is for anyone who builds or uses AI and wants to know what the machine is really
+            doing: the maths AI computes, and the cores, memory and buses that compute it. Students,
+            self-learners, curious minds, wherever you are. {totalUnits} interactive lessons, each built
+            around a single idea you can click, drag, or step through rather than just read, and twelve
+            ⛰ Core Labs on a real GPU in Colab.
           </p>
         </Card>
       </div>

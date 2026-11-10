@@ -1,5 +1,5 @@
 //@@META
-{"unit": "5.3", "module": 5, "title": "Compute-bound vs Memory-bound", "icon": "🏠", "lab": "Lab5A_Why_GPUs_Make_AI_Fast.ipynb", "labNo": "5A", "gpu": true}
+{"unit": "5.3", "module": 5, "title": "Compute-bound vs Memory-bound", "icon": "🏠", "lab": "CoreLab10_Make_It_Fast.ipynb", "labNo": "Core Lab 10", "gpu": true}
 //@@WIDGETS
 
 const PEAK32 = 8.1e12, PEAK16 = 65e12, BW = 320e9;
@@ -61,7 +61,7 @@ function IntensityWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>{o.note}</div>
       <Insight color={C.purple} title="Element-wise operations: far below 1 FLOP per byte. Big matrix multiplies: hundreds or thousands.">
-        Intensity depends on reuse, the same idea as Unit 3.4 and tiling in Unit 5.1. Note that a layer with batch size 1 is as poor as ReLU: every weight
+        Intensity depends on reuse, the same idea as Lesson 3.4 and tiling in Lesson 5.1. Note that a layer with batch size 1 is as poor as ReLU: every weight
         is fetched for just one multiply-add.
       </Insight>
     </div>
@@ -125,7 +125,7 @@ function ActWidget() {
           <b style={{ color: C.teal, fontSize: 13 }}>If memory-bound</b>
           <ul style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, margin: "6px 0 0", paddingLeft: 18 }}>
             <li><b style={{ color: C.text }}>Fuse operations</b>: do matmul + bias + ReLU in one kernel, so the intermediate never goes to memory (torch.compile does this)</li>
-            <li><b style={{ color: C.text }}>Fewer bytes</b>: FP16 / INT8 (Unit 5.2)</li>
+            <li><b style={{ color: C.text }}>Fewer bytes</b>: FP16 / INT8 (Lesson 5.2)</li>
             <li><b style={{ color: C.text }}>More reuse</b>: bigger batches, tiling</li>
           </ul>
         </div>
@@ -133,7 +133,7 @@ function ActWidget() {
           <b style={{ color: C.green, fontSize: 13 }}>If compute-bound</b>
           <ul style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, margin: "6px 0 0", paddingLeft: 18 }}>
             <li><b style={{ color: C.text }}>Tensor Cores</b>: FP16 / BF16 matmuls</li>
-            <li><b style={{ color: C.text }}>A bigger GPU</b> or several (Unit 5.9)</li>
+            <li><b style={{ color: C.text }}>A bigger GPU</b> or several (Lesson 5.9)</li>
             <li><b style={{ color: C.text }}>Fewer FLOPs</b>: a smaller or smarter model</li>
           </ul>
         </div>
@@ -149,12 +149,39 @@ function ActWidget() {
         </div>
       </div>
       <Insight color={C.teal} title="Chatbot speed is set by memory bandwidth, not FLOPS. That's why INT8/INT4 quantisation makes chatbots faster.">
-        Halve the bytes per weight and you double the tokens per second. This is also why Unit 2.4's FLOPs-only estimate was too optimistic, as
+        Halve the bytes per weight and you double the tokens per second. This is also why Lesson 2.4's FLOPs-only estimate was too optimistic, as
         promised.
       </Insight>
+      <KVCacheBox />
       <LabCard part="C" title="Plot your own roofline"
         what="Measure vector add, ReLU, a batch-1 layer and matrix multiplies of several sizes on the T4, compute each one's intensity and achieved FLOPS, and plot them under the T4's roofline."
         expect="element-wise operations hugging the slanted memory roof, and large matrix multiplies close to the flat compute roof." />
+    </div>
+  );
+}
+// ── The KV cache (attention cache): the book's Llama-2-7B example ──
+function KVCacheBox() {
+  const [tok, setTok] = useState(4000);
+  const cacheGB = tok * 0.5 / 1000;                  // 2 × 32 layers × 4,096 numbers × 2 bytes ≈ 0.5 MB per token
+  const ms = (14 + cacheGB) / 320 * 1000;
+  return (
+    <div style={{ marginTop: 14, background: C.card, borderRadius: 10, padding: 14, border: `1px solid ${C.border}` }}>
+      <div style={{ color: C.text, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>📖 New words: the KV cache (attention cache)</div>
+      <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.7, marginBottom: 8 }}>
+        Each new token must attend to every token before it (Lesson 1.7), so it needs their keys and values. Recomputing them for the whole chat at every
+        token would repeat almost all the work, so the model computes each token's key and value once and <b style={{ color: C.text }}>keeps them in GPU memory</b>:
+        the KV cache. A 7B model (32 layers, lists of 4,096 numbers) keeps 2 × 32 × 4,096 × 2 bytes ≈ <b style={{ color: C.text }}>0.5 MB per token</b> in FP16,
+        and reads the whole cache for every new token.
+      </div>
+      <Slider label={<>chat so far: <b style={{ color: C.accent }}>{tok.toLocaleString("en-IN")} tokens</b></>} value={tok} min={0} max={32000} step={500} onChange={setTok} />
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Stat label="KV CACHE" value={`${cacheGB.toFixed(1)} GB`} color={C.purple} />
+        <Stat label="READ PER TOKEN" value={`14 GB weights + ${cacheGB.toFixed(1)} GB cache`} color={C.teal} />
+        <Stat label="TIME PER TOKEN (320 GB/s)" value={`${ms.toFixed(0)} ms ≈ ${(1000 / ms).toFixed(0)} tokens/s`} color={C.green} />
+      </div>
+      <Insight color={C.purple} title="The longer the chat, the more memory the cache takes and the slower each new token comes.">
+        After a 4,000-token chat the cache is about 2 GB: 16 GB ÷ 320 GB/s ≈ 50 ms per token, about 20 tokens per second. The KV cache is what fills a GPU during long chats (Lesson 5.7).
+      </Insight>
     </div>
   );
 }
@@ -174,9 +201,9 @@ const RESULT = {
   perfect: "Perfect! You can predict any operation's speed limit.",
   good: "Good. Replay 'The Roofline' and toggle FP16.",
   low: "Revisit 'Arithmetic Intensity': FLOPs per byte decides everything.",
-  done: "Unit 5.3 Complete!",
+  done: "Lesson 5.3 Complete!",
   body: "You can compute arithmetic intensity, read a roofline, classify operations as compute- or memory-bound, and pick the right fix.",
-  next: "Next up: Unit 5.4 — Batch Size & Training on GPU.",
+  next: "Next up: Lesson 5.4 — Batch Size & Training on GPU.",
   teaser: "Put it all together in real training: batch size, throughput, memory, and mixed precision.",
 };
 //@@WORDS

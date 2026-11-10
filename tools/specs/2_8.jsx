@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.8", "module": 2, "title": "Amdahl's Law", "icon": "⚖️", "lab": "Lab2B_CPU_vs_GPU.ipynb", "labNo": "2B", "gpu": true}
+{"unit": "2.8", "module": 2, "title": "Amdahl's Law", "icon": "⚖️", "lab": "CoreLab05_CPU_or_GPU.ipynb", "labNo": "Core Lab 5", "gpu": true}
 //@@WIDGETS
 
 const speedup = (p, s) => 1 / ((1 - p) + p / s);
@@ -137,7 +137,7 @@ function OptimiseWidget() {
           <code> num_workers</code>).
         </Insight>
       )}
-      <LabCard part="D" title="Amdahl's law on a real GPU"
+      <LabCard part="B" title="Amdahl's law on a real GPU"
         what="Build a fake training loop with a slow CPU part (Python preprocessing) and a GPU matrix multiply, time each part, then predict the speed-up with Amdahl's law and compare it with what you measure."
         expect="your Amdahl prediction lands close to the measured speed-up, and the CPU part sets the ceiling." />
     </div>
@@ -159,9 +159,9 @@ const RESULT = {
   perfect: "Perfect! You can predict real-world speed-ups.",
   good: "Good. Replay 'The Law' and drag p close to 100%.",
   low: "Revisit 'The Dosa Kitchen': the part you can't parallelise decides everything.",
-  done: "Unit 2.8 Complete!",
+  done: "Lesson 2.8 Complete!",
   body: "You can apply Amdahl's law, find the ceiling 1 / (1 − p), and choose what to optimise.",
-  next: "Next up: Unit 2.C — Capstone: CPU or GPU?",
+  next: "Next up: Lesson 2.C — Capstone: CPU or GPU?",
   teaser: "Put it all together: for any job, decide where it should run, then prove it on a real GPU.",
 };
 //@@WORDS

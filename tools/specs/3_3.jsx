@@ -1,5 +1,5 @@
 //@@META
-{"unit": "3.3", "module": 3, "title": "Hiding Latency", "icon": "🫖", "lab": "Lab3_Inside_a_GPU.ipynb", "labNo": "3", "gpu": true}
+{"unit": "3.3", "module": 3, "title": "Hiding Latency", "icon": "🫖", "lab": "CoreLab07_Feeding_the_GPU.ipynb", "labNo": "Core Lab 7", "gpu": true}
 //@@WIDGETS
 
 // Discrete warp-scheduler simulation: each warp computes C cycles, then waits L cycles for memory, repeat.
@@ -121,7 +121,7 @@ function SwitchWidget() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 3 }}>
             {Array.from({ length: 32 }, (_, i) => <div key={i} style={{ height: 22, borderRadius: 3, background: i === 5 ? C.green : C.teal + "33", border: `1px solid ${i === 5 ? C.green : C.teal + "66"}`, fontSize: 8.5, color: i === 5 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>w{i}</div>)}
           </div>
-          <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>Switching from warp 5 to warp 6 just means "read your operands from a different part of the register file": nothing is saved or loaded. That's why the register file is so big (256 KB per SM, Unit 3.1).</div>
+          <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>Switching from warp 5 to warp 6 just means "read your operands from a different part of the register file": nothing is saved or loaded. That's why the register file is so big (256 KB per SM, Lesson 3.1).</div>
         </div>
       )}
       <Insight color={C.teal} title="GPUs are hardware multithreading taken to the extreme.">
@@ -159,10 +159,10 @@ function OccWidget() {
         <Stat label="CORE BUSY (MODEL)" value={`${(util * 100).toFixed(0)}%`} color={util > 0.9 ? C.green : util > 0.5 ? C.yellow : C.red} />
       </div>
       <Insight color={C.purple} title="More resident warps means more latency hiding, up to the point where the core is always busy.">
-        Kernels with lots of arithmetic per memory load need fewer warps; memory-heavy kernels need many. Unit 5.3 turns this into a rule:
+        Kernels with lots of arithmetic per memory load need fewer warps; memory-heavy kernels need many. Lesson 5.3 turns this into a rule:
         compute-bound vs memory-bound.
       </Insight>
-      <LabCard part="C" title="Watch latency hiding work"
+      <LabCard part="A" title="Watch latency hiding work"
         what="Run a simple memory-copy kernel while launching more and more threads, measure the bandwidth each time, and plot it."
         expect="bandwidth climbs steeply as threads are added, then levels off once there are enough warps to hide memory latency." />
     </div>
@@ -184,15 +184,15 @@ const RESULT = {
   perfect: "Perfect! You understand the GPU's secret weapon.",
   good: "Good. Replay 'Juggle the Warps' with long latencies.",
   low: "Revisit 'Juggle the Warps': many warps hide the wait.",
-  done: "Unit 3.3 Complete!",
+  done: "Lesson 3.3 Complete!",
   body: "You can explain memory latency, latency hiding by warp switching, why it's free on a GPU, and occupancy.",
-  next: "Next up: Unit 3.4 — GPU Memory & Bandwidth.",
+  next: "Next up: Lesson 3.4 — GPU Memory & Bandwidth.",
   teaser: "65 TFLOPS is useless if the numbers can't arrive fast enough. Meet the GPU's memory hierarchy.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["latency", "waiting time", "How long one memory request takes to come back.", "from Unit 2.5"],
-  ["GDDR6", "Graphics Double Data Rate 6", "The T4's main (global) memory.", "from Unit 3.1"],
+  ["latency", "waiting time", "How long one memory request takes to come back.", "from Lesson 2.5"],
+  ["GDDR6", "Graphics Double Data Rate 6", "The T4's main (global) memory.", "from Lesson 3.1"],
   ["OS", "Operating System", "Windows, Linux, Android… It schedules threads on CPU cores.", "new here"],
   ["occupancy", "warps resident ÷ maximum warps", "How full an SM's warp slots are.", "new here"],
 ];

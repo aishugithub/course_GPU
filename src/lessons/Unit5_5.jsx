@@ -8,7 +8,7 @@ const C = {
   text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
 };
 
-const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/Lab5A_Why_GPUs_Make_AI_Fast.ipynb";
+const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab11_Batch_Size_and_the_Ladder.ipynb";
 
 function Insight({ color = C.accent, title, children }) {
   return (
@@ -34,11 +34,11 @@ function Code({ children, color = C.border, title }) {
 function LabCard({ part, title, what, expect }) {
   return (
     <div style={{ marginTop: 18, background: C.card, border: `1.5px solid ${C.orange}66`, borderRadius: 10, padding: 16 }}>
-      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>🧪 TRY IT FOR REAL — LAB 5A · PART {part}</div>
+      <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, letterSpacing: 1, marginBottom: 6 }}>⛰ TRY IT FOR REAL — CORE LAB 11 · PART {part}</div>
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Lab 5A in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 11 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -68,18 +68,19 @@ function Stat({ label, value, color = C.teal }) {
   );
 }
 
-const TEXTBOOK = "Kirk & Hwu Ch 16 (Deep learning) · D2L Ch 13";
-const TEXTBOOK_KEY = "Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Mano = Computer System Architecture, 3e (COA textbook) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 5e · Stallings = Computer Organization and Architecture, 11e · Kirk & Hwu = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai)";
+const BOOK_SECTION = "Section 5.5";
+const TEXTBOOK = "Hwu, Kirk & El Hajj Ch 16";
+const TEXTBOOK_KEY = "Hwu, Kirk & El Hajj = Programming Massively Parallel Processors, 4e · D2L = Dive into Deep Learning (free at d2l.ai) · H&P = Hennessy & Patterson, Computer Architecture: A Quantitative Approach, 6e · Hamacher = Computer Organization and Embedded Systems, 6e (COA textbook) · Stallings = Computer Organization and Architecture, 11e";
 
 
 // ── Section 1: The Mission ──
 const TOOLS = [
-  ["Measure honestly: synchronise before reading the clock", "Unit 4.4"],
-  ["No per-step sync points; metrics on the GPU", "Units 4.4, 4.C"],
-  ["Background workers + pinned memory", "Units 4.1, 4.4"],
-  ["A batch size that fills the GPU", "Unit 5.4"],
-  ["Mixed precision: FP16 Tensor Cores + loss scaling", "Unit 5.2"],
-  ["Keep the data on the GPU when it fits", "Units 4.1, 5.3"],
+  ["Measure honestly: synchronise before reading the clock", "Lesson 4.4"],
+  ["No per-step sync points; metrics on the GPU", "Lessons 4.4, 4.C"],
+  ["Background workers + pinned memory", "Lessons 4.1, 4.4"],
+  ["A batch size that fills the GPU", "Lesson 5.4"],
+  ["Mixed precision: FP16 Tensor Cores + loss scaling", "Lesson 5.2"],
+  ["Keep the data on the GPU when it fits", "Lessons 4.1, 5.3"],
 ];
 function MissionWidget() {
   const [ticks, setTicks] = useState([]);
@@ -87,7 +88,7 @@ function MissionWidget() {
     <div>
       <Frame>
         Your project team must demo a clothing classifier (<b style={{ color: C.text }}>Fashion-MNIST</b>: 60,000 grey 28 × 28 photos of shirts, shoes, bags… in 10 classes)
-        tomorrow. The network is a wide version of what you built in Module 1: 784 → 1024 → 1024 → 10. The current code trains far too slowly to try ideas.
+        tomorrow. The network is a wide version of what you built in Step 1: 784 → 1024 → 1024 → 10. The current code trains far too slowly to try ideas.
         Your target: <b style={{ color: C.green }}>at least 5× faster per epoch, with the same accuracy</b>.
       </Frame>
       {TOOLS.map(([t, u], i) => {
@@ -118,7 +119,7 @@ for x, y in loader:
     opt.zero_grad(); loss.backward(); opt.step()
     log.append(loss.item())                        # sync every step
 torch.cuda.synchronize(); print("epoch:", time.perf_counter() - t0)` },
-  { tag: "v2", title: "+ feed the GPU", color: C.yellow, why: "Fix the pipeline (Module 4): background workers, pinned memory, non-blocking copies, a bigger batch, and no per-step sync. The maths is unchanged.", code: `loader = DataLoader(train_data, batch_size=256, shuffle=True,
+  { tag: "v2", title: "+ feed the GPU", color: C.yellow, why: "Fix the pipeline (Step 4): background workers, pinned memory, non-blocking copies, a bigger batch, and no per-step sync. The maths is unchanged.", code: `loader = DataLoader(train_data, batch_size=256, shuffle=True,
                     num_workers=2, pin_memory=True)
 running = torch.zeros((), device="cuda")
 for x, y in loader:
@@ -126,7 +127,7 @@ for x, y in loader:
     loss = loss_fn(model(x), y)
     opt.zero_grad(set_to_none=True); loss.backward(); opt.step()
     running += loss.detach()                       # stays on the GPU` },
-  { tag: "v3", title: "+ Tensor Cores and data on the GPU", color: C.green, why: "Now speed up the work itself: mixed precision (Unit 5.2) and, since the whole dataset is only about 190 MB, keep it on the GPU and slice batches from it, with no loader at all.", code: `X = train_data.data.float().div(255).view(-1, 784).to("cuda")   # whole dataset, once
+  { tag: "v3", title: "+ Tensor Cores and data on the GPU", color: C.green, why: "Now speed up the work itself: mixed precision (Lesson 5.2) and, since the whole dataset is only about 190 MB, keep it on the GPU and slice batches from it, with no loader at all.", code: `X = train_data.data.float().div(255).view(-1, 784).to("cuda")   # whole dataset, once
 Y = train_data.targets.to("cuda")
 scaler = torch.amp.GradScaler("cuda")
 for i in torch.randperm(len(X), device="cuda").split(256):    # shuffled batches
@@ -156,20 +157,20 @@ function BuildWidget() {
 }
 
 // ── Section 3: Play It — the speed-up ladder ──
-const LADDER = [
-  { t: "Baseline: batch 32, item() every step, no workers", s: 24.0, acc: 82.1, why: "The starting point." },
-  { t: "Remove the per-step .item() sync", s: 20.5, acc: 82.1, why: "The CPU no longer stops to wait for the GPU every step." },
-  { t: "num_workers=2 + pin_memory + non_blocking", s: 13.0, acc: 82.1, why: "Batches are prepared in the background while the GPU computes." },
-  { t: "Batch size 32 → 256 (learning rate scaled up)", s: 4.2, acc: 81.6, why: "8× fewer steps, so far less per-step overhead; the GPU is properly filled." },
-  { t: "Mixed precision (autocast + GradScaler)", s: 3.0, acc: 81.7, why: "The big matrix multiplies run on FP16 Tensor Cores." },
-  { t: "Whole dataset kept on the GPU", s: 1.3, acc: 82.4, why: "No loading, decoding or PCIe copies in the loop at all." },
+const LADDER = [   // the book's run on Colab's Tesla T4 (Section 5.5, Core Lab 11 Part B)
+  { t: "Baseline: batch 32, .item() every step", s: 9.17, acc: 81.8, why: "The starting point." },
+  { t: "Remove the per-step .item() sync", s: 8.23, acc: 81.8, why: "The CPU no longer stops to wait for the GPU every step." },
+  { t: "num_workers=2 + pin_memory + non_blocking", s: 10.90, acc: 81.8, why: "SLOWER on Colab! It has only 2 CPU cores, so the two helper processes and the training loop fight over them, and handing tiny batches between processes costs more than loading them saves. Workers pay off when loading is heavy and cores are spare." },
+  { t: "Batch size 32 → 256 (learning rate scaled up)", s: 6.30, acc: 79.0, why: "8× fewer steps, so far less per-step overhead; the GPU gets enough work per step." },
+  { t: "Mixed precision (autocast + GradScaler)", s: 5.65, acc: 80.1, why: "Only a little help here, and in another T4 run it was slower than rung 3 (6.8 s vs 5.4 s). While the CPU still loads and copies every batch, the GPU's arithmetic isn't what holds these rungs back, so faster arithmetic barely shows. Even with the data on the GPU this network is too small for it: at batch 256 an epoch took 0.32 s in FP32 but 0.54 s mixed; at batch 1,024 mixed was 1.5× faster. A trick only pays when it speeds up the part that is slow." },
+  { t: "Whole dataset kept on the GPU", s: 0.47, acc: 81.7, why: "The biggest jump: no DataLoader, no PCIe copies, no waiting at all." },
 ];
 function PlayWidget() {
   const [k, setK] = useState(0);
-  const base = LADDER[0].s, maxS = base;
+  const base = LADDER[0].s, maxS = Math.max(...LADDER.map((r) => r.s));
   return (
     <div>
-      <Frame>Climb the ladder one rung at a time. Each rung adds ONE change. (Typical T4 numbers for one epoch; you'll measure your own in the lab.)</Frame>
+      <Frame>Climb the ladder one rung at a time. Each rung adds ONE change. (One epoch each, from the book's run on Colab's T4; you'll measure your own in Core Lab 11.)</Frame>
       {LADDER.map((r, i) => (
         <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, opacity: i <= k ? 1 : 0.35 }}>
           <div style={{ width: 22, color: i <= k ? C.green : C.muted, fontWeight: 700 }}>{i}</div>
@@ -177,7 +178,7 @@ function PlayWidget() {
             <div style={{ color: C.text, fontSize: 12.5 }}>{r.t}</div>
             <div style={{ height: 14, background: C.card, borderRadius: 4, marginTop: 3 }}><div style={{ width: `${(r.s / maxS) * 100}%`, height: "100%", borderRadius: 4, background: i === 0 ? C.red : i === k ? C.green : C.accent }} /></div>
           </div>
-          <div style={{ width: 120, textAlign: "right", fontFamily: "monospace", fontSize: 12, color: C.text }}>{r.s.toFixed(1)} s · {r.acc}%</div>
+          <div style={{ width: 120, textAlign: "right", fontFamily: "monospace", fontSize: 12, color: C.text }}>{r.s.toFixed(2)} s · {r.acc}%</div>
         </div>
       ))}
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -186,14 +187,14 @@ function PlayWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8, minHeight: 20 }}>{LADDER[k].why}</div>
       <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-        <Stat label="EPOCH TIME" value={`${LADDER[k].s.toFixed(1)} s`} color={C.green} />
+        <Stat label="EPOCH TIME" value={`${LADDER[k].s.toFixed(2)} s`} color={C.green} />
         <Stat label="SPEED-UP" value={`${(base / LADDER[k].s).toFixed(1)}×`} color={base / LADDER[k].s >= 5 ? C.green : C.yellow} />
         <Stat label="TEST ACCURACY" value={`${LADDER[k].acc}%`} color={C.purple} />
       </div>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 4 }}>After a single epoch, accuracy wobbles by a couple of percent from run to run (different shuffles); that's noise, not damage. Compare over 2–3 epochs to be sure.</div>
-      <Insight color={C.green} title="About 18× faster, with the same accuracy, and the model never changed.">
-        This is a normal day for an AI engineer: most speed comes from feeding the GPU properly and using its special hardware. The skills you
-        built in Modules 2–5 are exactly these.
+      <Insight color={C.green} title="About 19× faster, with the same accuracy, and the model never changed.">
+        Not every rung helps on every machine, and that is the real lesson: measure each change. Most speed came from feeding the GPU properly. The skills you
+        built in Steps 2–5 are exactly these.
       </Insight>
     </div>
   );
@@ -203,7 +204,7 @@ function PlayWidget() {
 function CodeWidget() {
   return (
     <div>
-      <Frame>The finished, fast training script. Lab 5A Part E runs the baseline and each rung of the ladder on the T4, so you'll fill in a table of your own measurements.</Frame>
+      <Frame>The finished, fast training script. Core Lab 11, Part B, runs the baseline and each rung of the ladder on the T4, so you'll fill in a table of your own measurements.</Frame>
       <Code color={C.green} title="🚀 fast_fashion.py">{`import torch, time
 from torch import nn
 from torchvision import datasets
@@ -234,10 +235,15 @@ for epoch in range(5):
         <b style={{ color: C.text }}>Challenge upgrades:</b> (1) add <code>model = torch.compile(model)</code> and measure (the first epoch is slower while it compiles);
         (2) try batch 1024 with a larger learning rate: does accuracy hold?
       </div>
-      <LabCard part="E" title="Climb the ladder for real"
+      <Insight color={C.purple} title="One more rung this ladder does not try: kernel fusion.">
+        Each element-wise step (add the bias, then ReLU, …) normally runs as a kernel of its own that reads and writes the whole tensor. Fusing them
+        into one kernel reads the data once: the memory-bound fix of Lesson 5.3. <code>model = torch.compile(model)</code> does this for you. The first
+        steps pay a compile time, and on a model this small the gain may be modest, so measure it like any other rung.
+      </Insight>
+      <LabCard part="B" title="Climb the ladder for real"
         what="Run the baseline, then add one change at a time (no per-step sync → workers and pinned memory → batch 256 → autocast → data on GPU), timing one epoch and checking test accuracy at each rung."
-        expect="each rung faster than the last (or about the same), a total speed-up of roughly 5–20×, and test accuracy staying around 82%, give or take a few percent." />
-      <Insight color={C.orange} title="First half of Module 5 done: you know why GPUs make AI fast, and how to make them go faster.">
+        expect="most rungs faster than the last, but not all (on Colab, workers and mixed precision may not help); a total speed-up near 19× once the data lives on the GPU; test accuracy around 80%, give or take a few percent." />
+      <Insight color={C.orange} title="First half of Step 5 done: you know why GPUs make AI fast, and how to make them go faster.">
         Second half: GPUs in real AI projects. The software stack, sizing memory, fixing 'out of memory', and many GPUs at once.
       </Insight>
     </div>
@@ -248,23 +254,23 @@ const QUESTIONS = [
   { q: "Why change only ONE thing at a time when optimising?", options: ["It's faster to type", "So you know exactly which change caused which effect on speed and accuracy", "PyTorch requires it", "To save GPU memory"], answer: 1, explain: "Changing several things at once hides which fix helped, which did nothing, and which hurt accuracy." },
   { q: "Going from batch 32 to batch 256 gave the biggest single jump. Why?", options: ["Bigger batches skip the backward pass", "8× fewer steps means 8× less per-step overhead, and each step fills the GPU better", "It lowers the learning rate", "It uses the CPU less"], answer: 1, explain: "Fixed per-step costs (launches, Python, data handling) are paid 8× less often, and larger matrix multiplies use the SMs fully." },
   { q: "Why could the whole Fashion-MNIST dataset be kept on the GPU?", options: ["The GPU has unlimited memory", "It's only about 190 MB as floats, far less than the T4's 16 GB", "PyTorch compresses it", "It's stored on the CPU"], answer: 1, explain: "60,000 × 784 floats × 4 bytes ≈ 188 MB. It fits easily, so the loop needs no loading or copying." },
-  { q: "After all the optimisations, the accuracy stayed about the same. What does that show?", options: ["The optimisations were useless", "They changed how the work is done, not what the model computes", "Accuracy can't change", "The test set was too small"], answer: 1, explain: "Feeding, batching and precision change the speed; the model and its maths stay the same (FP16 rounding barely matters, Unit 5.2)." },
+  { q: "After all the optimisations, the accuracy stayed about the same. What does that show?", options: ["The optimisations were useless", "They changed how the work is done, not what the model computes", "Accuracy can't change", "The test set was too small"], answer: 1, explain: "Feeding, batching and precision change the speed; the model and its maths stay the same (FP16 rounding barely matters, Lesson 5.2)." },
 ];
 const RESULT = {
   perfect: "Perfect! You can make real training runs fast.",
   good: "Good. Replay 'Play It' and explain each rung in your own words.",
   low: "Revisit 'Build in Steps': first feed the GPU, then speed up the work.",
-  done: "Unit 5.5 Complete! 🚀",
-  body: "Halfway through Module 5: you know why GPUs make AI fast (tiling, Tensor Cores, low precision, the roofline) and how to apply that to speed up real training.",
-  next: "Next up: Unit 5.6 — The Software Stack.",
+  done: "Lesson 5.5 Complete! 🚀",
+  body: "Halfway through Step 5: you know why GPUs make AI fast (tiling, Tensor Cores, low precision, the roofline) and how to apply that to speed up real training.",
+  next: "Next up: Lesson 5.6 — The Software Stack.",
   teaser: "The software stack, will-it-fit memory maths, fixing 'CUDA out of memory', and training on many GPUs.",
 };
 
 const UNIT_WORDS = [
   ["Fashion-MNIST", "a clothing-image dataset", "70,000 grey 28 × 28 photos of clothes in 10 classes, the same shape as MNIST.", "new here"],
   ["momentum", "an optimiser setting", "Lets gradient descent keep some of its previous direction, so it moves faster.", "new here"],
-  ["AMP", "Automatic Mixed Precision", "autocast + GradScaler (Unit 5.2).", "from Unit 5.2"],
-  ["torch.compile", "PyTorch's compiler", "Fuses operations to cut memory traffic (Unit 5.3).", "from Unit 5.3"],
+  ["AMP", "Automatic Mixed Precision", "autocast + GradScaler (Lesson 5.2).", "from Lesson 5.2"],
+  ["torch.compile", "PyTorch's compiler", "Fuses operations to cut memory traffic (Lesson 5.3).", "from Lesson 5.3"],
 ];
 
 // ── Quiz ──
@@ -325,7 +331,7 @@ function UnitWordBank() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.teal}44`, background: C.teal + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.teal, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.5 }}>
-        📖 Short names in this unit: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
+        📖 Short names in this lesson: <span style={{ fontFamily: "monospace", fontWeight: 400 }}>{UNIT_WORDS.map((w) => w[0]).join(" · ")}</span> {open ? "▲" : "▼ tap to see what they mean"}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -346,9 +352,9 @@ function TextbookNote() {
   return (
     <div style={{ marginBottom: 18, borderRadius: 8, border: `1px solid ${C.purple}44`, background: C.purple + "0D", padding: "8px 12px" }}>
       <button onClick={() => setOpen((o) => !o)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontSize: 12, fontWeight: 700, textAlign: "left", lineHeight: 1.6 }}>
-        📘 Textbook: <span style={{ fontWeight: 400, color: C.text }}>{TEXTBOOK}</span> {open ? "▲" : "▼ which books?"}
+        📘 Course book: <span style={{ fontWeight: 400, color: C.text }}><i>A Billion Small Steps</i>, {BOOK_SECTION}</span> {open ? "▲" : "▼ further reading"}
       </button>
-      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}>{TEXTBOOK_KEY}</div>}
+      {open && <div style={{ marginTop: 6, fontSize: 12, color: C.muted, lineHeight: 1.7 }}><b style={{ color: C.text }}>Further reading:</b> {TEXTBOOK}<br />{TEXTBOOK_KEY}</div>}
     </div>
   );
 }
@@ -374,7 +380,7 @@ export default function Unit5_5({ student, onUnitComplete }) {
     <div><h3 style={{ color: C.text, marginBottom: 6 }}>📜 Full Code — and climb the ladder for real</h3><CodeWidget /></div>,
     <div>
       <h3 style={{ color: C.text, marginBottom: 6 }}>Quick Quiz</h3>
-      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Unit 5.5.</p>
+      <p style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>4 questions to check your understanding of Lesson 5.5.</p>
       <Quiz onComplete={() => { markComplete(quizIdx); onUnitComplete && onUnitComplete(); }} />
     </div>,
   ];
@@ -384,7 +390,7 @@ export default function Unit5_5({ student, onUnitComplete }) {
       <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: C.accentGlow, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🏆</div>
         <div>
-          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>MODULE 5 › UNIT 5.5</div>
+          <div style={{ fontSize: 12, color: C.muted, letterSpacing: 1 }}>STEP 5 › LESSON 5.5</div>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Capstone: Speed Up a Training Run</div>
         </div>
         <div style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{completed.length} / {sections.length} done</div>

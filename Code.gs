@@ -1,5 +1,5 @@
 // ============================================================
-//  CODE.GS — Foothold · GPU Computing for AI (courseId "course_GPU")
+//  CODE.GS — Foothold · Hardware for AI (courseId "course_GPU")
 //  Bound to the Google Sheet "course_GPU".
 //
 //  ONE-TIME SETUP (in the Sheet):
@@ -18,13 +18,15 @@
 
 const COURSE_ID = 'course_GPU';
 
-// The 35 units, copied from config/course.config.js (unitId, module, module title, unit title)
+// The 38 lessons (36 Main Climb + 2 Side Trails: 3.C and 5.10), copied from config/course.config.js (unitId, module, module title, unit title)
 const UNITS = [
   ["Unit1_1","M1","What Is AI, Really?","Rules vs Learning"],
   ["Unit1_2","M1","What Is AI, Really?","Everything Is Numbers"],
   ["Unit1_3","M1","What Is AI, Really?","The Neuron"],
   ["Unit1_4","M1","What Is AI, Really?","Learning = Reducing Error"],
   ["Unit1_5","M1","What Is AI, Really?","Layers = Matrix Multiplication"],
+  ["Unit1_6","M1","What Is AI, Really?","Convolution: Looking at Pictures in Small Windows"],
+  ["Unit1_7","M1","What Is AI, Really?","Attention: Tokens Looking at Tokens"],
   ["Unit1_C","M1","What Is AI, Really?","Capstone: Train a Tiny Network"],
   ["Unit2_1","M2","Why AI Needs a GPU","Counting the Multiply-Adds"],
   ["Unit2_2","M2","Why AI Needs a GPU","Training vs Inference, Epochs & Batches"],
@@ -45,16 +47,17 @@ const UNITS = [
   ["Unit4_3","M4","CPU–GPU Teamwork","Kernels, Grids, Blocks, Threads"],
   ["Unit4_4","M4","CPU–GPU Teamwork","Async Launch & Synchronization"],
   ["Unit4_C","M4","CPU–GPU Teamwork","Capstone: Where Did the Time Go?"],
-  ["Unit5_1","M5","Making AI Fast & Real Projects","Parallel Matrix Multiply & Tiling"],
-  ["Unit5_2","M5","Making AI Fast & Real Projects","Precision: FP32 → FP16/BF16 → INT8"],
-  ["Unit5_3","M5","Making AI Fast & Real Projects","Compute-bound vs Memory-bound"],
-  ["Unit5_4","M5","Making AI Fast & Real Projects","Batch Size & Training on GPU"],
-  ["Unit5_5","M5","Making AI Fast & Real Projects","Capstone: Speed Up a Training Run"],
-  ["Unit5_6","M5","Making AI Fast & Real Projects","The Software Stack"],
-  ["Unit5_7","M5","Making AI Fast & Real Projects","Will It Fit? Sizing GPU Memory"],
-  ["Unit5_8","M5","Making AI Fast & Real Projects","nvidia-smi & Out-of-Memory"],
-  ["Unit5_9","M5","Making AI Fast & Real Projects","Many GPUs & Other Accelerators"],
-  ["Unit5_C","M5","Making AI Fast & Real Projects","Grand Capstone: Plan an AI Project"]
+  ["Unit5_1","M5","Making AI Fast, and Making It Fit","Parallel Matrix Multiply & Tiling"],
+  ["Unit5_2","M5","Making AI Fast, and Making It Fit","Precision: FP32 → FP16/BF16 → INT8"],
+  ["Unit5_3","M5","Making AI Fast, and Making It Fit","Compute-bound vs Memory-bound"],
+  ["Unit5_4","M5","Making AI Fast, and Making It Fit","Batch Size & Training on GPU"],
+  ["Unit5_5","M5","Making AI Fast, and Making It Fit","Capstone: Speed Up a Training Run"],
+  ["Unit5_6","M5","Making AI Fast, and Making It Fit","The Software Stack"],
+  ["Unit5_7","M5","Making AI Fast, and Making It Fit","Will It Fit? Sizing GPU Memory"],
+  ["Unit5_8","M5","Making AI Fast, and Making It Fit","nvidia-smi & Out-of-Memory"],
+  ["Unit5_9","M5","Making AI Fast, and Making It Fit","Many GPUs & Other Accelerators"],
+  ["Unit5_C","M5","Making AI Fast, and Making It Fit","Grand Capstone: Plan an AI Project"],
+  ["Unit5_10","M5","Making AI Fast, and Making It Fit","GPUs Beyond AI: Applications & Careers"]
 ];
 
 function doGet(e) {

@@ -1,5 +1,5 @@
 //@@META
-{"unit": "1.2", "module": 1, "title": "Everything Is Numbers", "icon": "🔢", "lab": "Lab1_AI_Basics.ipynb", "labNo": "1"}
+{"unit": "1.2", "module": 1, "title": "Everything Is Numbers", "icon": "🔢", "lab": "CoreLab01_Everything_Is_Numbers.ipynb", "labNo": "Core Lab 1"}
 //@@WIDGETS
 
 // ── Section 1: Need — the machine only does arithmetic ──
@@ -86,6 +86,11 @@ function PixelWidget() {
       </div>
       <Insight title="A small 28 × 28 grey digit is already 784 numbers. A 1080 × 1080 colour photo is about 35 lakh.">
         Every one of those numbers goes into the AI's arithmetic. That's why image AI needs so much computing power.
+      </Insight>
+      <Insight color={C.orange} title="⚠️ Slippery step: in MNIST, the numbers measure ink.">
+        For a photo, 0 is black and 255 is white. MNIST counts <b>ink</b> instead: 0 = no ink (the empty background) and 255 = full ink (the middle of a
+        pen stroke). Drawn the usual way (0 as black, 255 as white), the digits appear white on black, the reverse of the paper they were written on.
+        The numbers are the same either way; only the way we draw them changes.
       </Insight>
     </div>
   );
@@ -203,9 +208,9 @@ const RESULT = {
   perfect: "Perfect! You see the world the way an AI does: as numbers.",
   good: "Good. Replay 'Tensors & Shapes' to lock in what a shape means.",
   low: "Revisit 'Pictures Are Grids': every pixel is one number, and that idea is the base for everything else.",
-  done: "Unit 1.2 Complete!",
+  done: "Lesson 1.2 Complete!",
   body: "You can turn images and text into numbers and describe them with tensor shapes.",
-  next: "Next up: Unit 1.3 — The Neuron.",
+  next: "Next up: Lesson 1.3 — The Neuron.",
   teaser: "The tiny calculator, built from multiply and add, that all of AI is made of.",
 };
 //@@WORDS

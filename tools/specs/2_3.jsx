@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.3", "module": 2, "title": "Every Output Is Independent", "icon": "🧩", "lab": "Lab2A_AI_Is_Hungry.ipynb", "labNo": "2A"}
+{"unit": "2.3", "module": 2, "title": "Every Output Is Independent", "icon": "🧩", "lab": "CoreLab04_How_Much_Work_Is_AI.ipynb", "labNo": "Core Lab 4"}
 //@@WIDGETS
 
 // ── Section 1: Need — one worker, n³ steps ──
@@ -23,7 +23,7 @@ function NeedWidget() {
       </div>
       <div style={{ color: C.muted, fontSize: 12.5, marginTop: 8 }}>Double n and the time goes up 8×. A single layer of a big model can be a matrix with a size in the thousands, and it's used again for every token.</div>
       <Insight color={C.red} title="Doing it one step at a time doesn't scale.">
-        Making the single worker faster helps only a little (Unit 2.6 shows why clock speeds stopped rising). The real question is: do these
+        Making the single worker faster helps only a little (Lesson 2.6 shows why clock speeds stopped rising). The real question is: do these
         steps actually <i>have</i> to happen one after another?
       </Insight>
     </div>
@@ -87,7 +87,7 @@ function DependWidget() {
         </div>
       )}
       <Insight title="Independent outputs can all be computed at the same time. A chain can't.">
-        Matrix multiplication, the core of AI (Unit 1.5), is the perfectly independent kind. That's the gift hidden inside AI's huge appetite.
+        Matrix multiplication, the core of AI (Lesson 1.5), is the perfectly independent kind. That's the gift hidden inside AI's huge appetite.
       </Insight>
     </div>
   );
@@ -197,14 +197,14 @@ const RESULT = {
   perfect: "Perfect! You can see the parallelism hidden in AI.",
   good: "Good. Replay 'Hire More Workers' with the chain.",
   low: "Revisit 'Who Waits for Whom?': independent vs chained is the key idea for the next module.",
-  done: "Unit 2.3 Complete!",
+  done: "Lesson 2.3 Complete!",
   body: "You can tell independent work from chained work, and you know that matrix multiplication is perfectly parallel.",
-  next: "Next up: Unit 2.4 — Capstone: The Compute Bill.",
+  next: "Next up: Lesson 2.4 — Capstone: The Compute Bill.",
   teaser: "Estimate what it really takes to train and run an AI model for your college, and measure your own CPU's speed.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["MAC", "Multiply-Accumulate", "One multiply plus one add.", "from Unit 1.3"],
+  ["MAC", "Multiply-Accumulate", "One multiply plus one add.", "from Lesson 1.3"],
   ["n³", "n cubed", "n × n × n. The number of MACs in an n × n matrix multiply.", "new here"],
-  ["ReLU", "Rectified Linear Unit", "Negative → 0, positive stays. Applied to every number on its own.", "from Unit 1.3"],
+  ["ReLU", "Rectified Linear Unit", "Negative → 0, positive stays. Applied to every number on its own.", "from Lesson 1.3"],
 ];

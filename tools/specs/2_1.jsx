@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.1", "module": 2, "title": "Counting the Multiply-Adds", "icon": "🧮", "lab": "Lab2A_AI_Is_Hungry.ipynb", "labNo": "2A"}
+{"unit": "2.1", "module": 2, "title": "Counting the Multiply-Adds", "icon": "🧮", "lab": "CoreLab04_How_Much_Work_Is_AI.ipynb", "labNo": "Core Lab 4"}
 //@@WIDGETS
 
 const fmt = (x) => {
@@ -11,7 +11,7 @@ const fmt = (x) => {
 
 // ── Section 1: Need — guess the work ──
 const TASKS = [
-  { t: "Read ONE handwritten digit (your Lab 1 network)", macs: 1.0e5, note: "784×128 + 128×10 ≈ 1 lakh MACs." },
+  { t: "Read ONE handwritten digit (your Core Lab 3 network)", macs: 1.0e5, note: "784×128 + 128×10 ≈ 1 lakh MACs." },
   { t: "Recognise ONE photo with ResNet-50 (a classic image model)", macs: 4.1e9, note: "About 4 billion MACs for a single 224 × 224 photo (approximate published figure)." },
   { t: "Generate ONE word (token) with a GPT-3-sized chatbot (175 billion parameters)", macs: 1.75e11, note: "Roughly one MAC per parameter for every token: about 175 billion." },
   { t: "TRAIN GPT-3 once, from scratch", macs: 1.6e23, note: "About 3 × 10²³ arithmetic operations (≈ 1.6 × 10²³ MACs), a published estimate." },
@@ -22,7 +22,7 @@ function NeedWidget() {
   return (
     <div>
       <Frame>
-        Every AI answer is multiply-adds (MACs, from Unit 1.3). But how many? Guess the order of magnitude for each job, then check.
+        Every AI answer is multiply-adds (MACs, from Lesson 1.3). But how many? Guess the order of magnitude for each job, then check.
         Most people are off by a factor of a million.
       </Frame>
       {TASKS.map((x, i) => {
@@ -120,14 +120,14 @@ function CountWidget() {
 // ── Section 4: How long on which machine? ──
 const DEVICES = [
   { d: "You, with pen and paper", f: 0.1, tag: "1 operation every 10 s" },
-  { d: "A single CPU core, plain Python loops", f: 3e7, tag: "≈ 30 MFLOPS (measured in Lab 2A)" },
+  { d: "A single CPU core, plain Python loops", f: 3e7, tag: "≈ 30 MFLOPS (measured in Core Lab 4)" },
   { d: "A laptop CPU, all cores, NumPy", f: 2e11, tag: "≈ 0.2 TFLOPS (approx.)" },
   { d: "NVIDIA T4 GPU (free Colab), FP32", f: 8.1e12, tag: "8.1 TFLOPS peak" },
   { d: "NVIDIA T4 GPU, FP16 Tensor Cores", f: 6.5e13, tag: "65 TFLOPS peak" },
   { d: "NVIDIA H100 GPU, FP16 Tensor Cores", f: 9.9e14, tag: "≈ 990 TFLOPS peak" },
 ];
 const JOBS = [
-  { j: "Classify 10,000 digits (Lab 1 network)", f: 2 * 1e5 * 1e4 },
+  { j: "Classify 10,000 digits (Core Lab 3 network)", f: 2 * 1e5 * 1e4 },
   { j: "Recognise 1,000 photos (ResNet-50)", f: 2 * 4.1e9 * 1e3 },
   { j: "A 500-word chatbot answer (7 B model)", f: 2 * 7e9 * 650 },
   { j: "Train GPT-3 once", f: 3.14e23 },
@@ -164,8 +164,8 @@ function DeviceWidget() {
         The rest of the course explains each jump.
       </Insight>
       <LabCard part="A" title="Count parameters and FLOPs of real models"
-        what="Count the parameters of your Lab 1 network and of ResNet-18 using PyTorch, then estimate FLOPs per input with the 2 × MACs rule and the time it needs at your measured speed."
-        expect="about 1 lakh parameters for the Lab 1 network and about 1.17 crore (11.7 million) for ResNet-18." />
+        what="Count the parameters of your Core Lab 3 network and of ResNet-18 using PyTorch, then estimate FLOPs per input with the 2 × MACs rule and the time it needs at your measured speed."
+        expect="about 1 lakh parameters for the Core Lab 3 network and about 1.17 crore (11.7 million) for ResNet-18." />
     </div>
   );
 }
@@ -185,17 +185,17 @@ const RESULT = {
   perfect: "Perfect! You can estimate the cost of any AI job.",
   good: "Good. Replay 'FLOPs vs FLOPS'; the s matters.",
   low: "Revisit 'FLOPs vs FLOPS' and 'How Long?': work ÷ speed = time is the key tool.",
-  done: "Unit 2.1 Complete!",
+  done: "Lesson 2.1 Complete!",
   body: "You can count multiply-adds, convert to FLOPs, and estimate run time on any machine.",
-  next: "Next up: Unit 2.2 — Training vs Inference, Epochs & Batches.",
+  next: "Next up: Lesson 2.2 — Training vs Inference, Epochs & Batches.",
   teaser: "Using a model is cheap. Teaching it is a lot more expensive. Find out exactly why.",
 };
 //@@WORDS
 const UNIT_WORDS = [
-  ["MAC", "Multiply-Accumulate", "One multiply + one add = 2 FLOPs.", "from Unit 1.3"],
+  ["MAC", "Multiply-Accumulate", "One multiply + one add = 2 FLOPs.", "from Lesson 1.3"],
   ["FLOP", "FLoating-point OPeration", "One add or one multiply on decimal (floating-point) numbers. FLOPs = an amount of work.", "new here"],
   ["FLOPS", "FLoating-point Operations Per Second", "A speed: how many FLOPs a chip can do each second.", "new here"],
   ["TFLOPS", "tera-FLOPS", "10¹² FLOPs per second, a lakh crore every second.", "new here"],
   ["GPT", "Generative Pre-trained Transformer", "The family of language models behind ChatGPT.", "new here"],
-  ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats with more or fewer bits (IEEE 754, from COA). Unit 5.2 explains why fewer bits run faster.", "from COA"],
+  ["FP32 / FP16", "32-bit / 16-bit floating point", "Number formats with more or fewer bits (IEEE 754, from COA). Lesson 5.2 explains why fewer bits run faster.", "from COA"],
 ];

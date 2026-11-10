@@ -1,5 +1,5 @@
 //@@META
-{"unit": "2.7", "module": 2, "title": "SIMD → SIMT", "icon": "➗", "lab": "Lab2B_CPU_vs_GPU.ipynb", "labNo": "2B", "gpu": true}
+{"unit": "2.7", "module": 2, "title": "SIMD → SIMT", "icon": "➗", "lab": "SideTrails_Step2_Power_SIMD_Decision.ipynb", "labNo": "Step 2 Side Trails", "gpu": true, "labTrail": true}
 //@@WIDGETS
 
 // ── Section 1: Flynn's taxonomy ──
@@ -95,7 +95,7 @@ function SimdWidget() {
       </div>
       <Insight color={C.green} title="One vector instruction does L additions, so the loop runs N/L times instead of N.">
         This is SIMD inside a CPU. Your laptop's CPU has vector units with 8 or 16 lanes, which is part of why NumPy beat plain Python by
-        hundreds of times in Lab 2A.
+        hundreds of times in Core Lab 4.
       </Insight>
     </div>
   );
@@ -139,7 +139,7 @@ function SimtWidget() {
         <Btn ghost onClick={() => setS(0)}>↺ Reset</Btn>
       </div>
       <Insight title="SIMD: you write one wide instruction. SIMT: you write a normal program for one thread, and the GPU runs thousands of copies.">
-        The loop disappears: it's replaced by "how many threads to launch". You'll write this exact kernel yourself in Module 4.
+        The loop disappears: it's replaced by "how many threads to launch". You'll write this exact kernel yourself in Step 4.
       </Insight>
     </div>
   );
@@ -172,9 +172,9 @@ function WarpWidget() {
         </tbody>
       </table>
       <Insight color={C.purple} title="A warp of 32 threads is the GPU's real unit of execution.">
-        Remember "32". It explains a lot in Module 3: why if/else inside a kernel can be slow, and why GPUs like jobs with thousands of threads.
+        Remember "32". It explains a lot in Step 3: why if/else inside a kernel can be slow, and why GPUs like jobs with thousands of threads.
       </Insight>
-      <LabCard part="C" title="Vector add: CPU vs GPU"
+      <LabCard part="B" title="Vector add: CPU vs GPU"
         what="Add two arrays of growing size, first with NumPy on the CPU, then with PyTorch on the GPU, timing both correctly (with torch.cuda.synchronize)."
         expect="the CPU wins for small arrays and the GPU wins clearly for arrays of millions of elements." />
     </div>
@@ -196,9 +196,9 @@ const RESULT = {
   perfect: "Perfect! You understand how GPUs run code.",
   good: "Good. Replay 'SIMT Threads' and watch each thread find its own i.",
   low: "Revisit 'SIMD Lanes' then 'SIMT Threads': one instruction, many data is the heart of it.",
-  done: "Unit 2.7 Complete!",
+  done: "Lesson 2.7 Complete!",
   body: "You can place machines in Flynn's taxonomy, explain vectorisation (Hamacher §12.2), and describe SIMT threads and warps.",
-  next: "Next up: Unit 2.8 — Amdahl's Law.",
+  next: "Next up: Lesson 2.8 — Amdahl's Law.",
   teaser: "The GPU makes the matrix multiply 100× faster, but the whole program only 3× faster. Why?",
 };
 //@@WORDS
@@ -206,6 +206,6 @@ const UNIT_WORDS = [
   ["SISD / SIMD / MISD / MIMD", "Flynn's four classes", "Single or Multiple Instruction streams × Single or Multiple Data streams.", "new here"],
   ["SIMT", "Single Instruction, Multiple Threads", "NVIDIA's model: one program, thousands of threads, each with its own data.", "new here"],
   ["L", "vector length", "How many elements one vector instruction handles at once (Hamacher §12.2).", "new here"],
-  ["SM", "Streaming Multiprocessor", "One of the GPU's 'mini-processors'; the T4 has 40. Unit 3.1 opens one up.", "new here"],
+  ["SM", "Streaming Multiprocessor", "One of the GPU's 'mini-processors'; the T4 has 40. Lesson 3.1 opens one up.", "new here"],
   ["RTN", "Register Transfer Notation", "R6 ← [A[i]] means 'load the value at A[i] into R6'.", "from COA"],
 ];

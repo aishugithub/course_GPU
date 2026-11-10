@@ -1,5 +1,5 @@
 //@@META
-{"unit": "5.2", "module": 5, "title": "Precision: FP32 → FP16/BF16 → INT8", "icon": "🔢", "lab": "Lab5A_Why_GPUs_Make_AI_Fast.ipynb", "labNo": "5A", "gpu": true}
+{"unit": "5.2", "module": 5, "title": "Precision: FP32 → FP16/BF16 → INT8", "icon": "🔢", "lab": "CoreLab10_Make_It_Fast.ipynb", "labNo": "Core Lab 10", "gpu": true}
 //@@WIDGETS
 
 // Round x to a binary float with `mbits` mantissa bits, minimum normal exponent `minExp`, and largest finite value `maxVal`
@@ -27,7 +27,7 @@ function NeedWidget() {
     <div>
       <Frame>
         Every parameter is stored as a number with some number of bits. Fewer bits per number = less memory. Will a model's weights fit in the
-        T4's <b style={{ color: C.text }}>16 GB</b>? (Weights only; training needs several times more, Unit 5.7.)
+        T4's <b style={{ color: C.text }}>16 GB</b>? (Weights only; training needs several times more, Lesson 5.7.)
       </Frame>
       <Slider label={<>Model size = <b style={{ color: C.accent }}>{params} billion</b> parameters</>} value={params} min={1} max={70} onChange={setParams} />
       {rows.map(([n, b, c]) => {
@@ -110,7 +110,7 @@ function NoticeWidget() {
   return (
     <div>
       <Frame>
-        Take the pass/fail neuron you trained in Unit 1.C and store its weights as <b style={{ color: C.orange }}>signed integers</b> with fewer and fewer bits
+        Take the pass/fail neuron you trained in Lesson 1.C and store its weights as <b style={{ color: C.orange }}>signed integers</b> with fewer and fewer bits
         (each weight = integer × a shared scale). Does it still predict well?
       </Frame>
       <Slider label={<>Bits per weight = <b style={{ color: C.orange }}>{bits}</b> ({2 * levels + 1} possible values)</>} value={bits} min={2} max={16} onChange={setBits} color={C.orange} />
@@ -200,9 +200,9 @@ const RESULT = {
   perfect: "Perfect! You understand why AI runs on fewer bits.",
   good: "Good. Replay 'The Formats' and try 70000 and 1e-8.",
   low: "Revisit 'Will It Fit?' and 'The Formats': bits per number decide memory, range and precision.",
-  done: "Unit 5.2 Complete!",
+  done: "Lesson 5.2 Complete!",
   body: "You can compare FP32, FP16, BF16 and INT8, explain why AI tolerates rounding, use mixed precision, and estimate the speed payoff.",
-  next: "Next up: Unit 5.3 — Compute-bound vs Memory-bound.",
+  next: "Next up: Lesson 5.3 — Compute-bound vs Memory-bound.",
   teaser: "One chart, the roofline, tells you the speed limit of any operation on any GPU.",
 };
 //@@WORDS

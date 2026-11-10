@@ -20,8 +20,8 @@
 const COURSE_CONFIG = {
 
   courseId:    "course_GPU",
-  courseTitle: "GPU Computing for AI",
-  subtitle:    "Why AI runs on GPUs — from a single neuron to thousands of cores",
+  courseTitle: "Hardware for AI",
+  subtitle:    "The Foothold companion to the course book A Billion Small Steps: how your AI really runs, from the maths to the machine",
   batch:       "2026",
 
   hook: {
@@ -46,6 +46,10 @@ const COURSE_CONFIG = {
           blurb: "Measure how wrong you are, feel which way is downhill, take a step. Repeat a million times." },
         { unitId: "Unit1_5", title: "Layers = Matrix Multiplication",
           blurb: "Stack neurons into layers and something surprising happens: all of AI turns into one giant multiplication table." },
+        { unitId: "Unit1_6", title: "Convolution: Looking at Pictures in Small Windows",
+          blurb: "A photo has lakhs of pixels. Slide one small 3 × 3 window across it instead, and the picture turns into many tiny dot products." },
+        { unitId: "Unit1_7", title: "Attention: Tokens Looking at Tokens",
+          blurb: "\"Bank\": river or money? Watch every word score every other word, and see why long chats cost so much." },
         { unitId: "Unit1_C", title: "Capstone: Train a Tiny Network",
           blurb: "Twenty students, one neuron, zero rules given. Watch it learn to predict who passes." },
       ],
@@ -90,7 +94,7 @@ const COURSE_CONFIG = {
           blurb: "Memory is slow, so the GPU never waits for it. Like a tea master with twelve cups on the go." },
         { unitId: "Unit3_4", title: "GPU Memory & Bandwidth",
           blurb: "65 TFLOPS is useless if the numbers can't arrive. Registers, shared memory, global memory: who feeds whom." },
-        { unitId: "Unit3_C", title: "Capstone: Map a Job onto a GPU",
+        { unitId: "Unit3_C", title: "Capstone: Map a Job onto a GPU", optional: true, trail: true,
           blurb: "Threads, warps, waves, bytes and FLOPs: plan a real AI layer on the T4 before writing a line of code." },
       ],
     },
@@ -114,9 +118,9 @@ const COURSE_CONFIG = {
     },
     {
       moduleId:    "M5",
-      moduleTitle: "Making AI Fast & Real Projects",
+      moduleTitle: "Making AI Fast, and Making It Fit",
       icon:        "🚀",
-      blurb:       "Tiling, Tensor Cores, fewer bits and the roofline, then real projects: memory maths, out-of-memory errors and many GPUs at once.",
+      blurb:       "Tiling, Tensor Cores, fewer bits and the roofline, then real projects: memory maths, out-of-memory errors and many GPUs at once. Will your model fit, how long will it take, and what will it cost?",
       units: [
         { unitId: "Unit5_1", title: "Parallel Matrix Multiply & Tiling",
           blurb: "Stop walking to the library for every page: fetch a tile once and let the whole team reuse it." },
@@ -138,6 +142,8 @@ const COURSE_CONFIG = {
           blurb: "Thousands of GPUs training one model, plus the TPUs and NPUs in the cloud and in your pocket." },
         { unitId: "Unit5_C", title: "Grand Capstone: Plan an AI Project",
           blurb: "Three college AI projects, one budget. Plan memory, time and cost, then run a real language model on the GPU." },
+        { unitId: "Unit5_10", title: "GPUs Beyond AI: Applications & Careers", optional: true, trail: true,
+          blurb: "The same GPU trick draws 3-D worlds, prices shares and reads DNA. Write a ray tracer and see where your GPU skills can take you." },
       ],
     },
   ],
