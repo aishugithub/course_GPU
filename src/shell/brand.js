@@ -83,3 +83,40 @@ export const DARK = {
 
 export const FONT = "'Space Grotesk', system-ui, sans-serif"; // headings & UI
 export const MONO = "'Space Mono', monospace";                // code & kickers
+
+// ============================================================
+//  LIGHT — the shell's CURRENT palette (Nov 2026 revamp).
+//
+//  Built straight from the logo: cream page, white cards, navy
+//  ink (the two navy steps), amber accent (the top step).
+//  Same keys as DARK so a page can swap `DARK as D` for
+//  `LIGHT as D` and nothing else changes. DARK is kept above in
+//  case we ever want a dark mode toggle.
+// ============================================================
+export const LIGHT = {
+  // Surfaces
+  bgDeep:       '#F1EEE6',  // page background — brand cream
+  surface:      '#FFFFFF',  // cards / rows / header bar
+  surfaceRaised:'#FAF8F3',  // hover + elevated panels
+  border:       '#E7E0D2',  // hairline borders
+  borderSoft:   '#EFEAE0',  // even subtler dividers
+
+  // Ink
+  ink:          '#16294A',  // primary text — logo navy
+  inkSoft:      '#40506A',  // secondary body text
+  inkMuted:     '#6B7A90',  // muted small print / mono captions
+
+  // Accents
+  amber:        '#E7A13E',  // THE accent (fills, bars, highlights)
+  amberSoft:    '#C9852A',  // deeper amber for hover / amber TEXT on cream
+  bronze:       '#B08343',  // kickers
+  blue:         '#1F5FAD',  // secondary accent (module rotation)
+
+  // Feedback
+  green:        '#1F7A4D',  // success / completed
+  red:          '#B0322F',  // errors
+
+  // Navy panel (the landing code terminal stays dark, like the logo steps)
+  navyPanel:    '#16294A',
+  panelText:    '#E7EAF0',  // text that sits ON navyPanel
+};

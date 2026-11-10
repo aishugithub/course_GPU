@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab09_Keep_the_GPU_Busy.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 9 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 9 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -166,7 +166,7 @@ function OverlapWidget() {
             {Array.from({ length: steps }, (_, k) => {
               const start = mode === "serial" ? k * (prep + gpu) + (lane === "GPU" ? prep : 0) : lane === "CPU" ? k * Math.max(prep, gpu) : prep + k * Math.max(prep, gpu);
               const len = lane === "CPU" ? prep : gpu;
-              return <div key={k} style={{ position: "absolute", left: `${X(start)}%`, width: `${X(len)}%`, top: 2, bottom: 2, background: lane === "CPU" ? C.orange : C.green, borderRadius: 3, fontSize: 9.5, color: "#0D1117", display: "flex", alignItems: "center", justifyContent: "center" }}>{lane === "CPU" ? `prep ${k + 1}` : `train ${k + 1}`}</div>;
+              return <div key={k} style={{ position: "absolute", left: `${X(start)}%`, width: `${X(len)}%`, top: 2, bottom: 2, background: lane === "CPU" ? C.orange : C.green, borderRadius: 3, fontSize: 9.5, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>{lane === "CPU" ? `prep ${k + 1}` : `train ${k + 1}`}</div>;
             })}
           </div>
         </div>

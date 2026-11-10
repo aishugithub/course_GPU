@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab07_Feeding_the_GPU.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 7 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 7 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -190,7 +190,7 @@ function SwitchWidget() {
         <div style={{ background: C.card, borderRadius: 10, padding: 14, border: `1.5px solid ${C.green}` }}>
           <div style={{ color: C.text, fontSize: 12.5, marginBottom: 6 }}>Register file of one SM: every resident warp has its OWN registers, all the time.</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 3 }}>
-            {Array.from({ length: 32 }, (_, i) => <div key={i} style={{ height: 22, borderRadius: 3, background: i === 5 ? C.green : C.teal + "33", border: `1px solid ${i === 5 ? C.green : C.teal + "66"}`, fontSize: 8.5, color: i === 5 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>w{i}</div>)}
+            {Array.from({ length: 32 }, (_, i) => <div key={i} style={{ height: 22, borderRadius: 3, background: i === 5 ? C.green : C.teal + "33", border: `1px solid ${i === 5 ? C.green : C.teal + "66"}`, fontSize: 8.5, color: i === 5 ? "#FFFFFF" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>w{i}</div>)}
           </div>
           <div style={{ color: C.muted, fontSize: 12.5, marginTop: 10 }}>Switching from warp 5 to warp 6 just means "read your operands from a different part of the register file": nothing is saved or loaded. That's why the register file is so big (256 KB per SM, Lesson 3.1).</div>
         </div>

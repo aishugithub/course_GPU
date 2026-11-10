@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { loginStudent, registerStudent } from './api.js';
 import { logEvent } from './analytics.js';
 import COURSE_CONFIG from '../../config/course.config.js';
-import { DARK as D, FONT, MONO } from './brand.js';
+import { LIGHT as D, FONT, MONO } from './brand.js';
 
 // Local aliases mapped onto the shared DARK palette (see brand.js) so this page
 // matches the dark-and-on-brand Landing/Dashboard. `blue` is the action colour
@@ -60,13 +60,13 @@ export default function Login({ onLogin, onBack }) {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: '24px 16px' }}>
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '40px 40px', width: '100%', maxWidth: 420, boxShadow: '0 8px 28px rgba(0,0,0,0.45)' }}>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '40px 40px', width: '100%', maxWidth: 420, boxShadow: '0 8px 28px rgba(22,41,74,0.12)' }}>
 
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           {/* Brand mark: the three climbing steps (see brand.js / logo handoff) */}
           <svg width="52" height="52" viewBox="0 0 100 100" aria-hidden="true" style={{ display: 'inline-block', marginBottom: 10 }}>
-            <rect x="8" y="60" width="26" height="26" rx="7" fill={D.inkSoft} />
-            <rect x="37" y="37" width="26" height="26" rx="7" fill={D.inkSoft} />
+            <rect x="8" y="60" width="26" height="26" rx="7" fill={D.ink} />
+            <rect x="37" y="37" width="26" height="26" rx="7" fill={D.ink} />
             <rect x="66" y="14" width="26" height="26" rx="7" fill={D.amber} />
           </svg>
           <h1 style={{ color: C.text, fontSize: 20, fontWeight: 700, margin: 0 }}>Foothold</h1>
@@ -151,7 +151,7 @@ const inputStyle = {
 
 function ErrorBox({ text }) {
   return (
-    <div style={{ background: 'rgba(248,81,73,0.12)', border: `1px solid ${C.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: C.red, fontSize: 13 }}>
+    <div style={{ background: 'rgba(176,50,47,0.08)', border: `1px solid ${C.red}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: C.red, fontSize: 13 }}>
       {text}
     </div>
   );

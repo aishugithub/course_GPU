@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab05_CPU_or_GPU.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 5 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 5 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -90,8 +90,8 @@ function NeedWidget() {
       </Frame>
       <Btn onClick={() => setGpu((v) => !v)} color={C.green}>{gpu ? "◀ Back to CPU only" : "Move the matrix multiplies to the GPU (100×) ▶"}</Btn>
       <div style={{ display: "flex", height: 44, marginTop: 14, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <div style={{ width: `${load}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 12, fontWeight: 700 }}>load 30 ms</div>
-        <div style={{ width: `${mmNew}%`, minWidth: 4, background: gpu ? C.green : C.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 12, fontWeight: 700, transition: "width 0.6s" }}>{gpu ? "" : "matmul 70 ms"}</div>
+        <div style={{ width: `${load}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>load 30 ms</div>
+        <div style={{ width: `${mmNew}%`, minWidth: 4, background: gpu ? C.green : C.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 12, fontWeight: 700, transition: "width 0.6s" }}>{gpu ? "" : "matmul 70 ms"}</div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
         <Stat label="STEP TIME" value={`${total.toFixed(1)} ms`} color={gpu ? C.green : C.text} />
@@ -157,8 +157,8 @@ function KitchenWidget() {
       </Frame>
       <Slider label={<>Cooks = <b style={{ color: C.green }}>{cooks}</b></>} value={cooks} min={1} max={100} onChange={setCooks} color={C.green} />
       <div style={{ display: "flex", height: 40, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <div style={{ width: `${(grind / 360) * 100}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11.5, fontWeight: 700 }}>grind 60</div>
-        <div style={{ width: `${(dosas / cooks / 360) * 100}%`, minWidth: 3, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11.5, fontWeight: 700 }}>{cooks < 4 ? `dosas ${(dosas / cooks).toFixed(0)}` : ""}</div>
+        <div style={{ width: `${(grind / 360) * 100}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 11.5, fontWeight: 700 }}>grind 60</div>
+        <div style={{ width: `${(dosas / cooks / 360) * 100}%`, minWidth: 3, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 11.5, fontWeight: 700 }}>{cooks < 4 ? `dosas ${(dosas / cooks).toFixed(0)}` : ""}</div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
         <Stat label="TOTAL TIME" value={`${total.toFixed(0)} min`} color={C.text} />

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab12_Will_It_Fit.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -93,7 +93,7 @@ function NeedWidget() {
         <Btn ghost={mode !== "train"} onClick={() => setMode("train")} color={C.orange}>Training (mixed precision + Adam)</Btn>
       </div>
       <div style={{ display: "flex", height: 40, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        {parts.map(([t, b, c]) => <div key={t} style={{ width: `${(b / 16) * 100}%`, background: c, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 10.5, fontWeight: 700, borderRight: "1px solid #0D1117" }}>{b} B</div>)}
+        {parts.map(([t, b, c]) => <div key={t} style={{ width: `${(b / 16) * 100}%`, background: c, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 10.5, fontWeight: 700, borderRight: "1px solid #FFFFFF" }}>{b} B</div>)}
       </div>
       <div style={{ marginTop: 8 }}>
         {parts.map(([t, b, c, d]) => <div key={t} style={{ fontSize: 12.5, color: C.muted, marginBottom: 2 }}><span style={{ color: c }}>■</span> <b style={{ color: C.text }}>{t}</b>: {b} bytes per parameter. {d}</div>)}
@@ -218,8 +218,8 @@ function ActWidget() {
       <Slider label={<>Batch size = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={8192} onChange={setB} color={C.orange} />
       <Slider label={<>Hidden width = <b style={{ color: C.accent }}>{w}</b></>} value={w} min={128} max={8192} step={128} onChange={setW} />
       <div style={{ display: "flex", height: 34, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <div style={{ width: `${(stateMB / (stateMB + actMB)) * 100}%`, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, color: "#0D1117", fontWeight: 700 }}>{stateMB / (stateMB + actMB) > 0.2 ? "model state" : ""}</div>
-        <div style={{ width: `${(actMB / (stateMB + actMB)) * 100}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, color: "#0D1117", fontWeight: 700 }}>{actMB / (stateMB + actMB) > 0.2 ? "activations" : ""}</div>
+        <div style={{ width: `${(stateMB / (stateMB + actMB)) * 100}%`, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, color: "#FFFFFF", fontWeight: 700 }}>{stateMB / (stateMB + actMB) > 0.2 ? "model state" : ""}</div>
+        <div style={{ width: `${(actMB / (stateMB + actMB)) * 100}%`, background: C.orange, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, color: "#FFFFFF", fontWeight: 700 }}>{actMB / (stateMB + actMB) > 0.2 ? "activations" : ""}</div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
         <Stat label="PARAMETERS" value={params.toLocaleString("en-IN")} color={C.accent} />

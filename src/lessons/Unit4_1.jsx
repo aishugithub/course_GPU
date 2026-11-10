@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab08_Hand_a_Job_to_the_GPU.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 8 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 8 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -89,7 +89,7 @@ x = x.to("cuda")              # data   → GPU memory too
 y = model(x)                  # ✓ both live on the GPU` : `model = model.to("cuda")      # weights → GPU memory
 y = model(x)                  # x is still in CPU memory!`}</Code>
         {!fixed && (
-          <pre style={{ marginTop: 8, background: "#2a1214", border: `1px solid ${C.red}`, borderRadius: 8, padding: 10, color: C.red, fontFamily: "monospace", fontSize: 11.5, whiteSpace: "pre-wrap" }}>
+          <pre style={{ marginTop: 8, background: "#FBEAEA", border: `1px solid ${C.red}`, borderRadius: 8, padding: 10, color: C.red, fontFamily: "monospace", fontSize: 11.5, whiteSpace: "pre-wrap" }}>
 {`RuntimeError: Expected all tensors to be on the same device,
 but found at least two devices, cuda:0 and cpu!`}
           </pre>
@@ -161,9 +161,9 @@ function CopyWidget() {
       <Slider label={<>Data size = <b style={{ color: C.teal }}>{mb} MB</b></>} value={mb} min={1} max={4000} onChange={setMb} color={C.teal} />
       <Slider label={<>GPU operations done on it before copying back = <b style={{ color: C.green }}>{ops}</b></>} value={ops} min={1} max={500} onChange={setOps} color={C.green} />
       <div style={{ display: "flex", height: 34, borderRadius: 6, overflow: "hidden", border: `1px solid ${C.border}`, marginTop: 6 }}>
-        <div style={{ width: `${(pcie / total) * 100}%`, background: C.yellow, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11, fontWeight: 700 }}>copy in</div>
-        <div style={{ width: `${(inside / total) * 100}%`, minWidth: 3, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11, fontWeight: 700 }}>{inside / total > 0.15 ? "GPU work" : ""}</div>
-        <div style={{ width: `${(pcie / total) * 100}%`, background: C.yellow, display: "flex", alignItems: "center", justifyContent: "center", color: "#0D1117", fontSize: 11, fontWeight: 700 }}>copy out</div>
+        <div style={{ width: `${(pcie / total) * 100}%`, background: C.yellow, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 11, fontWeight: 700 }}>copy in</div>
+        <div style={{ width: `${(inside / total) * 100}%`, minWidth: 3, background: C.green, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 11, fontWeight: 700 }}>{inside / total > 0.15 ? "GPU work" : ""}</div>
+        <div style={{ width: `${(pcie / total) * 100}%`, background: C.yellow, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF", fontSize: 11, fontWeight: 700 }}>copy out</div>
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
         <Stat label="EACH PCIe COPY" value={`${(pcie * 1000).toFixed(1)} ms`} color={C.yellow} />

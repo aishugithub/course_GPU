@@ -6,7 +6,7 @@ import { getProgress, saveProgress } from './api.js';
 import { getGuestProgress, saveGuestProgress } from './guestProgress.js';
 import { logEvent } from './analytics.js';
 import COURSE_CONFIG from '../../config/course.config.js';
-import { DARK, FONT } from './brand.js';
+import { LIGHT as DARK, FONT } from './brand.js';
 
 // Loading screens now use the DARK shell palette (see brand.js): landing,
 // dashboard and login are all dark-and-on-brand, and the lessons are dark too,
@@ -17,8 +17,8 @@ function LoadingScreen({ message = 'Loading…' }) {
       {/* The brand mark doubles as the loading glyph — steps to climb. On dark,
           the two lower steps go light and the summit stays amber. */}
       <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true">
-        <rect x="8" y="60" width="26" height="26" rx="7" fill={DARK.inkSoft} />
-        <rect x="37" y="37" width="26" height="26" rx="7" fill={DARK.inkSoft} />
+        <rect x="8" y="60" width="26" height="26" rx="7" fill={DARK.ink} />
+        <rect x="37" y="37" width="26" height="26" rx="7" fill={DARK.ink} />
         <rect x="66" y="14" width="26" height="26" rx="7" fill={DARK.amber} />
       </svg>
       <div style={{ color: DARK.inkSoft, fontSize: 15 }}>{message}</div>
@@ -177,8 +177,8 @@ export default function App() {
             aria-label="Back to Dashboard"
             style={{
               width: 36, height: 36, borderRadius: '50%',
-              background: 'rgba(28,35,51,0.9)', border: '1px solid #30363D',
-              color: '#C9D1D9', fontSize: 18, lineHeight: 1, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.92)', border: '1px solid #E7E0D2',
+              color: '#40506A', fontSize: 18, lineHeight: 1, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >

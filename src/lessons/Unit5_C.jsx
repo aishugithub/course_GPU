@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab12_Will_It_Fit.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -253,7 +253,7 @@ print(f"{100 / dt:.0f} tokens/s, memory {torch.cuda.max_memory_allocated() / 1e6
           <b style={{ color: C.text }}> Mini-Project template notebook</b>: (1) plan it with your planner, (2) run it on the CPU and on the GPU, (3) measure the speed-up,
           where the time goes (data vs copy vs compute), and the GPU memory used, (4) apply at least one optimisation from Step 5, and (5) write a one-page report.
         </div>
-        <a href="https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/MiniProject_Template.ipynb" target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", borderRadius: 8, background: C.purple, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open the Mini-Project template in Colab ↗</a>
+        <a href="https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/MiniProject_Template.ipynb" target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", borderRadius: 8, background: C.purple, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open the Mini-Project template in Colab ↗</a>
       </div>
       <LabCard part="C" title="Plan it, then run a real language model"
         what="Run the planner for the three projects; then load distilgpt2, generate 100 tokens on the CPU and on the T4 in FP16, and compare tokens per second and memory with the bandwidth-based prediction from Lesson 5.3."

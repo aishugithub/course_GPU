@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/SideTrails_Step3_Map_a_Job.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Step 3 Side Trails in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Step 3 Side Trails in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -176,7 +176,7 @@ function PlayWidget() {
       <Slider label={<>Batch size B = <b style={{ color: C.orange }}>{B}</b></>} value={B} min={1} max={2048} onChange={setB} color={C.orange} />
       <Slider label={<>Layer width N = <b style={{ color: C.accent }}>{N}</b></>} value={N} min={256} max={8192} step={256} onChange={setN} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4 }}>
-        {smFill.map((w, s) => <div key={s} style={{ height: 26, borderRadius: 4, background: C.green, opacity: 0.12 + 0.88 * (w / 32), border: `1px solid ${C.border}`, fontSize: 9, color: w > 16 ? "#0D1117" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>{w}</div>)}
+        {smFill.map((w, s) => <div key={s} style={{ height: 26, borderRadius: 4, background: C.green, opacity: 0.12 + 0.88 * (w / 32), border: `1px solid ${C.border}`, fontSize: 9, color: w > 16 ? "#FFFFFF" : C.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>{w}</div>)}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         <Stat label="THREADS" value={p.outputs.toLocaleString("en-IN")} color={C.accent} />

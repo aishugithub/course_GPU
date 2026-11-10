@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import COURSE_CONFIG from '../../config/course.config.js';
-import { DARK as D, FONT, MONO } from './brand.js';
+import { LIGHT as D, FONT, MONO } from './brand.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Foothold Dashboard — ACCORDION EDITION, DARK BRAND
@@ -31,8 +31,8 @@ const FIRE_BG = 'rgba(231,161,62,0.10)'; // warm amber wash behind Crucible rows
 function FootholdMark({ size = 34 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
-      <rect x="8" y="60" width="26" height="26" rx="7" fill={D.inkSoft} />
-      <rect x="37" y="37" width="26" height="26" rx="7" fill={D.inkSoft} />
+      <rect x="8" y="60" width="26" height="26" rx="7" fill={D.ink} />
+      <rect x="37" y="37" width="26" height="26" rx="7" fill={D.ink} />
       <rect x="66" y="14" width="26" height="26" rx="7" fill={D.amber} />
     </svg>
   );
@@ -116,7 +116,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
               Foothold
               <span style={{ color: D.inkMuted, fontWeight: 400, fontSize: 14 }}> · {COURSE_CONFIG.courseTitle}</span>
             </div>
-            <div style={{ color: D.amber, fontFamily: MONO, fontSize: 11.5 }}>Get your footing. Keep climbing.</div>
+            <div style={{ color: D.amberSoft, fontFamily: MONO, fontSize: 11.5 }}>Get your footing. Keep climbing.</div>
           </div>
         </div>
         {isGuest ? (
@@ -183,7 +183,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
                   background: D.surface,
                   border: `1px solid ${isOpen ? accent + '88' : D.border}`,
                   borderRadius: 12, overflow: 'hidden',
-                  boxShadow: isOpen ? '0 2px 12px rgba(0,0,0,0.35)' : 'none',
+                  boxShadow: isOpen ? '0 2px 12px rgba(22,41,74,0.10)' : 'none',
                 }}>
 
                 {/* Module header row: click anywhere to expand/collapse */}
@@ -197,7 +197,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
                       </span>
                       <span style={{ color: D.ink, fontSize: 15.5, fontWeight: 700 }}>{mod.moduleTitle}</span>
                       {isNextModule && !modComplete && (
-                        <span style={{ color: D.amber, fontFamily: MONO, fontSize: 10, border: `1px solid ${D.amber}`, background: FIRE_BG, borderRadius: 999, padding: '2px 8px' }}>
+                        <span style={{ color: D.amberSoft, fontFamily: MONO, fontSize: 10, border: `1px solid ${D.amber}`, background: FIRE_BG, borderRadius: 999, padding: '2px 8px' }}>
                           CONTINUE HERE
                         </span>
                       )}
@@ -234,7 +234,7 @@ export default function Dashboard({ student, completedUnits, onSelectUnit, onReq
                             </span>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                <span style={{ color: isBonus ? D.amber : done ? D.green : D.ink, fontSize: 14, fontWeight: 600 }}>
+                                <span style={{ color: isBonus ? D.amberSoft : done ? D.green : D.ink, fontSize: 14, fontWeight: 600 }}>
                                   {unit.title}
                                 </span>
                                 <span style={{ color: isBonus ? D.bronze : D.inkMuted, fontFamily: MONO, fontSize: 10.5 }}>

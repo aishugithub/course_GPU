@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 
 const C = {
-  bg: "#0D1117", surface: "#161B22", card: "#1C2333",
-  accent: "#58A6FF", accentGlow: "#1F6FEB",
-  green: "#3FB950", yellow: "#D29922", purple: "#BC8CFF",
-  red: "#F85149", orange: "#F0883E", teal: "#39D0D8",
-  text: "#E6EDF3", muted: "#8B949E", border: "#30363D",
+  bg: "#F1EEE6", surface: "#FFFFFF", card: "#FAF8F3",
+  accent: "#1F5FAD", accentGlow: "#16294A",
+  green: "#1F7A4D", yellow: "#A86B12", purple: "#6D4BC4",
+  red: "#B0322F", orange: "#C2651A", teal: "#0E7C86",
+  text: "#16294A", muted: "#40506A", border: "#E7E0D2",
 };
 
 const LAB_URL = "https://colab.research.google.com/github/aishugithub/course_GPU/blob/main/notebooks/CoreLab12_Will_It_Fit.ipynb";
@@ -38,7 +38,7 @@ function LabCard({ part, title, what, expect }) {
       <div style={{ color: C.text, fontWeight: 600, fontSize: 14, marginBottom: 6 }}>{title}</div>
       <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{what}</div>
       <div style={{ color: C.muted, fontSize: 12.5, lineHeight: 1.6, marginTop: 6 }}><b style={{ color: C.green }}>You should see:</b> {expect}</div>
-      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#0D1117", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
+      <a href={LAB_URL} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, padding: "8px 16px", borderRadius: 8, background: C.orange, color: "#FFFFFF", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Open Core Lab 12 in Colab ↗</a>
       <div style={{ color: C.muted, fontSize: 11.5, marginTop: 8 }}>Colab opens in a new tab. Click <b>File → Save a copy in Drive</b> first, then scroll to Part {part}. Then choose <b>Runtime → Change runtime type → T4 GPU</b>.</div>
     </div>
   );
@@ -98,7 +98,7 @@ function SmiWidget() {
         <code style={{ color: C.accent }}>nvidia-smi</code> is the GPU's dashboard. Here's what it typically shows during training on Colab. Click the highlighted parts
         of the status line, and the other lines.
       </Frame>
-      <pre style={{ margin: 0, background: "#000", border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.6, color: "#c9d1d9", overflowX: "auto" }}>
+      <pre style={{ margin: 0, background: "#000", border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 10.5, lineHeight: 1.6, color: "#40506A", overflowX: "auto" }}>
         {SMI.map((l) => {
           if (l.k === "status") {
             return (
@@ -136,7 +136,7 @@ function OomWidget() {
   return (
     <div>
       <Frame>Sooner or later everyone meets this message. Each part tells you something. Click through it.</Frame>
-      <pre style={{ margin: 0, background: "#2a1214", border: `1px solid ${C.red}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 11.5, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+      <pre style={{ margin: 0, background: "#FBEAEA", border: `1px solid ${C.red}`, borderRadius: 10, padding: 10, fontFamily: "monospace", fontSize: 11.5, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
         {OOM_PARTS.map((p, k) => <span key={k} onClick={() => setI(k)} style={{ cursor: "pointer", color: k === i ? "#fff" : C.red, background: k === i ? C.red + "66" : "transparent" }}>{p.t} </span>)}
       </pre>
       <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: C.card, border: `1px solid ${C.border}`, color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{OOM_PARTS[i].d}</div>
