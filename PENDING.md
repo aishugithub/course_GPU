@@ -6,7 +6,9 @@ Started 9 Nov 2026. Nothing here blocks the Foothold update. Tick an item off wh
 - [x] **T4 run of the 18 new notebooks:** all pass on a Colab Tesla T4, 10 Nov (Book review session; see REVIEW_LOG.md). The Core Lab 12 out-of-memory cell fails cleanly at 4 lakh and 2.5 lakh FP32, and fits at 1 lakh and 2.5 lakh AMP.
 
 ## Book
-- [ ] **Figure in 2.C** still labels one bar "(Lab 1 network)". It is drawn by `book/tools/make_step2.py`. Changing it means re-running make_step2, which would replace the T4 outputs with laptop ones, so do it only together with a T4 re-run.
+- [x] **Figure 2.1 label** now says "(Core Lab 3 network)" (13 Nov; only that figure was redrawn, no lab re-run).
+- [ ] **Materials-request page:** `aishugithub.github.io/billion-small-steps` returns 404 (13 Nov). The book prints this address and its QR code on pp. 8 and 235, so the page must exist before the book is shared.
+- [ ] **Course Overview source:** the overview PDF's source is not in the project; its CO column was corrected in the PDF itself on 13 Nov. If the overview is regenerated, use Quizzes CO1–CO5, Viva CO1–CO5, Mini-project CO2, CO4, CO5.
 - [ ] **Licence:** confirm CC BY-NC-SA 4.0 (text) + MIT (code), and check SRET's IP policy (from Task 9).
 - [ ] **Spot-checks before printing:** B200 bandwidth (8 TB/s) and the H&P 6th-edition section numbers (from Task 9).
 - [ ] **Dean's unit notes** (`book/notes/unit_notes.html` → `GPU_Course_Unit_Notes.pdf`) still use the old lab names (Lab 1, 2A, 2B …). Update them if they are shared again.
